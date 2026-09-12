@@ -31,6 +31,7 @@ self|.|-
 ## §I INTERFACES
 
 - cmd: `characterminator check [paths]` → violations `path:line:col U+XXXX <set>`, 1 per line. 0 clean / 1 violation / 2 usage.
+- cmd: `characterminator fix [--check] [paths]` → rewrite disallowed chars via transliteration map. `--check` reports & writes ⊥, exit 1 on drift (`rustfmt` grammar).
 - file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...]`, `#` comment. zero-dep parse (`.context-limits` shape).
 - sets (builtin): `ascii` (U+0020–U+007E + `\t` `\n`) · `cr` (`\r`) · `latin1` (U+0080–U+00FF) · `latin-ext` (U+0100–U+017F) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§`) · `any`. custom ranges `U+XXXX-U+YYYY` inline ?.
 - exit: 0 ok · 1 violation | drift · 2 usage.
@@ -40,6 +41,9 @@ self|.|-
 V1: path w/ no matching rule → `ascii`. strict default; extended set = explicit grant. ≠ `itok`'s opt-in `.context-limits`: here an unguarded char IS the cost.
 V2: rule resolution: later matching line wins (gitignore semantics); per-type glob & per-file path share one grammar ∴ per-file line placed after per-type line overrides it. `explain` ! print winner.
 V3: sets compose by union only (`ascii+latin-ext`). ⊥ subtraction. effective set = union of winning rule's sets.
+V4: `fix` replaces only via declared transliteration map. char w/o mapping → kept & reported, exit 1. ⊥ silent drop.
+V5: `fix` idempotent: `fix(fix(x)) == fix(x)`, property-tested.
+V6: `fix` touches ⊥ allowed char: bytes outside violations ! identical pre/post, asserted before write.
 V7: only `check` & `fix --check` gate. bare `fix` rewrites only on explicit call. `stats`/`explain`/`sets` report-only, exit 0.
 V8: invalid UTF-8 → error naming path & byte offset, exit 1; ⊥ lossy decode. binary file (NUL byte ?) → skipped & named in report, ⊥ silent.
 V9: default fileset = git-tracked (`itok::walk::tracked`); explicit paths reach untracked.
@@ -60,6 +64,7 @@ T5|.|charset model: builtin sets, union compose, custom ranges|V3,I.file
 T6|.|`.characterminator` parse & rule resolution, last match wins|V1,V2
 T7|.|scan core over `&str`: positions, UTF-8 errors, binary skip|V8,V12
 T8|.|`check` verb + fileset via `itok::walk::tracked`|V7,V9,I.cmd
+T10|.|transliteration map + `fix` & `fix --check`; property tests: idempotency, untouched bytes|V4,V5,V6
 T14|.|`sherd check` + `sherd budget` in `hk.pkl` when first child node lands|V16
 
 ## §B BUGS
