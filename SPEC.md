@@ -40,6 +40,7 @@ self|.|-
 - file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...]`, `#` comment. zero-dep parse (`.context-limits` shape).
 - file: `.characterminator-map` ? — transliteration, `<from> <to>`: `from` = literal char | `U+XXXX`; `to` = replacement, empty = explicit delete. `to` ∉ target file's set → char counts unmapped (V4).
 - file: `.characterminator-sets` ? — custom sets, `<name> <member>...`: member = literal char | `U+XXXX` | `U+XXXX-U+YYYY`.
+- flag (file twins, repeatable, V18): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets`. names ?.
 - sets (builtin): `ascii` (U+0020–U+007E + `\t` `\n`) · `cr` (`\r`) · `latin1` (U+0080–U+00FF) · `latin-ext` (U+0100–U+017F) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§`) · `any`. custom sets via `.characterminator-sets`.
 - lib: `characterminator::{scan, fix, resolve}` — pure fn over `&str`.
 - exit: 0 ok · 1 violation | drift · 2 usage.
@@ -63,6 +64,7 @@ V14: SPEC.md form gated by `mth fmt --check SPEC.md` & `mth check --records .spe
 V15: SPEC.md capped from commit one: `.context-limits` row gated by `itok check`; ceiling ~12% over measured.
 V16: `sherd check` & `sherd budget` gate once ≥1 child node exists.
 V17: locale separation: extended sets granted to data paths (`locales/**`, `*.po`, `config/locales/*.yml`); code stays `ascii`. non-ASCII string literal in code file → hint: move to locale file ?.
+V18: ∀ data-file line kind → flag twin: `--rule` ≡ rules line, `--map` ≡ map line, `--set` ≡ sets line. flag value = exactly 1 line, same parser ∴ ∀ file F: `--no-files` + 1 flag per line of F ≡ F, property-tested.
 
 ## §T TASKS
 
@@ -84,6 +86,8 @@ T14|.|`sherd check` + `sherd budget` in `hk.pkl` when first child node lands|V16
 T15|.|locale hint on non-ASCII literal in code file ?|V17
 T16|.|README, AGENTS.md, `docs/LLM-DISCLAIMER.md`, `docs/THIRD-PARTY-NOTICES.md` per fleet|-
 T17|.|release: `release.toml` (`cargo-release`), crates.io publish ?|-
+T18|.|one line parser per kind (rules, map, sets); flag twins feed same parser|V18,I.flag
+T19|.|property test: file ≡ `--no-files` + flag sequence, ∀ kinds|V18
 
 ## §B BUGS
 
