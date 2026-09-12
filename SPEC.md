@@ -65,6 +65,8 @@ V15: SPEC.md capped from commit one: `.context-limits` row gated by `itok check`
 V16: `sherd check` & `sherd budget` gate once ≥1 child node exists.
 V17: locale separation: extended sets granted to data paths (`locales/**`, `*.po`, `config/locales/*.yml`); code stays `ascii`. non-ASCII string literal in code file → hint: move to locale file ?.
 V18: ∀ data-file line kind → flag twin: `--rule` ≡ rules line, `--map` ≡ map line, `--set` ≡ sets line. flag value = exactly 1 line, same parser ∴ ∀ file F: `--no-files` + 1 flag per line of F ≡ F, property-tested.
+V19: precedence, low → high: builtin → discovered dotfiles → `--*-file` (argv order) → inline flags (argv order). later wins: rule per V2, map entry per char, set per name.
+V20: ∀ effective rule, map entry, set → origin (`<file>:<line>` | `argv[<n>]` | `builtin:<line>`). `explain` ! print it. `explain --as-args` ? → effective config as flags (round trip).
 
 ## §T TASKS
 
@@ -88,6 +90,7 @@ T16|.|README, AGENTS.md, `docs/LLM-DISCLAIMER.md`, `docs/THIRD-PARTY-NOTICES.md`
 T17|.|release: `release.toml` (`cargo-release`), crates.io publish ?|-
 T18|.|one line parser per kind (rules, map, sets); flag twins feed same parser|V18,I.flag
 T19|.|property test: file ≡ `--no-files` + flag sequence, ∀ kinds|V18
+T20|.|config assembly: precedence chain, origin per entry, `explain` prints origin|V19,V20
 
 ## §B BUGS
 
