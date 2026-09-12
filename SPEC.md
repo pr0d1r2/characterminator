@@ -28,8 +28,14 @@ self|.|-
 - dev shell = `flake.nix`; ∀ inputs follow `nixpkgs-lock`; pins: `microlith` `v0.7.0` ?, `itok` `v0.3.1`, `sherd` `v0.5.0`.
 - deps minimal; each direct dep justified in `docs/THIRD-PARTY-NOTICES.md`.
 
+## §I INTERFACES
+
+- file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...]`, `#` comment. zero-dep parse (`.context-limits` shape).
+
 ## §V INVARIANTS
 
+V1: path w/ no matching rule → `ascii`. strict default; extended set = explicit grant. ≠ `itok`'s opt-in `.context-limits`: here an unguarded char IS the cost.
+V2: rule resolution: later matching line wins (gitignore semantics); per-type glob & per-file path share one grammar ∴ per-file line placed after per-type line overrides it. `explain` ! print winner.
 V9: default fileset = git-tracked (`itok::walk::tracked`); explicit paths reach untracked.
 V10: token figure self-describes unit & method, per `itok`: `~` = bytes/4 estimate, `(o200k)` = `--bpe`. ⊥ claim measurement it cannot make.
 V14: SPEC.md form gated by `mth fmt --check SPEC.md` & `mth check --records .spec-records SPEC.md`. `mth` absent → gate FAILS hard, ⊥ skip.
@@ -43,6 +49,7 @@ T1|.|scaffold crate: `Cargo.toml` edition 2024, MSRV 1.95, lints, lib+bin, `rust
 T2|.|`flake.nix` dev shell: `nixpkgs-lock`, `nix-hk`, `microlith`, `itok`, `sherd` inputs, ∀ following `nixpkgs-lock`|V14,V15,V16
 T3|.|`hk.pkl` gate: fmt, clippy `-D warnings`, test, `mth`, `mth-check`, `itok check`; vendor `pkl/Config.pkl`|V14,V15
 T4|.|`.context-limits` SPEC.md ceiling; `.spec-records` baseline|V15
+T6|.|`.characterminator` parse & rule resolution, last match wins|V1,V2
 T14|.|`sherd check` + `sherd budget` in `hk.pkl` when first child node lands|V16
 
 ## §B BUGS
