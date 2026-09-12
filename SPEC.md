@@ -113,6 +113,8 @@ T23|.|preset data files per V23, contents from R2 & R4|V22,V23
 T24|.|rule resolution: `ascii` implicit base|V24
 T25|.|set composition & cycle detection|V25
 T26|.|builtin map: typography defaults|V26,V22
+T27|.|dogfood wave 1: `check` + `stats` over sibling Rust repos (R1); record anonymized savings in §R; fixes land via each repo's own review|V10,V7
+T28|.|dogfood wave 2: extend to rest of fleet (R4) once wave 1 confirms presets|V23
 
 ## §B BUGS
 
