@@ -80,6 +80,7 @@ V20: ∀ effective rule, map entry, set → origin (`<file>:<line>` | `argv[<n>]
 V21: zero-file run: `--no-files --no-builtin-map --no-builtin-sets` → config from argv only. `ascii` intrinsic (code, ⊥ data) ∴ V1 holds w/ ⊥ file.
 V22: builtin map & sets ship as data files in same grammar as user files, compiled in via `include_str!`, written in `U+XXXX` form only ∴ ASCII, V13 holds w/ ⊥ grant. path follows node layout ?.
 V23: builtin sets = small function presets, sized from R2 & R4: typical file = `ascii` + 1 preset after map. coarse blocks (`latin1`, `latin-ext`, scripts) only for multi-language data (locales), ⊥ recommended for code | docs.
+V24: `ascii` = implicit base ∀ rule: effective set = `ascii` ∪ named sets ∴ `*.md caveman` ≡ `*.md ascii+caveman`. explicit `ascii+` stays legal.
 
 ## §T TASKS
 
@@ -107,6 +108,7 @@ T20|.|config assembly: precedence chain, origin per entry, `explain` prints orig
 T21|.|zero-file mode; `ascii` as intrinsic constant|V21,V1
 T22|.|builtin map & sets as `U+XXXX` data files via `include_str!`|V22,V13
 T23|.|preset data files per V23, contents from R2 & R4|V22,V23
+T24|.|rule resolution: `ascii` implicit base|V24
 
 ## §B BUGS
 
