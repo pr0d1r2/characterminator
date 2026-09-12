@@ -42,7 +42,7 @@ self|.|-
 - file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...] [@<family>] [!<level>] [!<lint|group>=<level>]`, `#` comment. zero-dep parse (`.context-limits` shape).
 - file: `.characterminator-map` ? — transliteration, `<from> <to>`: `from` = literal char | `U+XXXX`; `to` = replacement, empty = explicit delete. `to` ∉ target file's set → char counts unmapped (V4). + `family <name> <parent>` (V27). + `= <class> <family>:<member>[,<member>...] ...` (V28).
 - file: `.characterminator-sets` ? — custom sets, `<name> <member>...`: member = literal char | `U+XXXX` | `U+XXXX-U+YYYY` | set name (≥2 chars, V25).
-- flag (file twins, repeatable, V18): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (V29) · `--strict` (V36). names ?.
+- flag (file twins, repeatable, V18): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (V29) · `--strict` (V36) · `--pedantic` (V37). names ?.
 - sets (builtin function presets, V23): `ascii` intrinsic (U+0020–U+007E + `\t` `\n`, V21) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§` + measured `⇒∵·×∨∧¬←↔⇔≈∅⊆∪∩↑↓`, R3) · `box` (U+2500–U+257F, U+25A0–U+25FF) · `marks` (per fidelity, V29: `✓✗⚠→` @`text`, `✅❌⚠➡` @`emoji`) · `math` (`×÷±°²³≤≥≠≈∞µ√∑π`) · `legal` (`©®™`) · `emoji` (single code points: U+1F300–U+1FAFF, U+2600–U+27BF; sequences compress, V31) · letters ∀ CLDR locale (`pl`, `de`, `fr`, `ja`, …, V30) · `cr` (`\r`) · `typography` ? (V26) · coarse blocks `latin1` (U+0080–U+00FF), `latin-ext` (U+0100–U+017F), `cyrillic`, `greek`, `arabic` · `hazard` (V34, ∉ `any`) · `any`. custom sets via `.characterminator-sets`.
 - lib: `characterminator::{scan, fix, resolve}` — pure fn over `&str`.
 - exit: 0 ok · 1 violation | drift · 2 usage.
@@ -95,6 +95,7 @@ V33: severity ∈ `error` (default, exit 1) | `warn` (reported, exit 0); per rul
 V34: `hazard` set, from vendored Unicode properties: ∀ `Default_Ignorable_Code_Point` (ZWSP, word joiner, soft hyphen, VS outside declared emoji sequences, Hangul fillers, invisible math ops, tag chars U+E0000–U+E007F) ∪ bidi controls U+202A–U+202E, U+2066–U+2069 ∪ C0/C1 controls ∖ `\t` `\n` `\r` ∪ BOM ∉ file start. ZWJ ∈ declared emoji sequence (V31) exempt; ZWJ/ZWNJ via CLDR language preset ?. hazard hit = `error` ∀ severity (V33); `any` ∌ hazard; allowed only by naming `hazard`. bidi controls ∉ builtin map ∴ reported, ⊥ auto-removed.
 V35: `guard` = hook adapter (itok `guard` shape): harness hook JSON stdin → decision JSON stdout; signal in JSON ⊥ exit code. before file read: hazard (V34) → block, naming path, line, code point. after tool output (web fetch, web search, shell): hazard → blocking decision w/ reason = content tainted. ⊥ daemon, ⊥ silent strip. non-hazard violations → note ?.
 V36: ∀ check = named lint in a group; levels rustc/clippy shape `allow` | `warn` | `deny` | `forbid` (`forbid` ⊥ lowered by later rule | flag). groups: `hazard` (forbid, V34) · `charset` (deny, V1–V3) · `pedantic` (allow). rule suffix `!<level>` → `charset`; `!<lint|group>=<level>` → named one. `--strict` → warn ⇒ deny. deny | forbid hit → exit 1. json ! carry lint name & level.
+V37: `pedantic` group = maximum purity, opt-in (`--pedantic` ≡ `--rule '* !pedantic=warn'`), clippy::pedantic philosophy: ? flags legit text ∴ ⊥ default. candidate lints ?: `not-nfc` · `nfkc-compat` (fullwidth, ligatures, superscripts → ASCII-foldable) · `unicode-space` (NBSP, U+2000–U+200A) · `mixed-script` · `confusable` (UTS #39) · `crlf` · `trailing-whitespace` · `final-newline`. lint → default group only after near-zero false positives in dogfood waves.
 
 ## §T TASKS
 
@@ -137,6 +138,7 @@ T35|.|severity: `!<severity>` in rules, `--strict`, json field|V33,V11
 T36|.|vendor Unicode Default_Ignorable & bidi data; `hazard` set; severity override|V34,V33
 T37|.|`guard` hook adapter: pre-read block, post-output taint decision, harness JSON fixtures|V35,V34
 T38|.|lint registry: names, groups, levels, `!<lint>=<level>`, forbid enforcement|V36
+T39|.|pedantic lints per V37 candidates, each w/ fixture of a legit false positive|V37,V36
 
 ## §B BUGS
 
