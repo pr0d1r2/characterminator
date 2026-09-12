@@ -18,6 +18,7 @@ self|.|-
 ## §C CONSTRAINTS
 
 - Rust **edition 2024**, stable, MSRV **1.95** = fleet pin (`nixpkgs-lock` → nixos-26.05). One crate: lib + bin. MIT. `unsafe_code` FORBID.
+- bin name `characterminator` ? short alias (`rg`/`mth` shape) TBD.
 - CPU only, offline, deterministic. ⊥ network, ⊥ model.
 - SPEC.md FORMAT = cavekit **4.1.0** as vendored by `microlith` (upstream rev `c322f0b`) + its `FORMAT-EXTENSIONS.md` (`§F`/`§N`). Form gated by `mth`, ⊥ restated here (V14).
 - token counting = `itok` lib dep (crates.io 0.3, `default-features = false`, `features = ["bpe"]`). ⊥ own tokenizer, ⊥ own bytes/4.
