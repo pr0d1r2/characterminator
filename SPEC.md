@@ -42,7 +42,7 @@ self|.|-
 - file: `.characterminator-map` ? — transliteration, `<from> <to>`: `from` = literal char | `U+XXXX`; `to` = replacement, empty = explicit delete. `to` ∉ target file's set → char counts unmapped (V4). + `family <name> <parent>` (V27). + `= <class> <family>:<member>[,<member>...] ...` (V28).
 - file: `.characterminator-sets` ? — custom sets, `<name> <member>...`: member = literal char | `U+XXXX` | `U+XXXX-U+YYYY` | set name (≥2 chars, V25).
 - flag (file twins, repeatable, V18): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (V29). names ?.
-- sets (builtin function presets, V23): `ascii` intrinsic (U+0020–U+007E + `\t` `\n`, V21) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§` + measured `⇒∵·×∨∧¬←↔⇔≈∅⊆∪∩↑↓`, R3) · `box` (U+2500–U+257F, U+25A0–U+25FF) · `marks` (per fidelity, V29: `✓✗⚠→` @`text`, `✅❌⚠️➡️` @`emoji`) · `math` (`×÷±°²³≤≥≠≈∞µ√∑π`) · `legal` (`©®™`) · `emoji` (U+1F300–U+1FAFF, U+2600–U+27BF, VS16, ZWJ) · letters `pl` `de`, more ? · `cr` (`\r`) · `typography` ? (V26) · coarse blocks `latin1` (U+0080–U+00FF), `latin-ext` (U+0100–U+017F), `cyrillic`, `greek`, `arabic` · `any`. custom sets via `.characterminator-sets`.
+- sets (builtin function presets, V23): `ascii` intrinsic (U+0020–U+007E + `\t` `\n`, V21) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§` + measured `⇒∵·×∨∧¬←↔⇔≈∅⊆∪∩↑↓`, R3) · `box` (U+2500–U+257F, U+25A0–U+25FF) · `marks` (per fidelity, V29: `✓✗⚠→` @`text`, `✅❌⚠️➡️` @`emoji`) · `math` (`×÷±°²³≤≥≠≈∞µ√∑π`) · `legal` (`©®™`) · `emoji` (U+1F300–U+1FAFF, U+2600–U+27BF, VS16, ZWJ) · letters ∀ CLDR locale (`pl`, `de`, `fr`, `ja`, …, V30) · `cr` (`\r`) · `typography` ? (V26) · coarse blocks `latin1` (U+0080–U+00FF), `latin-ext` (U+0100–U+017F), `cyrillic`, `greek`, `arabic` · `any`. custom sets via `.characterminator-sets`.
 - lib: `characterminator::{scan, fix, resolve}` — pure fn over `&str`.
 - exit: 0 ok · 1 violation | drift · 2 usage.
 
@@ -54,6 +54,7 @@ R2|Rust preset coverage|of 245 non-ASCII files: 12.7% fully fixed by typography 
 R3|caveman usage|Rust: 180 fit extended `caveman`, 123 fit FORMAT.md list ∴ misses 32%. fleet: 833 vs 521 ∴ 37%. extras, fleet files containing: `⇒` 222, `·` 168, `∵` 77|R1 scan + R4 scan
 R4|fleet extension|227 repos, 73,114 text files: 95.1% pure ASCII. of 3,604 non-ASCII: typography map alone 45.1%; +1 preset → 84.9%; +2 → 89.2%. excl `.nix` (60% of files, 1 repo = 89% of its non-ASCII): 84.1% / 90.0%|fleet scan 2026-09-12, snapshots excluded, repos anonymous
 R5|uncovered & pairs|Rust: `Σ` `≡` `⟺` `≪` `⊇` `⋃`, superscripts, CJK (wenyan-style caveman). fleet: `©` `®` `™`, Cyrillic, Arabic, `−` U+2212. top pair both corpora: `caveman`+`box` (Rust 8, fleet 42)|R1 scan + R4 scan
+R6|CLDR letters|766 locales in `cldr-misc-full`. `exemplarCharacters` = letters in normal use (pl: 32, 9 non-ASCII); `auxiliary` = loan letters; `punctuation` incl. locale quotes (pl `„”`). Unicode License v3|github.com/unicode-org/cldr-json
 
 ## §V INVARIANTS
 
@@ -86,6 +87,7 @@ V26: typography = builtin map targets, ⊥ default grant (R4: 45.1% of non-ASCII
 V27: character families = open tree, declared by map line `family <name> <parent>`; parent chain ! end @ `ascii` (intrinsic root); cycle → config error, exit 2. builtin: `ascii` ← `text` ← `emoji`. new family (e.g. `nerd`) = 1 line + members in classes.
 V28: map line `= <class> <family>:<member>[,<member>...] ...` declares equivalence class; members labelled by family, first per family preferred. disallowed member → preferred member of rule's fidelity family if allowed, else along its fallback path (V27) → `ascii`; none allowed → unmapped (V4). `--map` twin takes this form (V18). multi-codepoint members (VS16 forms) ?.
 V29: fidelity = family name, default `text`; per rule `@<family>` suffix (`docs/** marks @emoji`); last matching rule naming one wins. `--fidelity <f>` ≡ `--rule '* @<f>'` (V19 order). presets w/ classes grant only resolved family's members ∴ other families compress into it; V6 holds. mix → grant variants explicitly.
+V30: language letter presets ∀ CLDR locale, named by locale code (`pl`, `pt-BR`): main `exemplarCharacters` − ASCII, + uppercase forms. data vendored (Unicode License v3, R6), generated into `U+XXXX` data file (V22), ⊥ fetched at runtime. `auxiliary` loan letters → `<code>-aux` ?.
 
 ## §T TASKS
 
@@ -121,6 +123,7 @@ T28|.|dogfood wave 2: extend to rest of fleet (R4) once wave 1 confirms presets|
 T29|.|family lines: parse, tree validation, fallback path|V27
 T30|.|class lines: parse, family-labelled members, resolution along fallback path|V28,V27
 T31|.|fidelity: `@<family>` in rules, `--fidelity`, family-aware presets|V29,V24
+T32|.|vendor CLDR exemplars; generator → language preset data file; license notice|V30,V22
 
 ## §B BUGS
 
