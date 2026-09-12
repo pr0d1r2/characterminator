@@ -37,6 +37,7 @@ self|.|-
 - cmd: `characterminator stats [--bpe] [paths]` → per file: chars outside set, bytes, tokens now vs after `fix`, via `itok`. report-only.
 - cmd: `characterminator explain [<path>] [--as args|lines|prompt]` → effective set + winning rule + its config line; `--as` renders effective config as flags, data-file lines, or agent prompt (V32).
 - cmd: `characterminator sets` → builtin sets & members.
+- cmd: `characterminator guard` → hook adapter: harness hook JSON stdin → decision JSON stdout; fuse on hazard (V35).
 - flag: `--format human|json` ∀ verbs · `-C <dir>`.
 - file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...] [@<family>] [!<severity>]`, `#` comment. zero-dep parse (`.context-limits` shape).
 - file: `.characterminator-map` ? — transliteration, `<from> <to>`: `from` = literal char | `U+XXXX`; `to` = replacement, empty = explicit delete. `to` ∉ target file's set → char counts unmapped (V4). + `family <name> <parent>` (V27). + `= <class> <family>:<member>[,<member>...] ...` (V28).
@@ -92,6 +93,7 @@ V31: `emoji` preset = single code points only: ⊥ VS15/VS16, ⊥ skin tone U+1F
 V32: `explain --as args|lines|prompt` renders effective config (per path | whole repo): `args` = flags, `lines` = data-file lines, `prompt` = deterministic agent instruction (allowed chars, replacements, fidelity) for drafting compliant code up front. round trip: `--as args` output fed back ≡ same config, property-tested w/ V18. ⊥ model (CPU only).
 V33: severity ∈ `error` (default, exit 1) | `warn` (reported, exit 0); per rule suffix `!<severity>` (`docs/** caveman !warn`); last matching rule naming one wins; twin via `--rule` (V18). `--strict` → warn counts as error (clippy `-D warnings` shape). json violation ! carry `severity`.
 V34: `hazard` set, from vendored Unicode properties: ∀ `Default_Ignorable_Code_Point` (ZWSP, word joiner, soft hyphen, VS outside declared emoji sequences, Hangul fillers, invisible math ops, tag chars U+E0000–U+E007F) ∪ bidi controls U+202A–U+202E, U+2066–U+2069 ∪ C0/C1 controls ∖ `\t` `\n` `\r` ∪ BOM ∉ file start. ZWJ ∈ declared emoji sequence (V31) exempt; ZWJ/ZWNJ via CLDR language preset ?. hazard hit = `error` ∀ severity (V33); `any` ∌ hazard; allowed only by naming `hazard`. bidi controls ∉ builtin map ∴ reported, ⊥ auto-removed.
+V35: `guard` = hook adapter (itok `guard` shape): harness hook JSON stdin → decision JSON stdout; signal in JSON ⊥ exit code. before file read: hazard (V34) → block, naming path, line, code point. after tool output (web fetch, web search, shell): hazard → blocking decision w/ reason = content tainted. ⊥ daemon, ⊥ silent strip. non-hazard violations → note ?.
 
 ## §T TASKS
 
@@ -132,6 +134,7 @@ T33|.|vendor Unicode emoji data; sequence map generator; longest-match scan|V31,
 T34|.|`explain --as` renderers (args, lines, prompt) + round-trip property test|V32,V18
 T35|.|severity: `!<severity>` in rules, `--strict`, json field|V33,V11
 T36|.|vendor Unicode Default_Ignorable & bidi data; `hazard` set; severity override|V34,V33
+T37|.|`guard` hook adapter: pre-read block, post-output taint decision, harness JSON fixtures|V35,V34
 
 ## §B BUGS
 
