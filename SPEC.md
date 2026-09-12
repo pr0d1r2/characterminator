@@ -31,11 +31,13 @@ self|.|-
 ## §I INTERFACES
 
 - file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...]`, `#` comment. zero-dep parse (`.context-limits` shape).
+- sets (builtin): `ascii` (U+0020–U+007E + `\t` `\n`) · `cr` (`\r`) · `latin1` (U+0080–U+00FF) · `latin-ext` (U+0100–U+017F) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§`) · `any`. custom ranges `U+XXXX-U+YYYY` inline ?.
 
 ## §V INVARIANTS
 
 V1: path w/ no matching rule → `ascii`. strict default; extended set = explicit grant. ≠ `itok`'s opt-in `.context-limits`: here an unguarded char IS the cost.
 V2: rule resolution: later matching line wins (gitignore semantics); per-type glob & per-file path share one grammar ∴ per-file line placed after per-type line overrides it. `explain` ! print winner.
+V3: sets compose by union only (`ascii+latin-ext`). ⊥ subtraction. effective set = union of winning rule's sets.
 V9: default fileset = git-tracked (`itok::walk::tracked`); explicit paths reach untracked.
 V10: token figure self-describes unit & method, per `itok`: `~` = bytes/4 estimate, `(o200k)` = `--bpe`. ⊥ claim measurement it cannot make.
 V14: SPEC.md form gated by `mth fmt --check SPEC.md` & `mth check --records .spec-records SPEC.md`. `mth` absent → gate FAILS hard, ⊥ skip.
@@ -49,6 +51,7 @@ T1|.|scaffold crate: `Cargo.toml` edition 2024, MSRV 1.95, lints, lib+bin, `rust
 T2|.|`flake.nix` dev shell: `nixpkgs-lock`, `nix-hk`, `microlith`, `itok`, `sherd` inputs, ∀ following `nixpkgs-lock`|V14,V15,V16
 T3|.|`hk.pkl` gate: fmt, clippy `-D warnings`, test, `mth`, `mth-check`, `itok check`; vendor `pkl/Config.pkl`|V14,V15
 T4|.|`.context-limits` SPEC.md ceiling; `.spec-records` baseline|V15
+T5|.|charset model: builtin sets, union compose, custom ranges|V3,I.file
 T6|.|`.characterminator` parse & rule resolution, last match wins|V1,V2
 T14|.|`sherd check` + `sherd budget` in `hk.pkl` when first child node lands|V16
 
