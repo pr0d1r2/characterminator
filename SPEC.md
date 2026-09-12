@@ -13,11 +13,13 @@
 ## §V INVARIANTS
 
 V14: SPEC.md form gated by `mth fmt --check SPEC.md` & `mth check --records .spec-records SPEC.md`. `mth` absent → gate FAILS hard, ⊥ skip.
+V15: SPEC.md capped from commit one: `.context-limits` row gated by `itok check`; ceiling ~12% over measured.
 
 ## §T TASKS
 
 id|status|task|cites
 T1|.|scaffold crate: `Cargo.toml` edition 2024, MSRV 1.95, lints, lib+bin, `rustfmt.toml`, `clippy.toml`|-
+T4|.|`.context-limits` SPEC.md ceiling; `.spec-records` baseline|V15
 
 ## §B BUGS
 
