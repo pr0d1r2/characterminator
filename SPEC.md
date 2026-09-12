@@ -35,7 +35,7 @@ self|.|-
 - cmd: `characterminator check [paths]` → violations `path:line:col U+XXXX <set>`, 1 per line. 0 clean / 1 violation / 2 usage.
 - cmd: `characterminator fix [--check] [paths]` → rewrite disallowed chars via transliteration map. `--check` reports & writes ⊥, exit 1 on drift (`rustfmt` grammar).
 - cmd: `characterminator stats [--bpe] [paths]` → per file: chars outside set, bytes, tokens now vs after `fix`, via `itok`. report-only.
-- cmd: `characterminator explain <path>` → effective set + winning rule + its config line.
+- cmd: `characterminator explain [<path>] [--as args|lines|prompt]` → effective set + winning rule + its config line; `--as` renders effective config as flags, data-file lines, or agent prompt (V32).
 - cmd: `characterminator sets` → builtin sets & members.
 - flag: `--format human|json` ∀ verbs · `-C <dir>`.
 - file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...] [@<family>]`, `#` comment. zero-dep parse (`.context-limits` shape).
@@ -77,7 +77,7 @@ V16: `sherd check` & `sherd budget` gate once ≥1 child node exists.
 V17: locale separation: extended sets granted to data paths (`locales/**`, `*.po`, `config/locales/*.yml`); code stays `ascii`. non-ASCII string literal in code file → hint: move to locale file ?.
 V18: ∀ data-file line kind → flag twin: `--rule` ≡ rules line, `--map` ≡ map line, `--set` ≡ sets line. flag value = exactly 1 line, same parser ∴ ∀ file F: `--no-files` + 1 flag per line of F ≡ F, property-tested.
 V19: precedence, low → high: builtin → discovered dotfiles → `--*-file` (argv order) → inline flags (argv order). later wins: rule per V2, map entry per char, set per name.
-V20: ∀ effective rule, map entry, set → origin (`<file>:<line>` | `argv[<n>]` | `builtin:<line>`). `explain` ! print it. `explain --as-args` ? → effective config as flags (round trip).
+V20: ∀ effective rule, map entry, set → origin (`<file>:<line>` | `argv[<n>]` | `builtin:<line>`). `explain` ! print it. export via `explain --as` (V32).
 V21: zero-file run: `--no-files --no-builtin-map --no-builtin-sets` → config from argv only. `ascii` intrinsic (code, ⊥ data) ∴ V1 holds w/ ⊥ file.
 V22: builtin map & sets ship as data files in same grammar as user files, compiled in via `include_str!`, written in `U+XXXX` form only ∴ ASCII, V13 holds w/ ⊥ grant. path follows node layout ?.
 V23: builtin sets = small function presets, sized from R2 & R4: typical file = `ascii` + 1 preset after map. coarse blocks (`latin1`, `latin-ext`, scripts) only for multi-language data (locales), ⊥ recommended for code | docs.
@@ -89,6 +89,7 @@ V28: map line `= <class> <family>:<member>[,<member>...] ...` declares equivalen
 V29: fidelity = family name, default `text`; per rule `@<family>` suffix (`docs/** marks @emoji`); last matching rule naming one wins. `--fidelity <f>` ≡ `--rule '* @<f>'` (V19 order). presets w/ classes grant only resolved family's members ∴ other families compress into it; V6 holds. mix → grant variants explicitly.
 V30: language letter presets ∀ CLDR locale, named by locale code (`pl`, `pt-BR`): main `exemplarCharacters` − ASCII, + uppercase forms. data vendored (Unicode License v3, R6), generated into `U+XXXX` data file (V22), ⊥ fetched at runtime. `auxiliary` loan letters → `<code>-aux` ?.
 V31: `emoji` preset = single code points only: ⊥ VS15/VS16, ⊥ skin tone U+1F3FB–U+1F3FF, ⊥ ZWJ U+200D, ⊥ keycap U+20E3, ⊥ tag chars ∴ ∀ sequence has a disallowed code point → builtin sequence map (vendored Unicode emoji data) compresses: selector & skin tone → delete (`👍🏽`→`👍`); ZWJ sequence → single code point equivalent if one exists (`👨‍👩‍👧`→`👪`), else first emoji; keycap & flag → ASCII (`1`, `PL`) ?. map `from` & class members ? be sequences; scan = longest declared sequence first. `emoji-seq` preset ? keeps sequences.
+V32: `explain --as args|lines|prompt` renders effective config (per path | whole repo): `args` = flags, `lines` = data-file lines, `prompt` = deterministic agent instruction (allowed chars, replacements, fidelity) for drafting compliant code up front. round trip: `--as args` output fed back ≡ same config, property-tested w/ V18. ⊥ model (CPU only).
 
 ## §T TASKS
 
@@ -126,6 +127,7 @@ T30|.|class lines: parse, family-labelled members, resolution along fallback pat
 T31|.|fidelity: `@<family>` in rules, `--fidelity`, family-aware presets|V29,V24
 T32|.|vendor CLDR exemplars; generator → language preset data file; license notice|V30,V22
 T33|.|vendor Unicode emoji data; sequence map generator; longest-match scan|V31,V22
+T34|.|`explain --as` renderers (args, lines, prompt) + round-trip property test|V32,V18
 
 ## §B BUGS
 
