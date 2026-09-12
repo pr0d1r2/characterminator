@@ -80,6 +80,7 @@ T12|.|`explain` & `sets` verbs|V2,V7
 T13|.|dogfood: `.characterminator` for own tree, `check` step in `hk.pkl`|V13
 T14|.|`sherd check` + `sherd budget` in `hk.pkl` when first child node lands|V16
 T15|.|locale hint on non-ASCII literal in code file ?|V17
+T16|.|README, AGENTS.md, `docs/LLM-DISCLAIMER.md`, `docs/THIRD-PARTY-NOTICES.md` per fleet|-
 
 ## §B BUGS
 
