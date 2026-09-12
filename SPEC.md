@@ -32,6 +32,7 @@ self|.|-
 
 - cmd: `characterminator check [paths]` → violations `path:line:col U+XXXX <set>`, 1 per line. 0 clean / 1 violation / 2 usage.
 - cmd: `characterminator fix [--check] [paths]` → rewrite disallowed chars via transliteration map. `--check` reports & writes ⊥, exit 1 on drift (`rustfmt` grammar).
+- cmd: `characterminator stats [--bpe] [paths]` → per file: chars outside set, bytes, tokens now vs after `fix`, via `itok`. report-only.
 - file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...]`, `#` comment. zero-dep parse (`.context-limits` shape).
 - sets (builtin): `ascii` (U+0020–U+007E + `\t` `\n`) · `cr` (`\r`) · `latin1` (U+0080–U+00FF) · `latin-ext` (U+0100–U+017F) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§`) · `any`. custom ranges `U+XXXX-U+YYYY` inline ?.
 - exit: 0 ok · 1 violation | drift · 2 usage.
@@ -65,6 +66,7 @@ T6|.|`.characterminator` parse & rule resolution, last match wins|V1,V2
 T7|.|scan core over `&str`: positions, UTF-8 errors, binary skip|V8,V12
 T8|.|`check` verb + fileset via `itok::walk::tracked`|V7,V9,I.cmd
 T10|.|transliteration map + `fix` & `fix --check`; property tests: idempotency, untouched bytes|V4,V5,V6
+T11|.|`stats` verb w/ `itok` counts now vs after fix|V10
 T14|.|`sherd check` + `sherd budget` in `hk.pkl` when first child node lands|V16
 
 ## §B BUGS
