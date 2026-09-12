@@ -67,6 +67,7 @@ V17: locale separation: extended sets granted to data paths (`locales/**`, `*.po
 V18: ∀ data-file line kind → flag twin: `--rule` ≡ rules line, `--map` ≡ map line, `--set` ≡ sets line. flag value = exactly 1 line, same parser ∴ ∀ file F: `--no-files` + 1 flag per line of F ≡ F, property-tested.
 V19: precedence, low → high: builtin → discovered dotfiles → `--*-file` (argv order) → inline flags (argv order). later wins: rule per V2, map entry per char, set per name.
 V20: ∀ effective rule, map entry, set → origin (`<file>:<line>` | `argv[<n>]` | `builtin:<line>`). `explain` ! print it. `explain --as-args` ? → effective config as flags (round trip).
+V21: zero-file run: `--no-files --no-builtin-map --no-builtin-sets` → config from argv only. `ascii` intrinsic (code, ⊥ data) ∴ V1 holds w/ ⊥ file.
 
 ## §T TASKS
 
@@ -91,6 +92,7 @@ T17|.|release: `release.toml` (`cargo-release`), crates.io publish ?|-
 T18|.|one line parser per kind (rules, map, sets); flag twins feed same parser|V18,I.flag
 T19|.|property test: file ≡ `--no-files` + flag sequence, ∀ kinds|V18
 T20|.|config assembly: precedence chain, origin per entry, `explain` prints origin|V19,V20
+T21|.|zero-file mode; `ascii` as intrinsic constant|V21,V1
 
 ## §B BUGS
 
