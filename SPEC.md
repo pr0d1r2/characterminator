@@ -35,6 +35,7 @@ self|.|-
 - cmd: `characterminator stats [--bpe] [paths]` → per file: chars outside set, bytes, tokens now vs after `fix`, via `itok`. report-only.
 - cmd: `characterminator explain <path>` → effective set + winning rule + its config line.
 - cmd: `characterminator sets` → builtin sets & members.
+- flag: `--format human|json` ∀ verbs · `-C <dir>`.
 - file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...]`, `#` comment. zero-dep parse (`.context-limits` shape).
 - sets (builtin): `ascii` (U+0020–U+007E + `\t` `\n`) · `cr` (`\r`) · `latin1` (U+0080–U+00FF) · `latin-ext` (U+0100–U+017F) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§`) · `any`. custom ranges `U+XXXX-U+YYYY` inline ?.
 - exit: 0 ok · 1 violation | drift · 2 usage.
@@ -51,6 +52,7 @@ V7: only `check` & `fix --check` gate. bare `fix` rewrites only on explicit call
 V8: invalid UTF-8 → error naming path & byte offset, exit 1; ⊥ lossy decode. binary file (NUL byte ?) → skipped & named in report, ⊥ silent.
 V9: default fileset = git-tracked (`itok::walk::tracked`); explicit paths reach untracked.
 V10: token figure self-describes unit & method, per `itok`: `~` = bytes/4 estimate, `(o200k)` = `--bpe`. ⊥ claim measurement it cannot make.
+V11: `--format json` = stable contract; human output cosmetic.
 V12: violation position = 1-based line + col (chars) + byte offset + `U+XXXX`. output sorted by path, then offset.
 V14: SPEC.md form gated by `mth fmt --check SPEC.md` & `mth check --records .spec-records SPEC.md`. `mth` absent → gate FAILS hard, ⊥ skip.
 V15: SPEC.md capped from commit one: `.context-limits` row gated by `itok check`; ceiling ~12% over measured.
@@ -67,6 +69,7 @@ T5|.|charset model: builtin sets, union compose, custom ranges|V3,I.file
 T6|.|`.characterminator` parse & rule resolution, last match wins|V1,V2
 T7|.|scan core over `&str`: positions, UTF-8 errors, binary skip|V8,V12
 T8|.|`check` verb + fileset via `itok::walk::tracked`|V7,V9,I.cmd
+T9|.|`--format json` ∀ verbs|V11
 T10|.|transliteration map + `fix` & `fix --check`; property tests: idempotency, untouched bytes|V4,V5,V6
 T11|.|`stats` verb w/ `itok` counts now vs after fix|V10
 T12|.|`explain` & `sets` verbs|V2,V7
