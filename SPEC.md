@@ -42,7 +42,7 @@ self|.|-
 - file: `.characterminator-map` ? — transliteration, `<from> <to>`: `from` = literal char | `U+XXXX`; `to` = replacement, empty = explicit delete. `to` ∉ target file's set → char counts unmapped (V4).
 - file: `.characterminator-sets` ? — custom sets, `<name> <member>...`: member = literal char | `U+XXXX` | `U+XXXX-U+YYYY`.
 - flag (file twins, repeatable, V18): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets`. names ?.
-- sets (builtin function presets, V23): `ascii` intrinsic (U+0020–U+007E + `\t` `\n`, V21) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§`) · `box` (U+2500–U+257F, U+25A0–U+25FF) · `marks` (`✓✔✗✘✅❌⚠➜` + VS16) · `math` (`×÷±°²³≤≥≠≈∞µ√∑π`) · `legal` (`©®™`) · `emoji` (U+1F300–U+1FAFF, U+2600–U+27BF, VS16, ZWJ) · letters `pl` `de`, more ? · `cr` (`\r`) · coarse blocks `latin1` (U+0080–U+00FF), `latin-ext` (U+0100–U+017F), `cyrillic`, `greek`, `arabic` · `any`. custom sets via `.characterminator-sets`.
+- sets (builtin function presets, V23): `ascii` intrinsic (U+0020–U+007E + `\t` `\n`, V21) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§` + measured `⇒∵·×∨∧¬←↔⇔≈∅⊆∪∩↑↓`, R3) · `box` (U+2500–U+257F, U+25A0–U+25FF) · `marks` (`✓✔✗✘✅❌⚠➜` + VS16) · `math` (`×÷±°²³≤≥≠≈∞µ√∑π`) · `legal` (`©®™`) · `emoji` (U+1F300–U+1FAFF, U+2600–U+27BF, VS16, ZWJ) · letters `pl` `de`, more ? · `cr` (`\r`) · coarse blocks `latin1` (U+0080–U+00FF), `latin-ext` (U+0100–U+017F), `cyrillic`, `greek`, `arabic` · `any`. custom sets via `.characterminator-sets`.
 - lib: `characterminator::{scan, fix, resolve}` — pure fn over `&str`.
 - exit: 0 ok · 1 violation | drift · 2 usage.
 
