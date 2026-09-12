@@ -39,7 +39,7 @@ self|.|-
 - cmd: `characterminator sets` → builtin sets & members.
 - flag: `--format human|json` ∀ verbs · `-C <dir>`.
 - file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...]`, `#` comment. zero-dep parse (`.context-limits` shape).
-- file: `.characterminator-map` ? — transliteration, `<from> <to>`: `from` = literal char | `U+XXXX`; `to` = replacement, empty = explicit delete. `to` ∉ target file's set → char counts unmapped (V4).
+- file: `.characterminator-map` ? — transliteration, `<from> <to>`: `from` = literal char | `U+XXXX`; `to` = replacement, empty = explicit delete. `to` ∉ target file's set → char counts unmapped (V4). + `family <name> <parent>` (V27).
 - file: `.characterminator-sets` ? — custom sets, `<name> <member>...`: member = literal char | `U+XXXX` | `U+XXXX-U+YYYY` | set name (≥2 chars, V25).
 - flag (file twins, repeatable, V18): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets`. names ?.
 - sets (builtin function presets, V23): `ascii` intrinsic (U+0020–U+007E + `\t` `\n`, V21) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§` + measured `⇒∵·×∨∧¬←↔⇔≈∅⊆∪∩↑↓`, R3) · `box` (U+2500–U+257F, U+25A0–U+25FF) · `marks` (`✓✔✗✘✅❌⚠➜` + VS16) · `math` (`×÷±°²³≤≥≠≈∞µ√∑π`) · `legal` (`©®™`) · `emoji` (U+1F300–U+1FAFF, U+2600–U+27BF, VS16, ZWJ) · letters `pl` `de`, more ? · `cr` (`\r`) · `typography` ? (V26) · coarse blocks `latin1` (U+0080–U+00FF), `latin-ext` (U+0100–U+017F), `cyrillic`, `greek`, `arabic` · `any`. custom sets via `.characterminator-sets`.
@@ -83,6 +83,7 @@ V23: builtin sets = small function presets, sized from R2 & R4: typical file = `
 V24: `ascii` = implicit base ∀ rule: effective set = `ascii` ∪ named sets ∴ `*.md caveman` ≡ `*.md ascii+caveman`. explicit `ascii+` stays legal.
 V25: set member ? names another set (name ≥2 chars; 1 char = literal) ∴ user presets = compositions (`spec caveman box marks`). cycle → error naming cycle, exit 2.
 V26: typography = builtin map targets, ⊥ default grant (R4: 45.1% of non-ASCII files need no grant after map): `—`→`--` · `–` `−`→`-` · curly quotes → straight · `…`→`...` · `«»`→`"` · NBSP → space · ZWSP & BOM → delete. `typography` set ? for prose that keeps them.
+V27: character families = open tree, declared by map line `family <name> <parent>`; parent chain ! end @ `ascii` (intrinsic root); cycle → config error, exit 2. builtin: `ascii` ← `text` ← `emoji`. new family (e.g. `nerd`) = 1 line + members in classes.
 
 ## §T TASKS
 
@@ -115,6 +116,7 @@ T25|.|set composition & cycle detection|V25
 T26|.|builtin map: typography defaults|V26,V22
 T27|.|dogfood wave 1: `check` + `stats` over sibling Rust repos (R1); record anonymized savings in §R; fixes land via each repo's own review|V10,V7
 T28|.|dogfood wave 2: extend to rest of fleet (R4) once wave 1 confirms presets|V23
+T29|.|family lines: parse, tree validation, fallback path|V27
 
 ## §B BUGS
 
