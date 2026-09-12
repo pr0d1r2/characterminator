@@ -28,6 +28,7 @@ self|.|-
 - dev shell = `flake.nix`; ∀ inputs follow `nixpkgs-lock`; pins: `microlith` `v0.7.0` ?, `itok` `v0.3.1`, `sherd` `v0.5.0`.
 - source ASCII-only (dogfood, V13).
 - deps minimal; each direct dep justified in `docs/THIRD-PARTY-NOTICES.md`.
+- ⊥ non-public repo named in spec, source, or commit message. private repos ? scanned & improved; their data cited as anonymous counts only. named only once verified public; unknown → private (fail closed).
 
 ## §I INTERFACES
 
