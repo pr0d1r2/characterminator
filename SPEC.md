@@ -26,6 +26,7 @@ self|.|-
 - federation = `sherd`: dir = node = Rust module (dir + `mod.rs`), ⊥ 2018 `foo.rs`+`foo/`.
 - gate runner = `hk` from `nix-hk`; ops in `hk.pkl`; schema vendored `pkl/Config.pkl` ∴ gate runs w/ ⊥ network.
 - dev shell = `flake.nix`; ∀ inputs follow `nixpkgs-lock`; pins: `microlith` `v0.7.0` ?, `itok` `v0.3.1`, `sherd` `v0.5.0`.
+- source ASCII-only (dogfood, V13).
 - deps minimal; each direct dep justified in `docs/THIRD-PARTY-NOTICES.md`.
 
 ## §I INTERFACES
@@ -55,6 +56,7 @@ V9: default fileset = git-tracked (`itok::walk::tracked`); explicit paths reach 
 V10: token figure self-describes unit & method, per `itok`: `~` = bytes/4 estimate, `(o200k)` = `--bpe`. ⊥ claim measurement it cannot make.
 V11: `--format json` = stable contract; human output cosmetic.
 V12: violation position = 1-based line + col (chars) + byte offset + `U+XXXX`. output sorted by path, then offset.
+V13: dogfood: `characterminator check` gates own tree in `hk.pkl`; `.characterminator` grants `SPEC.md` `ascii+caveman`, rest `ascii`.
 V14: SPEC.md form gated by `mth fmt --check SPEC.md` & `mth check --records .spec-records SPEC.md`. `mth` absent → gate FAILS hard, ⊥ skip.
 V15: SPEC.md capped from commit one: `.context-limits` row gated by `itok check`; ceiling ~12% over measured.
 V16: `sherd check` & `sherd budget` gate once ≥1 child node exists.
@@ -74,6 +76,7 @@ T9|.|`--format json` ∀ verbs|V11
 T10|.|transliteration map + `fix` & `fix --check`; property tests: idempotency, untouched bytes|V4,V5,V6
 T11|.|`stats` verb w/ `itok` counts now vs after fix|V10
 T12|.|`explain` & `sets` verbs|V2,V7
+T13|.|dogfood: `.characterminator` for own tree, `check` step in `hk.pkl`|V13
 T14|.|`sherd check` + `sherd budget` in `hk.pkl` when first child node lands|V16
 
 ## §B BUGS
