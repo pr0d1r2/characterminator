@@ -1,0 +1,10 @@
+# Build output.
+/target
+# `nix build` leaves these symlinks into the store; cargo would package
+# whatever git does not ignore.
+/result
+/result-*
+# direnv's materialized environment.
+/.direnv
+# Coverage instrumentation dropped by the test runner.
+*.profraw

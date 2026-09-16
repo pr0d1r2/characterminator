@@ -1,0 +1,50 @@
+# Self-specified, not workspace-inherited: this crate is born standalone and
+# carries its own package metadata and lints from commit one.
+[package]
+# The CRATE carries the meaning, the BINARY carries the muscle memory --
+# `ripgrep`/`rg` and `microlith`/`mth` are the established Rust CLI shape.
+# `ctr` was the first choice and is taken: containerd ships `cmd/ctr`, so it
+# is on most Docker and Kubernetes hosts.
+name = "characterminator"
+# 0.1.0: nothing is implemented yet. The number moves when a milestone's
+# done-when is met, never to mark effort.
+version = "0.1.0"
+edition = "2024"
+# The floor is the toolchain the gate actually runs: the fleet's one nixpkgs
+# authority (nixos-26.05) carries rustc 1.95.0. Declaring a higher number
+# would be a floor nothing here is ever compiled against.
+rust-version = "1.95"
+license = "MIT"
+description = "find and eliminate characters outside an allowed set, per file type and per file, so text costs fewer tokens"
+readme = "README.md"
+repository = "https://github.com/pr0d1r2/characterminator"
+keywords = ["unicode", "ascii", "tokens", "lint", "agents"]
+categories = ["command-line-utilities", "development-tools"]
+
+# Two names on purpose: `characterminator` is what you depend on, `ctrm` is
+# what you run. Paths and manifests take the crate name, anything invoked
+# takes the binary name.
+[[bin]]
+name = "ctrm"
+path = "src/main.rs"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+# Deny rather than warn: a warning in a gate that runs with `-D warnings` is
+# a denial with extra steps, and spelling it here keeps `cargo clippy` honest
+# outside the gate too.
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+arithmetic_side_effects = "deny"
+too_many_lines = "deny"
+cognitive_complexity = "deny"
+excessive_nesting = "deny"
+fn_params_excessive_bools = "deny"
+struct_excessive_bools = "deny"
