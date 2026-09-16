@@ -1,0 +1,124 @@
+/// characterminator's gate, defined ONCE.
+///
+/// Every op below is a plain command a human can paste into a shell. hk
+/// decides *when* they run; it never hides *what* runs, so a verdict never
+/// rests on the runner's own logic.
+///
+/// The schema is VENDORED at `pkl/Config.pkl` rather than fetched from a
+/// `package://` URL at eval time: the gate runs with no network.
+amends "pkl/Config.pkl"
+
+/// Success is silence. Output that always appears is output nobody reads,
+/// which is how a real failure hides in noise everyone learned to scroll
+/// past. Failure is loud and carries its own remediation.
+fail_fast = true
+
+env {
+  ["HK_HIDE_WHEN_DONE"] = "true"
+}
+
+/// `depends` chains the cargo steps deliberately. Cargo takes a lock on the
+/// target directory, so two cargo jobs launched in parallel do not run in
+/// parallel: the second blocks on the build directory lock, which READS AS A
+/// HANG. Chaining makes the serialization explicit and leaves hk free to run
+/// the spec checks concurrently.
+local fast = new Mapping<String, Step> {
+  ["fmt"] {
+    glob = List("**/*.rs")
+    check = "cargo fmt --check"
+    fix = "cargo fmt"
+  }
+  ["clippy"] {
+    glob = List("**/*.rs")
+    depends = List("fmt")
+    check = "cargo clippy --all-targets -- -D warnings"
+  }
+  ["test"] {
+    glob = List("**/*.rs")
+    depends = List("clippy")
+    check = "cargo test"
+  }
+  // THE SPEC FORM, checked by its OWNER. The format has one implementation
+  // and this repo calls it rather than porting it. Every node's SPEC.md is
+  // checked, not only the root: the federation put rules in nine other
+  // files and a rule nothing checks is decoration.
+  //
+  // It fails HARD when `mth` is absent rather than skipping: nothing else
+  // checks SPEC.md structure, so a skip would read exactly like a pass.
+  ["mth"] {
+    glob = List("SPEC.md", "src/**/SPEC.md")
+    check = """
+      command -v mth >/dev/null 2>&1 || { echo 'hk: mth is not on PATH and nothing else checks SPEC.md structure. Enter the dev shell (`nix develop`, or `direnv reload`), which provides it from a pinned flake input.' >&2; exit 1; }
+      for f in SPEC.md src/SPEC.md src/*/SPEC.md; do
+        mth fmt --check "$f" || { echo "hk: $f is not formatted -- one line per statement, no line over the cap. Run \\`mth fmt $f\\`; splitting an over-long statement is the fix, raising the cap is a reviewed decision." >&2; exit 1; }
+      done
+      """
+  }
+  // The other half: the STRUCTURAL rules. `mth fmt` says the file is shaped
+  // right; this says it is still correct -- sections in order, ids unique,
+  // citations resolving.
+  ["mth-check"] {
+    glob = List("SPEC.md", "src/**/SPEC.md")
+    depends = List("mth")
+    check = """
+      for f in SPEC.md src/SPEC.md src/*/SPEC.md; do
+        mth check "$f" || { echo "hk: $f failed its structural rules. Each line above names the rule, the line, why it matters, and a ranked fix." >&2; exit 1; }
+      done
+      """
+  }
+  // THE FEDERATION. `sherd check` reads the whole node tree: every declared
+  // resolves to a directory, sibling lenses stay disjoint, and no node
+  // outgrows its ceiling.
+  ["sherd-check"] {
+    glob = List("SPEC.md", "src/**/SPEC.md", "**/*.rs")
+    check = """
+      command -v sherd >/dev/null 2>&1 || { echo 'hk: sherd is not on PATH, so the federation was NOT checked -- re-enter the dev shell. Examined nothing; this is not a pass.' >&2; exit 1; }
+      sherd check || { echo 'hk: sherd check found a structural violation -- it names the file, line and rule.' >&2; exit 1; }
+      """
+  }
+  // The NAV section is GENERATED from the FEDERATION section above it, and
+  // a generated section that had
+  // to change means the committed tree was stale, so this reports rather
+  // than rewrites: `sherd sync` is the fix, run deliberately.
+  ["sherd-sync"] {
+    glob = List("SPEC.md", "src/**/SPEC.md")
+    depends = List("sherd-check")
+    check = "sherd sync --check || { echo 'hk: a NAV section is stale against the FEDERATION section above it. Run `sherd sync`, then `git add` the result.' >&2; exit 1; }"
+  }
+}
+
+/// The pre-commit set adds the branch guard. Never commit to main: the
+/// server-side rule is the one that actually defends the branch and this is
+/// the courtesy that catches it earlier.
+local precommit = (fast) {
+  ["no-commit-to-branch"] {
+    glob = List("**/*")
+    check = "hk util no-commit-to-branch --branch main"
+  }
+}
+
+hooks {
+  /// `stash = "git"` is correctness, not speed: without it a partially
+  /// staged file (`git add -p`) is checked as it looks in the worktree,
+  /// giving a verdict about code you are not committing.
+  ///
+  /// Installed by `flake.nix`'s shellHook, BY HAND rather than by
+  /// `hk install`, so a shell without hk SKIPS loudly instead of making
+  /// every git command fail.
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps = precommit
+  }
+  ["pre-push"] {
+    steps = fast
+  }
+  /// What `hk check` runs -- the CI entry point.
+  ["check"] {
+    steps = fast
+  }
+  ["fix"] {
+    fix = true
+    steps = fast
+  }
+}
