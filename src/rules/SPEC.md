@@ -18,6 +18,10 @@ sib|src/tokens|`itok` facade: counts w/ method label, git-tracked fileset
 sib|src/render|human & json output, stable json contract
 sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
+## §I INTERFACES
+
+- file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...] [@<family>] [!<level>] [!<lint|group>=<level>]`, `#` comment. zero-dep parse (`.context-limits` shape).
+
 ## §V INVARIANTS
 
 V1: path w/ no matching rule → `ascii`. strict default; extended set = explicit grant. ≠ `itok`'s opt-in `.context-limits`: here an unguarded char IS the cost.
