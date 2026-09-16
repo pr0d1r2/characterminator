@@ -39,14 +39,14 @@ self|.|-
 - cmd: `ctrm sets` → builtin sets & members.
 - cmd: `ctrm guard` → hook adapter: harness hook JSON stdin → decision JSON stdout; fuse on hazard (`src/cli:V35`).
 - flag: `--format human|json` ∀ verbs · `-C <dir>`.
-- file grammars live w/ their parser: `.characterminator` → `src/rules` §I · `.characterminator-map` → `src/fix` §I · `.characterminator-sets` & builtin presets → `src/charset` §I.
-- flag (file twins, repeatable, `src/rules:V18`): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (`src/rules:V29`) · `--strict` (`src/lint:V36`) · `--pedantic` (`src/lint:V37`). names ?.
+- file grammars live w/ their parser: `.ctrm` → `src/rules` §I · `.ctrm-map` → `src/fix` §I · `.ctrm-sets` & builtin presets → `src/charset` §I.
+- flag (file twins, repeatable, `src/rules:V18`): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (`src/rules:V29`) · `--strict` (`src/lint:V36`) · `--pedantic` (`src/lint:V37`).
 - lib: `characterminator::{scan, fix, resolve}` — pure fn over `&str`.
 - exit: 0 ok · 1 violation | drift · 2 usage.
 
 ## §V INVARIANTS
 
-V13: dogfood: `ctrm check` gates own tree in `hk.pkl`; `.characterminator` grants `SPEC.md` `ascii+caveman`, rest `ascii`.
+V13: dogfood: `ctrm check` gates own tree in `hk.pkl`; `.ctrm` grants `SPEC.md` `ascii+caveman`, rest `ascii`.
 V14: SPEC.md form gated by `mth fmt --check SPEC.md` & `mth check --records .spec-records SPEC.md`. `mth` absent → gate FAILS hard, ⊥ skip. ∀ node SPEC.md, ⊥ root only.
 V15: SPEC.md capped from commit one: `.context-limits` row gated by `itok check`; ceiling ~12% over measured.
 V16: `sherd check`, `sherd budget` & `sherd sync --check` gate; federation live since the split ∴ ⊥ deferred.
@@ -58,7 +58,7 @@ T1|.|scaffold crate: `Cargo.toml` edition 2024, MSRV 1.95, lints, lib+bin, `rust
 T2|.|`flake.nix` dev shell: `nixpkgs-lock`, `nix-hk`, `microlith`, `itok`, `sherd` inputs, ∀ following `nixpkgs-lock`|V14,V15,V16
 T3|.|`hk.pkl` gate: fmt, clippy `-D warnings`, test, `mth`, `mth-check`, `itok check`, `sherd check`|V14,V15,V16
 T4|.|`.context-limits` per node; `.spec-records` baseline|V15
-T13|.|dogfood: `.characterminator` for own tree, `check` step in `hk.pkl`|V13
+T13|.|dogfood: `.ctrm` for own tree, `check` step in `hk.pkl`|V13
 T14|.|`sherd check` + `sherd budget` + `sherd sync --check` in `hk.pkl`|V16
 T16|.|README, AGENTS.md, `docs/LLM-DISCLAIMER.md`, `docs/THIRD-PARTY-NOTICES.md` per fleet|-
 T17|.|release: `release.toml` (`cargo-release`), crates.io publish ?|-

@@ -20,7 +20,7 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
 ## §I INTERFACES
 
-- file: `.characterminator` ? — line-based, `<glob|path> <set>[+<set>...] [@<family>] [!<level>] [!<lint|group>=<level>]`, `#` comment. zero-dep parse (`.context-limits` shape).
+- file: `.ctrm` — line-based, `<glob|path> <set>[+<set>...] [@<family>] [!<level>] [!<lint|group>=<level>]`, `#` comment. zero-dep parse (`.context-limits` shape).
 
 ## §V INVARIANTS
 
@@ -37,7 +37,7 @@ V29: fidelity = family name, default `text`; per rule `@<family>` suffix (`docs/
 ## §T TASKS
 
 id|status|task|cites
-T6|.|`.characterminator` parse & rule resolution, last match wins|V1,V2
+T6|.|`.ctrm` parse & rule resolution, last match wins|V1,V2
 T15|.|locale hint on non-ASCII literal in code file ?|V17
 T18|.|one line parser per kind (rules, map, sets); flag twins feed same parser|V18,`.:I.flag`
 T19|.|property test: file ≡ `--no-files` + flag sequence, ∀ kinds|V18

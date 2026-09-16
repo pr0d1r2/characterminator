@@ -20,8 +20,8 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
 ## §I INTERFACES
 
-- file: `.characterminator-sets` ? — custom sets, `<name> <member>...`: member = literal char | `U+XXXX` | `U+XXXX-U+YYYY` | set name (≥2 chars, V25).
-- sets (builtin function presets, V23): `ascii` intrinsic (U+0020–U+007E + `\t` `\n`, `src/rules:V21`) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§` + measured `⇒∵·×∨∧¬←↔⇔≈∅⊆∪∩↑↓`, R3) · `box` (U+2500–U+257F, U+25A0–U+25FF) · `marks` (per fidelity, `src/rules:V29`: `✓✗⚠→` @`text`, `✅❌⚠➡` @`emoji`) · `math` (`×÷±°²³≤≥≠≈∞µ√∑π`) · `legal` (`©®™`) · `emoji` (single code points: U+1F300–U+1FAFF, U+2600–U+27BF; sequences compress, `src/fix:V31`) · letters ∀ CLDR locale (`pl`, `de`, `fr`, `ja`, …, V30) · `cr` (`\r`) · `typography` ? (`src/fix:V26`) · coarse blocks `latin1` (U+0080–U+00FF), `latin-ext` (U+0100–U+017F), `cyrillic`, `greek`, `arabic` · `hazard` (`src/lint:V34`, ∉ `any`) · `any`. custom sets via `.characterminator-sets`.
+- file: `.ctrm-sets` — custom sets, `<name> <member>...`: member = literal char | `U+XXXX` | `U+XXXX-U+YYYY` | set name (≥2 chars, V25).
+- sets (builtin function presets, V23): `ascii` intrinsic (U+0020–U+007E + `\t` `\n`, `src/rules:V21`) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§` + measured `⇒∵·×∨∧¬←↔⇔≈∅⊆∪∩↑↓`, R3) · `box` (U+2500–U+257F, U+25A0–U+25FF) · `marks` (per fidelity, `src/rules:V29`: `✓✗⚠→` @`text`, `✅❌⚠➡` @`emoji`) · `math` (`×÷±°²³≤≥≠≈∞µ√∑π`) · `legal` (`©®™`) · `emoji` (single code points: U+1F300–U+1FAFF, U+2600–U+27BF; sequences compress, `src/fix:V31`) · letters ∀ CLDR locale (`pl`, `de`, `fr`, `ja`, …, V30) · `cr` (`\r`) · `typography` ? (`src/fix:V26`) · coarse blocks `latin1` (U+0080–U+00FF), `latin-ext` (U+0100–U+017F), `cyrillic`, `greek`, `arabic` · `hazard` (`src/lint:V34`, ∉ `any`) · `any`. custom sets via `.ctrm-sets`.
 
 ## §R RESEARCH
 
