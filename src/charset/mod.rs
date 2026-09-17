@@ -1,7 +1,15 @@
 //! What a character set IS: membership, unions, presets.
 //!
-//! See `src/charset/SPEC.md`. Types only for now; the logic arrives with
-//! T5, T22, T23, T25 and T32.
+//! See `src/charset/SPEC.md`. This file composes and declares the public
+//! vocabulary; the behaviour lives in the submodules. The preset DATA is
+//! still to come with T22, T23 and T32.
+
+pub mod builtin;
+pub mod parse;
+pub mod range;
+pub mod set;
+
+pub use parse::{ParseError, SetDefinition, SetMember, parse_line};
 
 /// An inclusive range of code points, the unit a set is built from.
 ///
