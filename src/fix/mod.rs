@@ -7,9 +7,11 @@
 
 mod apply;
 mod codepoint;
+mod family;
 mod map;
 
 pub use apply::{Fixed, Report, check, fix};
+pub use family::{ROOT, Tree};
 pub use map::Map;
 
 use crate::rules::Origin;
@@ -68,6 +70,14 @@ pub enum Error {
     /// A replacement is rewritten again without ever settling, so the map
     /// chains back to a source it already used.
     MapCycle,
+    /// A family was named that nothing declares.
+    UnknownFamily { name: String },
+    /// A parent chain comes back to a family it already visited (V27).
+    FamilyCycle { name: String },
+    /// A family has no parent, so its chain never reaches `ascii` (V27).
+    UnrootedFamily { name: String },
+    /// `ascii` is the intrinsic root and cannot be given a parent (V27).
+    RootReparented,
     /// `fix` would have changed a byte outside a violation (V6).
     TouchedAllowedBytes,
     /// `fix(fix(x))` would differ from `fix(x)` (V5).

@@ -11,7 +11,8 @@
 //! a declared prefix of it (V31).
 
 use crate::fix::codepoint::decode;
-use crate::fix::{Error, MapEntry};
+use crate::fix::family::Tree;
+use crate::fix::{Error, Family, MapEntry};
 use crate::rules::Origin;
 use std::cmp::Reverse;
 
@@ -26,6 +27,7 @@ pub(crate) struct Match {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Map {
     entries: Vec<MapEntry>,
+    tree: Tree,
 }
 
 impl Map {
@@ -40,7 +42,14 @@ impl Map {
             map.read(line, index.saturating_add(1), origin)?;
         }
         map.entries.sort_by_key(|entry| Reverse(entry.from.len()));
+        map.tree.validate()?;
         Ok(map)
+    }
+
+    /// The family tree these lines declared, on top of the builtin one.
+    #[must_use]
+    pub fn tree(&self) -> &Tree {
+        &self.tree
     }
 
     /// The effective entries, longest source first. Each carries its origin,
@@ -87,12 +96,39 @@ impl Map {
         if body.is_empty() || body.starts_with('#') {
             return Ok(());
         }
+        if let Some(rest) = body.strip_prefix("family ") {
+            let declared =
+                family(rest).ok_or(Error::Syntax { line: number })?;
+            return self.tree.declare(declared);
+        }
         let entry = entry(body, origin(number))
             .ok_or(Error::Syntax { line: number })?;
         self.entries.retain(|held| held.from != entry.from);
         self.entries.push(entry);
         Ok(())
     }
+}
+
+/// One `family <name> <parent>` line. A name carrying `:` or `,` is
+/// refused, because those two characters are what a class line is made of.
+fn family(rest: &str) -> Option<Family> {
+    let mut words = rest.split_whitespace();
+    let name = named(words.next()?)?;
+    let parent = named(words.next()?)?;
+    if words.next().is_some() {
+        return None;
+    }
+    Some(Family {
+        name,
+        parent: Some(parent),
+    })
+}
+
+fn named(word: &str) -> Option<String> {
+    if word.contains([':', ',']) {
+        return None;
+    }
+    Some(word.to_owned())
 }
 
 /// Whether any character of `text` is one the caller disallows.
@@ -178,5 +214,34 @@ mod tests {
     fn rejects_a_line_it_cannot_read() {
         assert_eq!(parse("U+2014 -- --\n"), Err(Error::Syntax { line: 1 }));
         assert_eq!(parse("\nU+ZZZZ -\n"), Err(Error::Syntax { line: 2 }));
+    }
+
+    #[test]
+    fn a_family_line_declares_a_family() {
+        let map = parsed("family nerd emoji\n");
+        let want = Ok(vec!["nerd", "emoji", "text", "ascii"]);
+        assert_eq!(map.tree().path("nerd"), want);
+        assert_eq!(map.entries().len(), 0);
+    }
+
+    #[test]
+    fn a_family_line_with_an_unknown_parent_fails_to_parse() {
+        let name = String::from("runic");
+        let found = parse("family nerd runic\n");
+        assert_eq!(found, Err(Error::UnknownFamily { name }));
+    }
+
+    #[test]
+    fn a_family_cycle_fails_to_parse() {
+        let found = parse("family a b\nfamily b a\n");
+        assert!(matches!(found, Err(Error::FamilyCycle { .. })));
+    }
+
+    #[test]
+    fn rejects_a_family_line_it_cannot_read() {
+        let line = Err(Error::Syntax { line: 1 });
+        assert_eq!(parse("family nerd\n"), line);
+        assert_eq!(parse("family a b c\n"), line);
+        assert_eq!(parse("family we:ird emoji\n"), line);
     }
 }
