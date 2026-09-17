@@ -33,5 +33,11 @@ src/rules/SPEC.md    1160
 src/lint/SPEC.md     1100
 src/cli/SPEC.md       740
 src/scan/SPEC.md      400
-src/tokens/SPEC.md    375
+# RAISED once, 375 -> 420, the first raise in this file and a reviewed one.
+# The node did not bloat: it gained the §T section every other node already
+# had, recording work that had invariants but no task row, and that section
+# cost the whole 12% band at once. Trimming words to fit under 375 would have
+# been gaming the number rather than reviewing it. 420 is ~12% over the new
+# measured 376, and is the hub's number too.
+src/tokens/SPEC.md    420
 src/render/SPEC.md    315
