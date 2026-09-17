@@ -35,7 +35,7 @@ V31: `emoji` preset = single code points only: ⊥ VS15/VS16, ⊥ skin tone U+1F
 ## §T TASKS
 
 id|status|task|cites
-T10|.|transliteration map + `fix` & `fix --check`; property tests: idempotency, untouched bytes|V4,V5,V6
+T10|x|transliteration map + `fix` & `fix --check`; property tests: idempotency, untouched bytes|V4,V5,V6
 T26|.|builtin map: typography defaults|V26,`src/charset:V22`
 T29|.|family lines: parse, tree validation, fallback path|V27
 T30|.|class lines: parse, family-labelled members, resolution along fallback path|V28,V27
