@@ -25,4 +25,4 @@ V11: `--format json` = stable contract; human output cosmetic.
 ## §T TASKS
 
 id|status|task|cites
-T9|.|`--format json` ∀ verbs|V11
+T9|x|`--format json` ∀ verbs|V11
