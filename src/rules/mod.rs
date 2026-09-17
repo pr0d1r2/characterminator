@@ -5,6 +5,7 @@
 //! is still to come.
 
 mod line;
+mod property;
 mod resolve;
 mod rule_line;
 

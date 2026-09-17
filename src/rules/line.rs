@@ -69,6 +69,13 @@ fn is_skippable(line: &str) -> bool {
 /// Line numbers count ALL lines, including the blank and comment lines
 /// that yield no entry, because the number has to lead a reader to the
 /// right line of the file they are looking at.
+///
+/// A line reaches its parser TRIMMED, which is what lets an indented
+/// file line and a flag value be the same line. The consequence is worth
+/// stating for the kinds whose parser lives elsewhere: a trailing field
+/// that is meant to be EMPTY cannot be written as trailing blanks, so a
+/// grammar wanting one -- the map's empty replacement, which is its
+/// explicit delete -- needs a spelling of its own.
 pub fn parse_lines<T, O, P>(
     text: &str,
     origin: O,
