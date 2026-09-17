@@ -1,44 +1,16 @@
 //! How loud a finding is: lint names, groups and levels.
 //!
-//! See `src/lint/SPEC.md`. Types only for now; the logic arrives with T35,
-//! T36, T38 and T39.
+//! See `src/lint/SPEC.md`. This file COMPOSES: the vocabulary and the
+//! registry live one type to a file below it, and the names re-exported
+//! here are the node's public surface, so a sibling still writes
+//! `crate::lint::Level` and never names a file of mine.
 
-use crate::scan::Hit;
+mod finding;
+mod group;
+mod level;
+mod registry;
 
-/// The rustc and clippy levels, in the order of increasing severity.
-///
-/// `Forbid` is the one that cannot be lowered by a later rule or flag, and
-/// it exists so the hazard group cannot be argued down to a warning.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Level {
-    Allow,
-    Warn,
-    Deny,
-    Forbid,
-}
-
-/// The groups a lint can belong to. The group carries the default level:
-/// hazard forbids, charset denies, pedantic allows until asked.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Group {
-    Hazard,
-    Charset,
-    Pedantic,
-}
-
-/// A named check. The name is what a rule line and the json output carry,
-/// so it is the stable identifier rather than the message text.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Lint {
-    pub name: &'static str,
-    pub group: Group,
-}
-
-/// One reportable finding: what was found, which lint found it, and how
-/// loudly it is being said.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Finding {
-    pub hit: Hit,
-    pub lint: Lint,
-    pub level: Level,
-}
+pub use finding::Finding;
+pub use group::Group;
+pub use level::Level;
+pub use registry::Lint;
