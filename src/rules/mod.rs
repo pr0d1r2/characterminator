@@ -1,10 +1,30 @@
 //! Which set applies WHERE: config files and flags, precedence, origin.
 //!
-//! See `src/rules/SPEC.md`. Types only for now; the logic arrives with T6,
-//! T15, T18, T19, T20, T21, T24 and T31.
+//! See `src/rules/SPEC.md`. This file composes (`src:C`): the public type
+//! vocabulary, the submodules, and what they re-export. The logic for T15
+//! is still to come.
+
+mod line;
+mod resolve;
+mod rule_line;
+
+pub use line::{
+    ParseError, describe, error, parse_builtin, parse_file, parse_flag,
+    parse_lines,
+};
+pub use resolve::{PathMatcher, Resolution, resolve};
+pub use rule_line::parse_rule;
 
 use crate::lint::Level;
 use std::path::PathBuf;
+
+/// The set every path gets when no rule matches it (V1).
+///
+/// It is a CONSTANT IN CODE rather than a line of a data file, because a
+/// run given no files at all (V21) must still be able to say what a path
+/// may contain. A default that lives in a file is not a default; it is a
+/// file that is usually present.
+pub const ASCII: &str = "ascii";
 
 /// Where an effective entry came from.
 ///
@@ -38,6 +58,14 @@ pub struct Rule {
     pub pattern: String,
     pub sets: Vec<String>,
     pub family: Option<String>,
+    /// Levels set for named lints and groups, as in `!pedantic=warn`.
     pub levels: Vec<LevelChoice>,
+    /// The rule's own level, as in a bare `!allow`.
+    ///
+    /// A separate field rather than a `LevelChoice` with a magic target
+    /// name: the bare form names no target, and spelling that as an empty
+    /// or reserved string would be a value every reader has to be told
+    /// about.
+    pub default_level: Option<Level>,
     pub origin: Origin,
 }

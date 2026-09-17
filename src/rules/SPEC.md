@@ -37,9 +37,9 @@ V29: fidelity = family name, default `text`; per rule `@<family>` suffix (`docs/
 ## §T TASKS
 
 id|status|task|cites
-T6|.|`.ctrm` parse & rule resolution, last match wins|V1,V2
+T6|x|`.ctrm` parse & rule resolution, last match wins|V1,V2
 T15|.|locale hint on non-ASCII literal in code file ?|V17
-T18|.|one line parser per kind (rules, map, sets); flag twins feed same parser|V18,`.:I.flag`
+T18|x|one line parser per kind (rules, map, sets); flag twins feed same parser|V18,`.:I.flag`
 T19|.|property test: file ≡ `--no-files` + flag sequence, ∀ kinds|V18
 T20|.|config assembly: precedence chain, origin per entry, `explain` prints origin|V19,V20
 T21|.|zero-file mode; `ascii` as intrinsic constant|V21,V1
