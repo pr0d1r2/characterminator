@@ -26,3 +26,8 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
 V9: default fileset = git-tracked (`itok::walk::tracked`); explicit paths reach untracked.
 V10: token figure self-describes unit & method, per `itok`: `~` = bytes/4 estimate, `(o200k)` = `--bpe`. ⊥ claim measurement it cannot make.
+
+## §T TASKS
+
+id|status|task|cites
+T41|x|`itok` facade: fileset, explicit paths, counts w/ method label|V9,V10
