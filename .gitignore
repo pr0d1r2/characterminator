@@ -6,5 +6,8 @@
 /result-*
 # direnv's materialized environment.
 /.direnv
+# Agent worktrees. Each is a full checkout of this repo living inside it, so
+# without this line one `git add -A` commits a copy of the tree into itself.
+/.claude
 # Coverage instrumentation dropped by the test runner.
 *.profraw
