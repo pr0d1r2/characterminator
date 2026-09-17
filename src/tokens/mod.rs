@@ -1,11 +1,15 @@
 //! Count tokens and list files. The sole call site for `itok`.
 //!
 //! See `src/tokens/SPEC.md`. This module composes: the vocabulary below,
-//! plus the rule that gives part of it meaning -- which files are counted
-//! (`fileset`, V9).
+//! plus the two rules that give it meaning -- which files are counted
+//! (`fileset`, V9) and how a figure says what it is (`count` and `label`,
+//! V10).
 
+mod count;
 mod fileset;
+mod label;
 
+pub use count::{of_file, of_text};
 pub use fileset::select;
 
 use std::path::PathBuf;
