@@ -2,11 +2,13 @@
 //!
 //! See `src/scan/SPEC.md`. This file declares the node's public type
 //! vocabulary and composes the node; it implements nothing, which is the
-//! hub's rule for a `mod.rs` (`src/SPEC.md` CONSTRAINTS). The walk itself
-//! lives in `text`.
+//! hub's rule for a `mod.rs` (`src/SPEC.md` CONSTRAINTS). The walk lives
+//! in `text`, and the refusals that come before it in `bytes`.
 
+mod bytes;
 mod text;
 
+pub use bytes::{looks_binary, scan_bytes};
 pub use text::scan_str;
 
 /// Where a character sits, in the three units a reader or a tool needs.
