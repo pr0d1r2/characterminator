@@ -30,5 +30,5 @@ V37: `pedantic` group = maximum purity, opt-in (`--pedantic` ≡ `--rule '* !ped
 id|status|task|cites
 T35|.|severity: `!<severity>` in rules, `--strict`, json field|V33,`src/render:V11`
 T36|.|vendor Unicode Default_Ignorable & bidi data; `hazard` set; forbid enforcement|V34,V36
-T38|.|lint registry: names, groups, levels, `!<lint>=<level>`, forbid enforcement|V36
+T38|x|lint registry: names, groups, levels, `!<lint>=<level>`, forbid enforcement|V36
 T39|.|pedantic lints per V37 candidates, each w/ fixture of a legit false positive|V37,V36

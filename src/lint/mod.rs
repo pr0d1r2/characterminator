@@ -12,7 +12,7 @@ mod registry;
 mod resolve;
 mod target;
 
-pub use finding::Finding;
+pub use finding::{Finding, exit_code};
 pub use group::Group;
 pub use level::Level;
 pub use registry::{LINTS, Lint};
