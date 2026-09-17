@@ -26,4 +26,4 @@ V12: violation position = 1-based line + col (chars) + byte offset + `U+XXXX`. o
 ## §T TASKS
 
 id|status|task|cites
-T7|.|scan core over `&str`: positions, UTF-8 errors, binary skip|V8,V12
+T7|x|scan core over `&str`: positions, UTF-8 errors, binary skip|V8,V12
