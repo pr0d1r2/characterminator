@@ -41,7 +41,7 @@ T6|x|`.ctrm` parse & rule resolution, last match wins|V1,V2
 T15|.|locale hint on non-ASCII literal in code file ?|V17
 T18|x|one line parser per kind (rules, map, sets); flag twins feed same parser|V18,`.:I.flag`
 T19|x|property test: file ≡ `--no-files` + flag sequence, ∀ kinds|V18
-T20|.|config assembly: precedence chain, origin per entry, `explain` prints origin|V19,V20
+T20|x|config assembly: precedence chain, origin per entry, `explain` prints origin|V19,V20
 T21|.|zero-file mode; `ascii` as intrinsic constant|V21,V1
 T24|.|rule resolution: `ascii` implicit base|V24
 T31|.|fidelity: `@<family>` in rules, `--fidelity`, family-aware presets|V29,V24
