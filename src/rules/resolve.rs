@@ -97,15 +97,30 @@ impl<'a> Found<'a> {
 
 /// The set names in force.
 ///
-/// A path that no rule matches gets `ascii` (V1): strict by default, an
-/// extended set being an explicit grant and never an accident. The name
-/// is a constant in code, so this holds in a run with no config file at
-/// all (V21).
+/// `ascii` is the implicit BASE of every rule (V24), so `*.md caveman`
+/// and `*.md ascii+caveman` are the same grant. A rule therefore cannot
+/// make a path stricter than the default by naming a set, which is the
+/// point: sets compose by union only (`src/charset:V3`), and a grant
+/// that could also take something away would need a second operator and
+/// a rule about their order.
+///
+/// A path that no rule matches gets the base alone (V1): strict by
+/// default, an extended set being an explicit grant and never an
+/// accident. The name is a constant in code, so both readings hold in a
+/// run with no config file at all (V21).
+///
+/// An explicit `ascii+` stays legal and is not repeated -- a union is
+/// not a multiset -- so the two spellings produce the same list, not
+/// merely the same membership.
 fn granted(winner: Option<&Rule>) -> Vec<String> {
-    match winner {
-        Some(rule) => rule.sets.clone(),
-        None => vec![ASCII.to_string()],
+    let named = winner.map(|rule| rule.sets.as_slice()).unwrap_or_default();
+    let mut sets = vec![ASCII.to_string()];
+    for name in named {
+        if !sets.iter().any(|held| held == name) {
+            sets.push(name.clone());
+        }
     }
+    sets
 }
 
 /// Fold one rule's level choices into those already in force.
@@ -168,14 +183,15 @@ mod tests {
     #[test]
     fn the_last_matching_line_wins() {
         let rules = rules(&["* caveman", "SPEC.md box"]);
-        assert_eq!(resolved("SPEC.md", &rules).sets, vec!["box".to_string()]);
+        let sets = resolved("SPEC.md", &rules).sets;
+        assert_eq!(sets, vec!["ascii".to_string(), "box".to_string()]);
     }
 
     #[test]
     fn an_earlier_line_cannot_override_a_later_one() {
         let rules = rules(&["SPEC.md box", "* caveman"]);
         let sets = resolved("SPEC.md", &rules).sets;
-        assert_eq!(sets, vec!["caveman".to_string()]);
+        assert_eq!(sets, vec!["ascii".to_string(), "caveman".to_string()]);
     }
 
     #[test]
@@ -210,5 +226,34 @@ mod tests {
         let rules = rules(&["* !deny", "src/* ascii"]);
         let level = resolved("src/main.rs", &rules).default_level;
         assert_eq!(level, Some(Level::Deny));
+    }
+
+    #[test]
+    fn every_rule_grants_ascii_whether_it_says_so_or_not() {
+        let implicit = rules(&["docs/* caveman"]);
+        let explicit = rules(&["docs/* ascii+caveman"]);
+        let sets = resolved("docs/a.md", &implicit).sets;
+        assert_eq!(sets, vec!["ascii".to_string(), "caveman".to_string()]);
+        assert_eq!(sets, resolved("docs/a.md", &explicit).sets);
+    }
+
+    #[test]
+    fn an_explicit_ascii_is_not_repeated() {
+        let rules = rules(&["docs/* ascii+ascii+box"]);
+        let sets = resolved("docs/a.md", &rules).sets;
+        assert_eq!(sets, vec!["ascii".to_string(), "box".to_string()]);
+    }
+
+    #[test]
+    fn a_rule_naming_only_a_family_still_grants_ascii() {
+        let rules = rules(&["* @emoji"]);
+        assert_eq!(resolved("x", &rules).sets, vec!["ascii".to_string()]);
+    }
+
+    #[test]
+    fn the_base_survives_a_rule_that_grants_something_else() {
+        let rules = rules(&["* caveman", "src/* box"]);
+        let sets = resolved("src/main.rs", &rules).sets;
+        assert_eq!(sets, vec!["ascii".to_string(), "box".to_string()]);
     }
 }

@@ -139,6 +139,8 @@ mod tests {
     }
 
     /// The set in force for a path, which is what precedence decides.
+    /// `ascii` leads every answer because it is the base of every rule
+    /// (V24), so what these tests read is the grant the winner added.
     fn winning_set(sources: &Sources, path: &str) -> String {
         let rules = sources.rules().unwrap_or_default();
         let resolution = resolve(path, &rules, &matches);
@@ -162,7 +164,7 @@ mod tests {
     #[test]
     fn a_flag_beats_a_named_file() {
         let sources = every_group();
-        assert_eq!(winning_set(&sources, "SPEC.md"), "legal");
+        assert_eq!(winning_set(&sources, "SPEC.md"), "ascii+legal");
     }
 
     #[test]
@@ -170,7 +172,7 @@ mod tests {
         let sources = Sources::new()
             .dotfile(".ctrm", "* caveman")
             .file("other.ctrm", "* math");
-        assert_eq!(winning_set(&sources, "SPEC.md"), "math");
+        assert_eq!(winning_set(&sources, "SPEC.md"), "ascii+math");
     }
 
     #[test]
@@ -178,7 +180,7 @@ mod tests {
         let sources = Sources::new()
             .builtin("* box")
             .dotfile(".ctrm", "* caveman");
-        assert_eq!(winning_set(&sources, "SPEC.md"), "caveman");
+        assert_eq!(winning_set(&sources, "SPEC.md"), "ascii+caveman");
     }
 
     #[test]
@@ -196,13 +198,13 @@ mod tests {
         let sources = Sources::new()
             .file("first.ctrm", "* caveman")
             .file("second.ctrm", "* math");
-        assert_eq!(winning_set(&sources, "SPEC.md"), "math");
+        assert_eq!(winning_set(&sources, "SPEC.md"), "ascii+math");
     }
 
     #[test]
     fn two_flags_keep_their_argv_order() {
         let sources = Sources::new().flag(2, "* caveman").flag(5, "* math");
-        assert_eq!(winning_set(&sources, "SPEC.md"), "math");
+        assert_eq!(winning_set(&sources, "SPEC.md"), "ascii+math");
     }
 
     #[test]
@@ -257,7 +259,7 @@ mod tests {
     #[test]
     fn argv_alone_carries_a_whole_configuration() {
         assert_eq!(winning_set(&argv_only(), "src/main.rs"), "ascii");
-        assert_eq!(winning_set(&argv_only(), "SPEC.md"), "caveman");
+        assert_eq!(winning_set(&argv_only(), "SPEC.md"), "ascii+caveman");
     }
 
     #[test]

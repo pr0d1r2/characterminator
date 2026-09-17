@@ -43,5 +43,5 @@ T18|x|one line parser per kind (rules, map, sets); flag twins feed same parser|V
 T19|x|property test: file ≡ `--no-files` + flag sequence, ∀ kinds|V18
 T20|x|config assembly: precedence chain, origin per entry, `explain` prints origin|V19,V20
 T21|x|zero-file mode; `ascii` as intrinsic constant|V21,V1
-T24|.|rule resolution: `ascii` implicit base|V24
+T24|x|rule resolution: `ascii` implicit base|V24
 T31|.|fidelity: `@<family>` in rules, `--fidelity`, family-aware presets|V29,V24
