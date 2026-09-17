@@ -5,10 +5,12 @@
 //! still to come with T22, T23 and T32.
 
 pub mod builtin;
+pub mod compose;
 pub mod parse;
 pub mod range;
 pub mod set;
 
+pub use compose::{ComposeError, SetCatalog};
 pub use parse::{ParseError, SetDefinition, SetMember, parse_line};
 
 /// An inclusive range of code points, the unit a set is built from.

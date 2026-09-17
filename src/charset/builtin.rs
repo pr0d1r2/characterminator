@@ -11,7 +11,7 @@
 //! default set, so the one set that every path falls back to (`src/rules`
 //! V1) cannot itself be a file that the flags remove.
 
-use super::{CharRange, CharSet, SetDefinition, SetMember};
+use super::{CharRange, CharSet, SetCatalog, SetDefinition, SetMember};
 
 /// The name of the intrinsic set.
 pub const ASCII: &str = "ascii";
@@ -54,9 +54,22 @@ pub fn ascii() -> CharSet {
     CharSet::new(ASCII.to_owned(), vec![WHITESPACE, PRINTABLE])
 }
 
+/// A catalog declaring the intrinsic set and nothing else.
+///
+/// The floor of the precedence chain in `src/rules:V19`: the builtin data
+/// files, then discovered dotfiles, then flags are inserted over this, each
+/// replacing a name the last one declared. Starting from `ascii` rather
+/// than from nothing is what makes `--no-builtin-sets` survivable.
+#[must_use]
+pub fn intrinsic_catalog() -> SetCatalog {
+    let mut catalog = SetCatalog::new();
+    catalog.insert(ascii_definition());
+    catalog
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{ASCII, ascii, ascii_definition};
+    use super::{ASCII, ascii, ascii_definition, intrinsic_catalog};
 
     #[test]
     fn ascii_grants_printable_text() {
@@ -94,5 +107,17 @@ mod tests {
     fn the_definition_resolves_to_the_same_set() {
         assert_eq!(ascii_definition().name, ASCII);
         assert_eq!(ascii().ranges.len(), 2);
+    }
+
+    #[test]
+    fn the_intrinsic_catalog_composes_the_same_set() {
+        assert_eq!(intrinsic_catalog().resolve(ASCII), Ok(ascii()));
+    }
+
+    #[test]
+    fn the_intrinsic_catalog_declares_only_ascii() {
+        let catalog = intrinsic_catalog();
+        let listed = catalog.names().collect::<Vec<_>>();
+        assert_eq!(listed, vec![ASCII]);
     }
 }
