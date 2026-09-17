@@ -21,7 +21,7 @@
 mod tests {
     use crate::rules::line::{ParseError, error, parse_file, parse_flag};
     use crate::rules::rule_line::parse_rule;
-    use crate::rules::{Origin, Rule};
+    use crate::rules::{Origin, Rule, Sources};
     use std::path::Path;
 
     /// The line shapes a generated file is built from. Comments, blanks
@@ -141,6 +141,18 @@ mod tests {
         parse_file(text, path(), parse).map_err(|fail| fail.message)
     }
 
+    /// One `Sources`' rules, origins erased and a failure reduced to its
+    /// message, so two chains can be compared the way two parses are.
+    fn chain(sources: &Sources) -> Result<Vec<Rule>, String> {
+        forget(sources.rules().map_err(|fail| fail.message))
+    }
+
+    /// Every line of `text` as its own `--rule`, in argv order.
+    fn as_argv(text: &str) -> Sources {
+        let lines = text.lines().enumerate();
+        Sources::from_argv(lines.map(|(at, line)| (at, line.to_string())))
+    }
+
     /// Splice a line into `text` at a position the sequence chooses.
     fn splice(noise: &mut Noise, text: &str, line: &str) -> String {
         let lines: Vec<&str> = text.lines().collect();
@@ -158,6 +170,20 @@ mod tests {
             let text = file(&mut noise, &SHAPES, count);
             let as_file = forget(as_file(&text, parse_rule));
             assert_eq!(as_file, forget(as_flags(&text, parse_rule)));
+        }
+    }
+
+    /// The property in the words V18 actually uses: `--no-files` plus
+    /// one flag per line of F is F. The bare-parse version above is the
+    /// same claim one layer down; this one runs through the precedence
+    /// chain, where a file is a source and a flag is another.
+    #[test]
+    fn no_files_plus_one_flag_per_line_equals_the_file() {
+        let mut noise = Noise(0xF11E5);
+        for count in 0..64 {
+            let text = file(&mut noise, &SHAPES, count);
+            let as_file = Sources::new().dotfile(".ctrm", text.clone());
+            assert_eq!(chain(&as_file), chain(&as_argv(&text)));
         }
     }
 

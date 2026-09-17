@@ -76,6 +76,25 @@ impl Sources {
         self
     }
 
+    /// A run configured by argv and nothing else (V21).
+    ///
+    /// `--no-files --no-builtin-map --no-builtin-sets` is not a mode
+    /// anything here switches on: it IS this constructor, the one that
+    /// adds no builtin and no file. A mode flag would mean every reader
+    /// of every source has to remember to consult it; a source that was
+    /// never added cannot be forgotten.
+    ///
+    /// V1 survives the emptiness because the fallback set is a constant
+    /// in code: `ascii` is not a line of a file that is not there.
+    pub fn from_argv<I>(flags: I) -> Self
+    where
+        I: IntoIterator<Item = (usize, String)>,
+    {
+        let mut sources = Self::new();
+        sources.flags = flags.into_iter().collect();
+        sources
+    }
+
     /// Every entry of every source, in precedence order.
     ///
     /// The kind's line parser is a parameter, so one chain serves rules,
@@ -108,7 +127,7 @@ impl Sources {
 mod tests {
     use super::*;
     use crate::rules::line::describe;
-    use crate::rules::resolve;
+    use crate::rules::{ASCII, resolve};
 
     /// The crude stand-in for the undecided matcher, again: a trailing
     /// star matches a prefix, anything else is an exact path.
@@ -216,5 +235,41 @@ mod tests {
     fn a_source_contributing_nothing_changes_nothing() {
         let sources = every_group().file("empty.ctrm", "# only a comment\n");
         assert_eq!(sources.rules(), every_group().rules());
+    }
+
+    /// A run with `--no-files` and both `--no-builtin-*` flags.
+    fn argv_only() -> Sources {
+        let flags =
+            [(1, "* caveman".to_string()), (4, "src/* ascii".to_string())];
+        Sources::from_argv(flags)
+    }
+
+    #[test]
+    fn a_run_with_no_source_at_all_holds_no_rule() {
+        assert_eq!(Sources::new().rules(), Ok(Vec::new()));
+    }
+
+    #[test]
+    fn a_path_in_a_zero_file_run_still_gets_ascii() {
+        assert_eq!(winning_set(&Sources::new(), "src/main.rs"), ASCII);
+    }
+
+    #[test]
+    fn argv_alone_carries_a_whole_configuration() {
+        assert_eq!(winning_set(&argv_only(), "src/main.rs"), "ascii");
+        assert_eq!(winning_set(&argv_only(), "SPEC.md"), "caveman");
+    }
+
+    #[test]
+    fn a_zero_file_run_records_argv_origins_only() {
+        let expected = vec!["argv[1]".to_string(), "argv[4]".to_string()];
+        assert_eq!(origins(&argv_only()), expected);
+    }
+
+    #[test]
+    fn a_path_no_argv_rule_matches_gets_ascii_too() {
+        let flags = [(1, "docs/** caveman".to_string())];
+        let sources = Sources::from_argv(flags);
+        assert_eq!(winning_set(&sources, "src/main.rs"), ASCII);
     }
 }
