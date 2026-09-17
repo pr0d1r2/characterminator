@@ -29,6 +29,15 @@ use std::path::PathBuf;
 /// file that is usually present.
 pub const ASCII: &str = "ascii";
 
+/// The fidelity family a rule gets when none is named (V29).
+///
+/// A constant for the same reason `ascii` is one: a run reading no file
+/// still has to say which variant of a character it prefers, and the
+/// answer cannot live in data that may be absent. What the name MEANS --
+/// which members a family holds, which one it prefers -- is the fix
+/// node's question (`src/fix:V27`); this node only carries the name.
+pub const TEXT: &str = "text";
+
 /// Where an effective entry came from.
 ///
 /// Every rule, map entry and set carries one, because with builtins, files

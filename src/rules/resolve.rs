@@ -1,7 +1,7 @@
 //! Which rule WINS for a path, and what that rule grants it.
 
 use crate::lint::Level;
-use crate::rules::{ASCII, LevelChoice, Rule};
+use crate::rules::{ASCII, LevelChoice, Rule, TEXT};
 
 /// How a pattern is tested against a path.
 ///
@@ -40,8 +40,14 @@ pub struct Resolution<'a> {
     pub levels: Vec<LevelChoice>,
     /// The level of the last matching rule that set a bare one.
     pub default_level: Option<Level>,
+    /// The fidelity family, as a NAME. Never empty: `text` by default.
+    pub family: String,
     /// The last matching rule, or none when nothing matched.
     pub winner: Option<&'a Rule>,
+    /// The last matching rule that NAMED a family, which is not always
+    /// the winner: a rule may grant sets without expressing a
+    /// preference, and it leaves the standing choice alone.
+    pub fidelity: Option<&'a Rule>,
 }
 
 /// Resolve `path` against `rules`, in the order the rules were assembled.
@@ -74,6 +80,7 @@ struct Found<'a> {
     winner: Option<&'a Rule>,
     levels: Vec<LevelChoice>,
     default_level: Option<Level>,
+    fidelity: Option<&'a Rule>,
 }
 
 impl<'a> Found<'a> {
@@ -82,6 +89,7 @@ impl<'a> Found<'a> {
     fn absorb(&mut self, rule: &'a Rule) {
         self.winner = Some(rule);
         self.default_level = rule.default_level.or(self.default_level);
+        self.fidelity = rule.family.as_ref().map(|_| rule).or(self.fidelity);
         merge_levels(&mut self.levels, &rule.levels);
     }
 
@@ -90,7 +98,9 @@ impl<'a> Found<'a> {
             sets: granted(self.winner),
             levels: self.levels,
             default_level: self.default_level,
+            family: family_named(self.fidelity),
             winner: self.winner,
+            fidelity: self.fidelity,
         }
     }
 }
@@ -121,6 +131,17 @@ fn granted(winner: Option<&Rule>) -> Vec<String> {
         }
     }
     sets
+}
+
+/// The fidelity family in force, as a NAME.
+///
+/// `text` when no matching rule named one (V29). The name is carried,
+/// never resolved: what a family CONTAINS, and which member of an
+/// equivalence class it prefers, is `src/fix:V27`, and a name this node
+/// does not recognise is not this node's error to raise.
+fn family_named(source: Option<&Rule>) -> String {
+    let named = source.and_then(|rule| rule.family.as_deref());
+    named.unwrap_or(TEXT).to_string()
 }
 
 /// Fold one rule's level choices into those already in force.
@@ -248,6 +269,47 @@ mod tests {
     fn a_rule_naming_only_a_family_still_grants_ascii() {
         let rules = rules(&["* @emoji"]);
         assert_eq!(resolved("x", &rules).sets, vec!["ascii".to_string()]);
+    }
+
+    #[test]
+    fn the_default_family_is_text() {
+        assert_eq!(resolved("x", &[]).family, "text");
+        let rules = rules(&["* caveman"]);
+        assert_eq!(resolved("x", &rules).family, "text");
+    }
+
+    #[test]
+    fn the_last_matching_rule_naming_a_family_wins() {
+        let rules = rules(&["* @text", "docs/* marks @emoji"]);
+        assert_eq!(resolved("docs/a.md", &rules).family, "emoji");
+    }
+
+    #[test]
+    fn a_later_rule_naming_no_family_leaves_the_choice_alone() {
+        let rules = rules(&["docs/* marks @emoji", "docs/* box"]);
+        let resolution = resolved("docs/a.md", &rules);
+        assert_eq!(resolution.family, "emoji");
+        let sets = resolution.sets;
+        assert_eq!(sets, vec!["ascii".to_string(), "box".to_string()]);
+    }
+
+    #[test]
+    fn explain_can_name_the_rule_that_chose_the_family() {
+        let rules = rules(&["* @text", "docs/* @emoji"]);
+        let chosen = resolved("docs/a.md", &rules).fidelity;
+        assert_eq!(chosen.map(|rule| rule.pattern.as_str()), Some("docs/*"));
+    }
+
+    #[test]
+    fn an_unknown_family_passes_through_as_a_name() {
+        let rules = rules(&["* @nerd"]);
+        assert_eq!(resolved("x", &rules).family, "nerd");
+    }
+
+    #[test]
+    fn a_family_named_by_an_unmatched_rule_does_not_apply() {
+        let rules = rules(&["docs/* @emoji"]);
+        assert_eq!(resolved("src/main.rs", &rules).family, "text");
     }
 
     #[test]

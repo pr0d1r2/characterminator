@@ -76,6 +76,17 @@ impl Sources {
         self
     }
 
+    /// The `--fidelity <family>` flag.
+    ///
+    /// V29 defines it as `--rule '* @<family>'` at that argv position,
+    /// so here it IS that rule. Synthesising the line rather than
+    /// carrying a separate field keeps one precedence chain, one parser
+    /// and one kind of origin: `explain` names the argument that set the
+    /// family the same way it names any other rule.
+    pub fn fidelity(self, index: usize, family: &str) -> Self {
+        self.flag(index, format!("* @{family}"))
+    }
+
     /// A run configured by argv and nothing else (V21).
     ///
     /// `--no-files --no-builtin-map --no-builtin-sets` is not a mode
@@ -145,6 +156,12 @@ mod tests {
         let rules = sources.rules().unwrap_or_default();
         let resolution = resolve(path, &rules, &matches);
         resolution.sets.join("+")
+    }
+
+    /// The fidelity family in force for a path.
+    fn family_of(sources: &Sources, path: &str) -> String {
+        let rules = sources.rules().unwrap_or_default();
+        resolve(path, &rules, &matches).family
     }
 
     fn origins(sources: &Sources) -> Vec<String> {
@@ -244,6 +261,28 @@ mod tests {
         let flags =
             [(1, "* caveman".to_string()), (4, "src/* ascii".to_string())];
         Sources::from_argv(flags)
+    }
+
+    #[test]
+    fn the_fidelity_flag_is_exactly_the_rule_flag_it_stands_for() {
+        let spelled = Sources::new().flag(2, "* @emoji");
+        assert_eq!(Sources::new().fidelity(2, "emoji"), spelled);
+    }
+
+    #[test]
+    fn the_fidelity_flag_beats_a_family_named_in_a_file() {
+        let sources = Sources::new()
+            .dotfile(".ctrm", "docs/* marks @emoji")
+            .fidelity(4, "text");
+        assert_eq!(family_of(&sources, "docs/a.md"), "text");
+    }
+
+    #[test]
+    fn a_file_read_after_the_flag_would_not_exist_to_beat_it() {
+        let sources = Sources::new()
+            .file("other.ctrm", "docs/* @emoji")
+            .fidelity(4, "text");
+        assert_eq!(family_of(&sources, "docs/a.md"), "text");
     }
 
     #[test]
