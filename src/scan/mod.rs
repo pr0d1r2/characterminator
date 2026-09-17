@@ -1,6 +1,13 @@
 //! Read text and locate characters: positions, UTF-8 validity, binary skip.
 //!
-//! See `src/scan/SPEC.md`. Types only for now; the logic arrives with T7.
+//! See `src/scan/SPEC.md`. This file declares the node's public type
+//! vocabulary and composes the node; it implements nothing, which is the
+//! hub's rule for a `mod.rs` (`src/SPEC.md` CONSTRAINTS). The walk itself
+//! lives in `text`.
+
+mod text;
+
+pub use text::scan_str;
 
 /// Where a character sits, in the three units a reader or a tool needs.
 ///
