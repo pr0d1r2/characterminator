@@ -9,8 +9,10 @@ mod finding;
 mod group;
 mod level;
 mod registry;
+mod target;
 
 pub use finding::Finding;
 pub use group::Group;
 pub use level::Level;
-pub use registry::Lint;
+pub use registry::{LINTS, Lint};
+pub use target::Target;
