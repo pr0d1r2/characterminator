@@ -28,6 +28,20 @@ categories = ["command-line-utilities", "development-tools"]
 name = "ctrm"
 path = "src/main.rs"
 
+# ONE token authority for the fleet, called rather than reimplemented: a
+# saving reported by `ctrm` has to be the same number `itok` reports, and
+# two counters drift the moment either changes. `src/tokens` is its sole
+# call site (`src:C`, `src/tokens:C`), so the blast radius of this dep is
+# one module.
+#
+# `default-features = false` drops the `session` feature, which pulls serde
+# and a toml parser to read agent transcripts -- a thing this crate never
+# does. `bpe` is kept because it IS the real-tokenizer tier: without it the
+# only count available is bytes/4, and `stats --bpe` would have to claim a
+# measurement nothing here can make (`src/tokens:V10`).
+[dependencies]
+itok = { version = "0.3", default-features = false, features = ["bpe"] }
+
 [lints.rust]
 unsafe_code = "forbid"
 
