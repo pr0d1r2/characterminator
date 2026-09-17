@@ -1,0 +1,31 @@
+# The considered-and-CLOSED records that must SURVIVE a later edit: an option
+# REJECTED, or DEFERRED under a stated trigger. Read by
+# `mth check --records .spec-records SPEC.md`.
+#
+# Format: `<id>` then whitespace then a marker, which runs to end of line and
+# may contain spaces. `#` comments and blank lines are skipped. The marker is
+# a SUBSTRING of the record, long enough to be specific and short enough that
+# rewording the surrounding prose does not fire it: what must survive is the
+# DECISION, not the sentence.
+#
+# WHY A SEPARATE FILE: every other structural rule asks "is this file well
+# formed", which one text can answer. This one asks "is this decision still
+# recorded", which is a claim about edits over time, and no single text can
+# say what used to be in it. So the checker owns the rule and this repo owns
+# the list.
+#
+# WHY IT IS NEARLY EMPTY TODAY, stated rather than left to look like an
+# oversight: this repo keeps its rejected options in COMMIT MESSAGES -- every
+# decision commit carries what was chosen, what was rejected, why, and what
+# would reopen it. Only options recorded in the SPEC TEXT can be checked here,
+# and so far one is. The open questions marked `?` are not records: they are
+# decisions not yet made, and nothing is lost if they change.
+#
+# Adding a line here is how a newly closed option becomes load-bearing.
+# Removing one is a reviewed decision: it says the option is no longer worth
+# recording, which is exactly the trade this file forbids making silently.
+
+# The binary name. Without this, a later reader re-proposes `ctr` -- it is the
+# obvious short form, and nothing in the spec would say it was already tried
+# and dropped because containerd ships that command on most Linux hosts.
+V13  ctrm

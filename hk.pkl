@@ -61,9 +61,26 @@ local fast = new Mapping<String, Step> {
     glob = List("SPEC.md", "src/**/SPEC.md")
     depends = List("mth")
     check = """
-      for f in SPEC.md src/SPEC.md src/*/SPEC.md; do
+      mth check --records .spec-records SPEC.md || { echo "hk: SPEC.md failed its structural rules, or a decision .spec-records requires has gone missing. Each line above names the rule, the line, why it matters, and a ranked fix." >&2; exit 1; }
+      for f in src/SPEC.md src/*/SPEC.md; do
         mth check "$f" || { echo "hk: $f failed its structural rules. Each line above names the rule, the line, why it matters, and a ranked fix." >&2; exit 1; }
       done
+      """
+  }
+  // THE CEILINGS GET A RUNNER. `.context-limits` names a token budget for
+  // every node and nothing else enforces it: a spec is re-read every turn, so
+  // its size is a recurring bill rather than a one-off.
+  //
+  // Counting tokens here would mean a tokenizer -- a table or a dependency,
+  // in a crate that has neither yet -- so this CALLS the tool that owns the
+  // rule. `itok check` reads `.context-limits` itself and pins `--bpe`, so
+  // the threshold lives in one file rather than being restated in this one.
+  ["context-limits"] {
+    glob = List("SPEC.md", "src/**/SPEC.md", ".context-limits")
+    depends = List("mth-check")
+    check = """
+      command -v itok >/dev/null 2>&1 || { echo 'hk: itok is not on PATH, so the token ceilings were NOT checked -- re-enter the dev shell (`nix develop`, or `direnv reload`). Examined nothing; this is not a pass.' >&2; exit 1; }
+      itok check || { echo 'hk: a spec is over the token ceiling .context-limits records. Compacting is the fix -- fold done task rows and old bug records; raising a ceiling is a reviewed decision and belongs in its own commit.' >&2; exit 1; }
       """
   }
   // THE FEDERATION. `sherd check` reads the whole node tree: every declared

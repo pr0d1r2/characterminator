@@ -1,0 +1,37 @@
+# Per-path token ceilings, gated by `itok check` (pinned to `--bpe`, so the
+# verdict is deterministic). Only registered paths are checked.
+#
+# WHAT THIS CEILING IS: a cap on ENTRY COST -- what a session loads before any
+# work begins. A spec is re-read every turn, so its size is a recurring bill,
+# not a one-off. The federation split this repo's law into ten files exactly
+# so a session can load one chain (root + hub + node) instead of everything.
+#
+# It forces a REVIEW, not a shrink. Set with real slack (~12% over measured),
+# because a ceiling a hair above current turns every legitimate sentence into
+# a raise, and a threshold raised reflexively trains the reflex it exists to
+# catch. Raising one is a reviewed decision and belongs in its own commit,
+# with the reason.
+#
+# MEASURED 2026-09-17 with `itok estimate --bpe` (o200k), at the commit that
+# wrote this file: 8,548 tokens across ten files. The chain a node actually
+# costs is root + hub + that node, which is what `sherd budget` reports.
+
+# The root: goal, constraints, the command surface, the repo gate. Loaded on
+# EVERY chain, so it is the one number that is paid ten times over.
+SPEC.md              2000
+
+# The hub. It owns no logic and should stay this small; if it grows, the
+# growth belongs in a node.
+src/SPEC.md           420
+
+# The nodes, largest first. charset carries the measurement evidence (the
+# research rows), fix carries the map, families and classes, and lint carries
+# the hazard set -- the three that earn their size.
+src/charset/SPEC.md  1840
+src/fix/SPEC.md      1240
+src/rules/SPEC.md    1160
+src/lint/SPEC.md     1100
+src/cli/SPEC.md       740
+src/scan/SPEC.md      400
+src/tokens/SPEC.md    375
+src/render/SPEC.md    315
