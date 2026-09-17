@@ -6,11 +6,13 @@
 //! belongs to the charset and rules nodes (`src:V39`).
 
 mod apply;
+mod class;
 mod codepoint;
 mod family;
 mod map;
 
 pub use apply::{Fixed, Report, check, fix};
+pub use class::resolve;
 pub use family::{ROOT, Tree};
 pub use map::Map;
 

@@ -10,9 +10,10 @@
 //! Sources are held longest first, because a declared sequence must win over
 //! a declared prefix of it (V31).
 
+use crate::fix::class;
 use crate::fix::codepoint::decode;
-use crate::fix::family::Tree;
-use crate::fix::{Error, Family, MapEntry};
+use crate::fix::family::{ROOT, Tree};
+use crate::fix::{Class, Error, Family, MapEntry};
 use crate::rules::Origin;
 use std::cmp::Reverse;
 
@@ -22,12 +23,30 @@ pub(crate) struct Match {
     pub(crate) to: String,
 }
 
-/// The effective map: every entry that survived precedence, in the order
-/// `resolve_at` wants them.
+/// What a matched source rewrites to: a literal replacement from a map
+/// entry, or a class whose answer depends on the fidelity family (V28).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Target {
+    To(String),
+    Class(usize),
+}
+
+/// One rewritable source, ready for longest-first matching.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Candidate {
+    source: String,
+    target: Target,
+}
+
+/// The effective map: the entries, classes and families these lines
+/// declared, plus the candidate list `resolve_at` walks.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Map {
     entries: Vec<MapEntry>,
+    classes: Vec<Class>,
     tree: Tree,
+    fidelity: Option<String>,
+    candidates: Vec<Candidate>,
 }
 
 impl Map {
@@ -43,6 +62,8 @@ impl Map {
         }
         map.entries.sort_by_key(|entry| Reverse(entry.from.len()));
         map.tree.validate()?;
+        map.validate_classes()?;
+        map.index();
         Ok(map)
     }
 
@@ -52,6 +73,28 @@ impl Map {
         &self.tree
     }
 
+    /// The equivalence classes these lines declared.
+    #[must_use]
+    pub fn classes(&self) -> &[Class] {
+        &self.classes
+    }
+
+    /// The family classes resolve for. `ascii` unless the caller says
+    /// otherwise, which is the strict default `src/rules:V1` asks for; the
+    /// rules node supplies `text` and any `@<family>` per `src/rules:V29`.
+    #[must_use]
+    pub fn fidelity(&self) -> &str {
+        self.fidelity.as_deref().unwrap_or(ROOT)
+    }
+
+    /// Resolve classes for `family` instead. The family has to be in the
+    /// tree, so a typo is a config error rather than a silent fallback.
+    pub fn with_fidelity(mut self, family: &str) -> Result<Self, Error> {
+        self.tree.path(family)?;
+        self.fidelity = Some(family.to_owned());
+        Ok(self)
+    }
+
     /// The effective entries, longest source first. Each carries its origin,
     /// which is how `explain` answers "why" (`src/rules:V20`).
     #[must_use]
@@ -59,33 +102,65 @@ impl Map {
         &self.entries
     }
 
-    /// The longest declared source that both matches here and covers at
-    /// least one disallowed character. A span of allowed characters is never
-    /// a violation, so it is never rewritten (V6).
+    /// The longest declared source -- map entry or class member -- that
+    /// matches here, covers at least one disallowed character, and resolves
+    /// to something. A span of allowed characters is never a violation, so
+    /// it is never rewritten (V6).
     pub(crate) fn resolve_at(
         &self,
         rest: &str,
         allowed: &dyn Fn(char) -> bool,
-    ) -> Option<Match> {
-        self.entries
-            .iter()
-            .filter(|entry| rest.starts_with(&entry.from))
-            .find(|entry| violates(&entry.from, allowed))
-            .map(|entry| Match {
-                len: entry.from.len(),
-                to: entry.to.clone(),
-            })
+    ) -> Result<Option<Match>, Error> {
+        for candidate in &self.candidates {
+            let Some(to) = self.try_at(candidate, rest, allowed)? else {
+                continue;
+            };
+            return Ok(Some(Match {
+                len: candidate.source.len(),
+                to,
+            }));
+        }
+        Ok(None)
     }
 
     /// How many times a replacement may be rewritten again before the map is
-    /// called cyclic. An acyclic chain visits each entry at most once, so
-    /// anything longer has come back to an entry it already used.
+    /// called cyclic. An acyclic chain visits each source at most once, so
+    /// anything longer has come back to a source it already used.
     pub(crate) fn budget(&self) -> usize {
-        self.entries.len().saturating_add(1)
+        self.candidates.len().saturating_add(1)
     }
 
-    /// A later line wins over an earlier one for the same source, which is
-    /// the precedence the config chain expects (`src/rules:V19`).
+    fn try_at(
+        &self,
+        candidate: &Candidate,
+        rest: &str,
+        allowed: &dyn Fn(char) -> bool,
+    ) -> Result<Option<String>, Error> {
+        if !rest.starts_with(&candidate.source)
+            || !violates(&candidate.source, allowed)
+        {
+            return Ok(None);
+        }
+        self.target_of(&candidate.target, allowed)
+    }
+
+    fn target_of(
+        &self,
+        target: &Target,
+        allowed: &dyn Fn(char) -> bool,
+    ) -> Result<Option<String>, Error> {
+        match target {
+            Target::To(to) => Ok(Some(to.clone())),
+            Target::Class(index) => match self.classes.get(*index) {
+                Some(class) => {
+                    class::resolve(class, &self.tree, self.fidelity(), allowed)
+                }
+                None => Ok(None),
+            },
+        }
+    }
+
+    /// One line, dispatched by its shape.
     fn read(
         &mut self,
         line: &str,
@@ -97,15 +172,83 @@ impl Map {
             return Ok(());
         }
         if let Some(rest) = body.strip_prefix("family ") {
-            let declared =
-                family(rest).ok_or(Error::Syntax { line: number })?;
-            return self.tree.declare(declared);
+            return self.declare(rest, number);
         }
+        if let Some(rest) = body.strip_prefix("= ") {
+            return self.classify(rest, number);
+        }
+        self.add(body, number, origin)
+    }
+
+    fn declare(&mut self, rest: &str, number: usize) -> Result<(), Error> {
+        let declared = family(rest).ok_or(Error::Syntax { line: number })?;
+        self.tree.declare(declared)
+    }
+
+    /// A later line wins over an earlier one for the same class name, as it
+    /// does for a map entry (`src/rules:V19`).
+    fn classify(&mut self, rest: &str, number: usize) -> Result<(), Error> {
+        let declared =
+            class::parse_line(rest).ok_or(Error::Syntax { line: number })?;
+        self.classes.retain(|held| held.name != declared.name);
+        self.classes.push(declared);
+        Ok(())
+    }
+
+    /// A later line wins over an earlier one for the same source, which is
+    /// the precedence the config chain expects (`src/rules:V19`).
+    fn add(
+        &mut self,
+        body: &str,
+        number: usize,
+        origin: &dyn Fn(usize) -> Origin,
+    ) -> Result<(), Error> {
         let entry = entry(body, origin(number))
             .ok_or(Error::Syntax { line: number })?;
         self.entries.retain(|held| held.from != entry.from);
         self.entries.push(entry);
         Ok(())
+    }
+
+    /// Every family a class member names has to be in the tree, or that
+    /// member could never resolve and the line is a typo nothing reports.
+    fn validate_classes(&self) -> Result<(), Error> {
+        for class in &self.classes {
+            for member in &class.members {
+                self.tree.path(&member.family)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Build the longest-first candidate list. A map entry beats a class
+    /// member of the same length, because a line naming one source is more
+    /// specific than a class listing it among alternatives; the sort is
+    /// stable, so entries pushed first keep that priority.
+    fn index(&mut self) {
+        self.candidates = Vec::new();
+        for entry in &self.entries {
+            self.candidates.push(Candidate {
+                source: entry.from.clone(),
+                target: Target::To(entry.to.clone()),
+            });
+        }
+        self.index_classes();
+        self.candidates
+            .sort_by_key(|held| Reverse(held.source.len()));
+    }
+
+    fn index_classes(&mut self) {
+        let mut found = Vec::new();
+        for (index, class) in self.classes.iter().enumerate() {
+            for member in &class.members {
+                found.push(Candidate {
+                    source: member.text.clone(),
+                    target: Target::Class(index),
+                });
+            }
+        }
+        self.candidates.append(&mut found);
     }
 }
 
@@ -124,7 +267,7 @@ fn family(rest: &str) -> Option<Family> {
     })
 }
 
-fn named(word: &str) -> Option<String> {
+pub(crate) fn named(word: &str) -> Option<String> {
     if word.contains([':', ',']) {
         return None;
     }
@@ -235,6 +378,43 @@ mod tests {
     fn a_family_cycle_fails_to_parse() {
         let found = parse("family a b\nfamily b a\n");
         assert!(matches!(found, Err(Error::FamilyCycle { .. })));
+    }
+
+    #[test]
+    fn a_class_line_declares_a_class() {
+        let map = parsed("= tick ascii:[x] emoji:U+2705\n");
+        assert_eq!(map.classes().len(), 1);
+        assert_eq!(map.entries().len(), 0);
+    }
+
+    #[test]
+    fn a_later_class_line_wins_for_the_same_name() {
+        let map = parsed("= tick ascii:[x]\n= tick ascii:(x)\n");
+        assert_eq!(map.classes().len(), 1);
+        let first = map.classes().first().map(|held| held.members.len());
+        assert_eq!(first, Some(1));
+    }
+
+    #[test]
+    fn a_member_in_an_unknown_family_fails_to_parse() {
+        let name = String::from("runic");
+        let found = parse("= tick runic:x\n");
+        assert_eq!(found, Err(Error::UnknownFamily { name }));
+    }
+
+    #[test]
+    fn the_fidelity_family_defaults_to_the_root_and_must_be_known() {
+        let map = parsed("= tick ascii:[x] emoji:U+2705\n");
+        assert_eq!(map.fidelity(), "ascii");
+        assert!(map.clone().with_fidelity("emoji").is_ok());
+        assert!(map.with_fidelity("runic").is_err());
+    }
+
+    #[test]
+    fn rejects_a_class_line_it_cannot_read() {
+        let line = Err(Error::Syntax { line: 1 });
+        assert_eq!(parse("= tick\n"), line);
+        assert_eq!(parse("= tick emoji\n"), line);
     }
 
     #[test]
