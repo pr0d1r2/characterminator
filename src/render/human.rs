@@ -251,6 +251,7 @@ mod tests {
             sets: vec![String::from("ascii")],
             family: None,
             levels: vec![],
+            default_level: None,
             origin: Origin::Builtin { line: 3 },
         }
     }

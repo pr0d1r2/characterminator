@@ -297,6 +297,7 @@ mod tests {
             sets: vec![String::from("ascii")],
             family: Some(String::from("dash")),
             levels: vec![pedantic_warn()],
+            default_level: None,
             origin: Origin::File {
                 path: PathBuf::from(".ctrm"),
                 line: 4,
