@@ -151,14 +151,31 @@
           # `.git/hooks`: in a worktree or a submodule `.git` is a FILE and
           # the real hooks directory is elsewhere.
           shellHook = ''
+            # TWO guards before writing a hook, both earned by B1: this shell
+            # was entered from a SIBLING repo to borrow a tool, and it
+            # installed OUR hooks over that repo's tracked ones, downgrading
+            # its gate from refuse to skip without a word.
+            #
+            # 1. Only our own repo. The marker is this crate's name in its own
+            #    manifest, checked at the worktree root, because a dev shell
+            #    may legitimately be entered from anywhere.
+            # 2. Only an UNTRACKED hooks directory. `core.hooksPath` can point
+            #    at a tracked directory -- sherd does exactly that, so its
+            #    hooks are reviewable in a diff -- and writing there edits
+            #    files git is watching.
+            ctrm_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
             ctrm_hooks="$(git rev-parse --git-path hooks 2>/dev/null || true)"
-            if [ -n "$ctrm_hooks" ] && [ -d "$ctrm_hooks" ]; then
+            if [ -z "$ctrm_root" ] || ! grep -q '^name = "characterminator"$' "$ctrm_root/Cargo.toml" 2>/dev/null; then
+              echo "characterminator(shell): not this repo -- hooks NOT installed (B1)" >&2
+            elif git -C "$ctrm_root" ls-files --error-unmatch "$ctrm_hooks" >/dev/null 2>&1; then
+              echo "characterminator(shell): $ctrm_hooks is TRACKED -- refusing to overwrite a reviewed hook (B1)" >&2
+            elif [ -n "$ctrm_hooks" ] && [ -d "$ctrm_hooks" ]; then
               install -m 755 ${gitHook pkgs "pre-commit"} "$ctrm_hooks/pre-commit"
               install -m 755 ${gitHook pkgs "pre-push"} "$ctrm_hooks/pre-push"
             else
               echo "characterminator(shell): no git hooks directory -- nothing is gating" >&2
             fi
-            unset ctrm_hooks
+            unset ctrm_root ctrm_hooks
           '';
         };
       });
