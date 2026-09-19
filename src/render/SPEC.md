@@ -26,3 +26,4 @@ V11: `--format json` = stable contract; human output cosmetic.
 
 id|status|task|cites
 T9|x|`--format json` ∀ verbs|V11
+T43|.|json carries a rule's `default_level` ∴ `explain` json ⊥ silent on it|V11
