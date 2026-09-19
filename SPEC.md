@@ -22,7 +22,7 @@ self|.|-
 - CPU only, offline, deterministic. ⊥ network, ⊥ model.
 - SPEC.md FORMAT = cavekit **4.1.0** as vendored by `microlith` (upstream rev `c322f0b`) + its `FORMAT-EXTENSIONS.md` (`§F`/`§N`). Form gated by `mth`, ⊥ restated here (V14).
 - token counting = `itok` lib dep (crates.io 0.3, `default-features = false`, `features = ["bpe"]`). ⊥ own tokenizer, ⊥ own bytes/4.
-- fs walk = `itok::walk::tracked`. `itok::glob::matches` & `itok::estimate::select_paths` = `pub(crate)` ∴ own glob matcher | `globset` dep ?, & explicit-path selection lives in `src/tokens`.
+- fs walk = `itok::walk::tracked`. `itok::glob::matches` & `itok::estimate::select_paths` = `pub(crate)` ∴ OWN glob matcher (zero-dep, `src/rules:T42`) & explicit-path selection lives in `src/tokens`.
 - federation = `sherd`: dir = node = Rust module (dir + `mod.rs`), ⊥ 2018 `foo.rs`+`foo/`.
 - gate runner = `hk` from `nix-hk`; ops in `hk.pkl`; schema vendored `pkl/Config.pkl` ∴ gate runs w/ ⊥ network.
 - dev shell = `flake.nix`; ∀ inputs follow `nixpkgs-lock`; pins: `microlith` `v0.7.0` ?, `itok` `v0.3.1`, `sherd` `v0.5.0`.
