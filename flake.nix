@@ -24,9 +24,12 @@
     nix-hk.url = "github:pr0d1r2/nix-hk";
     nix-hk.inputs.nixpkgs-lock.follows = "nixpkgs-lock";
     # The FORMAT owner: SPEC.md's structural rules have one implementation
-    # and this repo CALLS it. v0.7.0 is the first tag that understands the
-    # federation sections; 0.6.x reformats them as if they were prose.
-    microlith.url = "github:pr0d1r2/microlith/v0.7.0";
+    # and this repo CALLS it. v0.7.0 was the first tag that understood the
+    # federation sections; 0.6.x reformats them as if they were prose. 0.7.3
+    # adds what a federated tree needs: a dangling cross-node citation is
+    # named rather than passed over, and a task row this build cannot read is
+    # counted instead of reading as absent.
+    microlith.url = "github:pr0d1r2/microlith/v0.7.3";
     microlith.inputs.nixpkgs-lock.follows = "nixpkgs-lock";
     microlith.inputs.nix-hk.follows = "nix-hk";
     # Token counts and the git-tracked fileset. One token authority in the
