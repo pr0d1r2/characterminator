@@ -49,10 +49,10 @@ V42: preset range written so ⊥ code point another node WITHHOLDS falls inside 
 id|status|task|cites
 T5|x|ARCHIVED to SPEC-ARCHIVE.md|V3,`.:I.file`
 T22|x|ARCHIVED to SPEC-ARCHIVE.md|V22,`.:V13`
-T23|~|preset data files per V23, contents from R2 & R4|V22,V23
+T23|x|preset data files per V23, contents from R2 & R4|V22,V23
 T25|x|ARCHIVED to SPEC-ARCHIVE.md|V25
 T32|.|vendor CLDR exemplars; generator → `<code>` & `<code>-aux` preset data files; license notice|V30,V22
-T46|.|labelled members: parse `<family>:<member>`, resolve against a family, `marks` preset data|V41,`src/rules:V29`
+T46|x|labelled members: parse `<family>:<member>`, resolve against a family, `marks` preset data|V41,`src/rules:V29`
 
 ## §B BUGS
 

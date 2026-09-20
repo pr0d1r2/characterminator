@@ -69,6 +69,19 @@ typography U+2014 U+2013 U+2018 U+2019 U+201C U+201D U+2026 U+00AB U+00BB U+00A0
 # narrower rule and wins.
 emoji U+1F300-U+1F3FA U+1F400-U+1FAFF U+2600-U+27BF
 
+# The status marks, in BOTH spellings, each labelled with the fidelity it
+# belongs to (V41). A rule resolving `marks` at `text` grants the first
+# three and at `emoji` the last three, so a file never quietly admits both
+# spellings of one mark and the map compresses the other into the granted
+# one (`src/fix:V28`).
+#
+# WARNING SIGN carries no label: it is the same code point either way, and
+# labelling it twice would say there were two.
+#
+# CHECK MARK, BALLOT X, RIGHTWARDS ARROW @ text; WHITE HEAVY CHECK MARK,
+# CROSS MARK, BLACK RIGHTWARDS ARROW @ emoji.
+marks U+26A0 text:U+2713 text:U+2717 text:U+2192 emoji:U+2705 emoji:U+274C emoji:U+27A1
+
 # CARRIAGE RETURN, alone. Separate from `ascii` because a file granting it
 # is making a decision about LINE ENDINGS, not about characters, and that
 # decision deserves to be visible in the rule that makes it.

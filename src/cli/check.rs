@@ -97,7 +97,7 @@ impl Checker {
         let found = rules::resolve(shown, &self.rules, &rules::matches);
         let set = self
             .catalog
-            .resolve_union(&found.sets.join("+"), &found.sets)
+            .resolve_union(&found.sets.join("+"), &found.sets, &found.family)
             .map_err(|e| e.to_string())?;
         Ok((set, levels_for(&found)?))
     }
@@ -466,5 +466,26 @@ mod tests {
         let why = Checker::load(&root).err().unwrap_or_default();
         assert!(why.contains(".ctrm-sets:3"), "{why}");
         assert!(why.contains("U+ZZZZ"), "{why}");
+    }
+    /// The whole of V41 through the real path: two rules name the SAME
+    /// preset, and the fidelity each one chose decides what it grants.
+    #[test]
+    fn one_preset_grants_differently_under_two_fidelities() {
+        let rules = "*.md ascii+marks\ndocs/*.md ascii+marks @emoji\n";
+        let Some(root) = fixture("ctrm-fidelity-fixture", &[(".ctrm", rules)])
+        else {
+            return;
+        };
+        let plain = granted(&root, "notes.md").unwrap_or_else(|why| {
+            unreachable!("{why}");
+        });
+        let rich = granted(&root, "docs/notes.md").unwrap_or_else(|why| {
+            unreachable!("{why}");
+        });
+        // CHECK MARK at `text`, WHITE HEAVY CHECK MARK at `emoji`.
+        assert!(plain.contains('\u{2713}') && !plain.contains('\u{2705}'));
+        assert!(rich.contains('\u{2705}') && !rich.contains('\u{2713}'));
+        // WARNING SIGN carries no label, so both spellings hold it.
+        assert!(plain.contains('\u{26A0}') && rich.contains('\u{26A0}'));
     }
 }

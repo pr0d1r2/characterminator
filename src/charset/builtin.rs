@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn the_intrinsic_catalog_composes_the_same_set() {
-        assert_eq!(intrinsic_catalog().resolve(ASCII), Ok(ascii()));
+        assert_eq!(intrinsic_catalog().resolve(ASCII, TEXT), Ok(ascii()));
     }
 
     #[test]
@@ -173,13 +173,17 @@ mod tests {
         assert_eq!(listed, vec![ASCII]);
     }
 
+    /// The default fidelity (`src/rules:V29`), spelled rather than
+    /// imported: a family is an opaque name to this node (V41).
+    const TEXT: &str = "text";
+
     /// The presets `src/charset/SPEC.md` INTERFACES names, which this
     /// file ships.
     ///
     /// Written out rather than read back from the catalog: a test that
     /// asked the data file what it declares would pass just as happily
     /// after a preset was deleted from it.
-    const DECLARED: [&str; 12] = [
+    const DECLARED: [&str; 13] = [
         "any",
         "arabic",
         "box",
@@ -191,6 +195,7 @@ mod tests {
         "latin-ext",
         "latin1",
         "legal",
+        "marks",
         "math",
         // `typography` is tested by name below rather than listed here:
         // the array length is the count this file promises, and a preset
@@ -204,7 +209,14 @@ mod tests {
     }
 
     fn preset(name: &str) -> CharSet {
-        let resolved = catalog().ok().and_then(|sets| sets.resolve(name).ok());
+        preset_at(name, TEXT)
+    }
+
+    /// The same, at a fidelity the caller names (V41).
+    fn preset_at(name: &str, family: &str) -> CharSet {
+        let resolved = catalog()
+            .ok()
+            .and_then(|sets| sets.resolve(name, family).ok());
         assert!(resolved.is_some(), "{name} must resolve");
         resolved.unwrap_or_else(|| CharSet::new(name.to_owned(), Vec::new()))
     }
@@ -219,12 +231,23 @@ mod tests {
         assert!(SETS.is_ascii());
     }
 
+    /// V22: every member is `U+XXXX`, which is what keeps the file ASCII.
+    /// A fidelity label is allowed in front of one (V41) and carries no
+    /// character of its own, so it is followed rather than rejected.
+    fn is_code_point(member: &SetMember) -> bool {
+        match member {
+            SetMember::Range(_) => true,
+            SetMember::Labelled { member, .. } => is_code_point(member),
+            SetMember::Literal(_) | SetMember::Named(_) => false,
+        }
+    }
+
     #[test]
     fn every_member_is_written_as_a_code_point() {
         for definition in declared() {
-            for member in definition.members {
+            for member in &definition.members {
                 assert!(
-                    matches!(member, SetMember::Range(_)),
+                    is_code_point(member),
                     "{} holds a member that is not U+XXXX",
                     definition.name
                 );
@@ -341,5 +364,48 @@ mod tests {
             let ranges = preset(name).ranges.len();
             assert!(ranges <= 32, "{name} holds {ranges} ranges");
         }
+    }
+    /// The preset that needed V41: one name, two spellings, and only the
+    /// fidelity in force is granted.
+    #[test]
+    fn marks_grants_the_text_spelling_at_text_fidelity() {
+        let set = preset("marks");
+        // CHECK MARK and BALLOT X, the `text` members.
+        assert!(set.contains('\u{2713}'));
+        assert!(set.contains('\u{2717}'));
+        // WHITE HEAVY CHECK MARK and CROSS MARK, which are `emoji`.
+        assert!(!set.contains('\u{2705}'));
+        assert!(!set.contains('\u{274C}'));
+    }
+
+    #[test]
+    fn marks_grants_the_emoji_spelling_at_emoji_fidelity() {
+        let set = preset_at("marks", "emoji");
+        assert!(set.contains('\u{2705}'));
+        assert!(set.contains('\u{274C}'));
+        assert!(!set.contains('\u{2713}'));
+        assert!(!set.contains('\u{2717}'));
+    }
+
+    /// An unlabelled member belongs to every fidelity: WARNING SIGN is the
+    /// same code point in both spellings, so labelling it twice would say
+    /// there were two of it.
+    #[test]
+    fn an_unlabelled_member_survives_every_fidelity() {
+        assert!(preset("marks").contains('\u{26A0}'));
+        assert!(preset_at("marks", "emoji").contains('\u{26A0}'));
+        assert!(preset_at("marks", "nerd").contains('\u{26A0}'));
+    }
+
+    /// An UNKNOWN family grants the unlabelled members and nothing else.
+    /// No walk up the family tree happens here (V41): that tree lives in
+    /// the map, and a set that followed it would make this node depend on
+    /// `src/fix`.
+    #[test]
+    fn an_unknown_family_grants_only_what_carries_no_label() {
+        let set = preset_at("marks", "nerd");
+        assert_eq!(set.ranges.len(), 1);
+        assert!(!set.contains('\u{2713}'));
+        assert!(!set.contains('\u{2705}'));
     }
 }

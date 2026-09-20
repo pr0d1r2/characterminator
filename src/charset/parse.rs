@@ -22,6 +22,13 @@ pub enum SetMember {
     Range(CharRange),
     /// The name of another set, to be composed in (V25).
     Named(String),
+    /// A member granted only at ONE fidelity, written `<family>:<member>`
+    /// (V41). The notation is `src/fix:V28`'s, because a labelled member
+    /// here and a labelled class member there name the same families.
+    Labelled {
+        family: String,
+        member: Box<SetMember>,
+    },
 }
 
 /// One parsed line: a name and the members granted to it.
@@ -47,6 +54,9 @@ pub enum ParseError {
     BadCodePoint { token: String },
     /// A range whose ends are the wrong way round.
     ReversedRange { token: String },
+    /// A `<family>:<member>` token whose two halves do not both hold
+    /// (V41): no family, no member, or a label on a label.
+    BadLabel { token: String },
 }
 
 /// The prefix that marks a code point, per V22.
@@ -59,6 +69,13 @@ const COMMENT: char = '\u{0023}';
 const UNUSABLE: &str = "cannot name a set: a name is 2 or more \
                         characters and is never written U+XXXX";
 
+/// Why a labelled member cannot be read (V41).
+const LABEL: &str = "is not `<family>:<member>`: both halves are required \
+                     and a label takes no second label";
+
+/// What separates a fidelity label from the member it governs (V41).
+const LABEL_MARK: char = '\u{003A}';
+
 impl ParseError {
     /// The offending token, whichever kind of fault this is.
     ///
@@ -67,9 +84,9 @@ impl ParseError {
     fn token(&self) -> &str {
         match self {
             Self::NoMembers { name } | Self::UnusableName { name } => name,
-            Self::BadCodePoint { token } | Self::ReversedRange { token } => {
-                token
-            }
+            Self::BadCodePoint { token }
+            | Self::ReversedRange { token }
+            | Self::BadLabel { token } => token,
         }
     }
 
@@ -80,6 +97,7 @@ impl ParseError {
             Self::UnusableName { .. } => UNUSABLE,
             Self::BadCodePoint { .. } => "is not a code point",
             Self::ReversedRange { .. } => "ends below where it starts",
+            Self::BadLabel { .. } => LABEL,
         }
     }
 }
@@ -141,11 +159,11 @@ fn definition(
 fn check_name(name: &str) -> Result<(), ParseError> {
     match member(name)? {
         SetMember::Named(_) => Ok(()),
-        SetMember::Literal(_) | SetMember::Range(_) => {
-            Err(ParseError::UnusableName {
-                name: name.to_owned(),
-            })
-        }
+        SetMember::Literal(_)
+        | SetMember::Range(_)
+        | SetMember::Labelled { .. } => Err(ParseError::UnusableName {
+            name: name.to_owned(),
+        }),
     }
 }
 
@@ -157,7 +175,44 @@ fn member(token: &str) -> Result<SetMember, ParseError> {
     let mut chars = token.chars();
     match (chars.next(), chars.next()) {
         (Some(only), None) => Ok(SetMember::Literal(only)),
-        _ => Ok(SetMember::Named(token.to_owned())),
+        _ => unlabelled_or_labelled(token),
+    }
+}
+
+/// A token of two or more characters: a set name, or a member carrying a
+/// fidelity label (V41).
+///
+/// The label is recognised before the name, so `emoji:U+2705` is one
+/// labelled member rather than a set called `emoji:U+2705`. A name may
+/// therefore not contain the mark, which costs nothing: every name in the
+/// grammar so far is a word.
+fn unlabelled_or_labelled(token: &str) -> Result<SetMember, ParseError> {
+    match token.split_once(LABEL_MARK) {
+        None => Ok(SetMember::Named(token.to_owned())),
+        Some((family, rest)) => labelled(token, family, rest),
+    }
+}
+
+/// The two halves of a `<family>:<member>` token, both required.
+fn labelled(
+    token: &str,
+    family: &str,
+    rest: &str,
+) -> Result<SetMember, ParseError> {
+    let bad = || ParseError::BadLabel {
+        token: token.to_owned(),
+    };
+    if family.is_empty() || rest.is_empty() {
+        return Err(bad());
+    }
+    match member(rest)? {
+        // A label on a label says a member belongs to two families at
+        // once, which V41 has no meaning for.
+        SetMember::Labelled { .. } => Err(bad()),
+        inner => Ok(SetMember::Labelled {
+            family: family.to_owned(),
+            member: Box::new(inner),
+        }),
     }
 }
 
@@ -334,5 +389,55 @@ mod tests {
                 SetMember::Named("box".to_owned()),
             ])
         );
+    }
+    #[test]
+    fn a_labelled_member_carries_its_family() {
+        let labelled = SetMember::Labelled {
+            family: "emoji".to_owned(),
+            member: Box::new(SetMember::Range(CharRange::single('\u{2705}'))),
+        };
+        assert_eq!(members("marks emoji:U+2705"), Ok(vec![labelled]));
+    }
+
+    #[test]
+    fn a_label_may_govern_a_set_name() {
+        let labelled = SetMember::Labelled {
+            family: "emoji".to_owned(),
+            member: Box::new(SetMember::Named("box".to_owned())),
+        };
+        assert_eq!(members("wide emoji:box"), Ok(vec![labelled]));
+    }
+
+    #[test]
+    fn a_label_with_a_missing_half_is_rejected() {
+        let no_family = Err(ParseError::BadLabel {
+            token: ":U+2705".to_owned(),
+        });
+        assert_eq!(parse_line("marks :U+2705"), no_family);
+        let no_member = Err(ParseError::BadLabel {
+            token: "emoji:".to_owned(),
+        });
+        assert_eq!(parse_line("marks emoji:"), no_member);
+    }
+
+    /// A member belonging to two families at once is a thing V41 has no
+    /// meaning for, so it is refused rather than read as one of them.
+    #[test]
+    fn a_label_on_a_label_is_rejected() {
+        let err = Err(ParseError::BadLabel {
+            token: "text:emoji:U+2705".to_owned(),
+        });
+        assert_eq!(parse_line("marks text:emoji:U+2705"), err);
+    }
+
+    /// The label is recognised BEFORE the name, so a name carrying the
+    /// mark reads as a labelled member and cannot name a set (V25). Every
+    /// name in this grammar is a word, so nothing is lost.
+    #[test]
+    fn a_name_may_not_carry_the_label_mark() {
+        let err = Err(ParseError::UnusableName {
+            name: "a:b".to_owned(),
+        });
+        assert_eq!(parse_line("a:b U+2705"), err);
     }
 }
