@@ -41,7 +41,14 @@ src/charset/SPEC.md  2240
 src/fix/SPEC.md      1240
 src/rules/SPEC.md    1160
 src/lint/SPEC.md     1100
-src/cli/SPEC.md       740
+# RAISED 740 -> 860, reviewed. The node gained a task row for the `fix`
+# verbs, which had NO row at all: the root spec's interface section named
+# `ctrm fix`, `src/fix` built the engine under T10, and nothing in any §T
+# said who wires the two together. Writing that down costs a row and is
+# the whole point of the section. Compaction ran first and bought one
+# token, because the rows it could fold were already short. 860 is ~12%
+# over the new measured 766.
+src/cli/SPEC.md       860
 src/scan/SPEC.md      400
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
 # every other node already had, recording work that had invariants but no
