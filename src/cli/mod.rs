@@ -1,7 +1,14 @@
 //! Argument dispatch, verbs and exit codes. Not a verb's logic.
 //!
-//! See `src/cli/SPEC.md`. Types only for now; the logic arrives with T8,
-//! T11, T12, T34 and T37.
+//! See `src/cli/SPEC.md`. `main.rs` is a shim over `run` (`src:V38`), so
+//! dispatch, usage and exit codes are testable rather than reachable only
+//! by launching a process.
+
+mod check;
+
+use crate::render::Format;
+use std::path::PathBuf;
+use std::process::ExitCode;
 
 /// The command surface the root spec fixes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,4 +31,155 @@ pub enum Outcome {
     Violation,
     /// The caller asked for something that is not a usage.
     Usage,
+}
+
+impl Outcome {
+    /// The exit code the root spec's interface section fixes.
+    #[must_use]
+    pub fn code(self) -> ExitCode {
+        match self {
+            Self::Ok => ExitCode::SUCCESS,
+            Self::Violation => ExitCode::from(1),
+            Self::Usage => ExitCode::from(2),
+        }
+    }
+}
+
+/// Parse argv and dispatch. The binary itself holds nothing.
+#[must_use]
+pub fn run(args: &[String]) -> ExitCode {
+    match verb_of(args) {
+        Some("--version" | "-V") => version(),
+        Some("check") => checked(args).code(),
+        _ => usage().code(),
+    }
+}
+
+fn verb_of(args: &[String]) -> Option<&str> {
+    args.first().map(String::as_str)
+}
+
+/// `--format json` picks the stable contract; anything else is the human
+/// form, which `src/render:V11` allows to change.
+///
+/// The VALUE is read positionally, as the word after the flag. Sniffing
+/// argv for a bare `json` would make `ctrm check json` silently switch
+/// contracts, and would read a path named `json` as a format.
+fn format_of(args: &[String]) -> Format {
+    let mut words = args.iter();
+    while let Some(word) = words.next() {
+        if word == "--format"
+            && words.next().map(String::as_str) == Some("json")
+        {
+            return Format::Json;
+        }
+    }
+    Format::Human
+}
+
+/// The paths a caller named, which reach untracked files
+/// (`src/tokens:V9`). A flag and its value are not paths.
+fn paths_of(args: &[String]) -> Vec<String> {
+    let mut paths = Vec::new();
+    let mut words = args.iter().skip(1);
+    while let Some(word) = words.next() {
+        if word == "--format" {
+            words.next();
+        } else if !word.starts_with('-') {
+            paths.push(word.clone());
+        }
+    }
+    paths
+}
+
+fn root() -> PathBuf {
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
+
+fn checked(args: &[String]) -> Outcome {
+    match check::run(&root(), &paths_of(args), format_of(args)) {
+        Ok(report) => report_of(&report),
+        Err(message) => {
+            eprintln!("ctrm: {message}");
+            Outcome::Usage
+        }
+    }
+}
+
+fn report_of(report: &check::Report) -> Outcome {
+    if !report.text.is_empty() {
+        println!("{}", report.text);
+    }
+    if report.code == 0 {
+        Outcome::Ok
+    } else {
+        Outcome::Violation
+    }
+}
+
+fn version() -> ExitCode {
+    println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    ExitCode::SUCCESS
+}
+
+/// Exit 2 names the surface rather than pretending to offer it.
+fn usage() -> Outcome {
+    eprintln!(
+        "ctrm -- eliminate characters outside an allowed set\n\n  \
+         ctrm check [--format json]   report characters outside the set\n\n\
+         planned: fix, stats, explain, sets, guard"
+    );
+    Outcome::Usage
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Format, Outcome, format_of, paths_of, verb_of};
+
+    fn argv(words: &[&str]) -> Vec<String> {
+        words.iter().map(|w| (*w).to_owned()).collect()
+    }
+
+    #[test]
+    fn the_three_outcomes_stay_distinct() {
+        // Asserted on the OUTCOME, not on `ExitCode`'s Debug string: that
+        // string is platform shaped and is no contract, so a test pinned
+        // to it would pass here and break elsewhere for no reason.
+        assert_ne!(Outcome::Ok, Outcome::Violation);
+        assert_ne!(Outcome::Violation, Outcome::Usage);
+        assert_ne!(Outcome::Ok, Outcome::Usage);
+    }
+
+    #[test]
+    fn a_verb_is_the_first_word() {
+        assert_eq!(verb_of(&argv(&["check"])), Some("check"));
+        assert_eq!(verb_of(&argv(&[])), None);
+    }
+
+    #[test]
+    fn json_is_asked_for_by_name() {
+        assert_eq!(format_of(&argv(&["check"])), Format::Human);
+        assert_eq!(
+            format_of(&argv(&["check", "--format", "json"])),
+            Format::Json
+        );
+    }
+
+    #[test]
+    fn a_bare_word_json_is_a_path_and_not_a_format() {
+        // The first version sniffed argv for `json` anywhere, so this
+        // silently switched contracts -- and the test above passed
+        // regardless, which is what let it through.
+        assert_eq!(format_of(&argv(&["check", "json"])), Format::Human);
+        assert_eq!(paths_of(&argv(&["check", "json"])), vec!["json"]);
+    }
+
+    #[test]
+    fn paths_are_the_words_that_are_not_flags_or_their_values() {
+        assert_eq!(paths_of(&argv(&["check"])), Vec::<String>::new());
+        assert_eq!(
+            paths_of(&argv(&["check", "src", "--format", "json", "docs"])),
+            vec!["src", "docs"]
+        );
+    }
 }

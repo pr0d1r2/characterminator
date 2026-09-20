@@ -27,7 +27,7 @@ V35: `guard` = hook adapter (itok `guard` shape): harness hook JSON stdin → de
 ## §T TASKS
 
 id|status|task|cites
-T8|.|`check` verb + fileset via `itok::walk::tracked`|V7,`src/tokens:V9`,`.:I.cmd`
+T8|x|`check` verb + fileset via `itok::walk::tracked`|V7,`src/tokens:V9`,`.:I.cmd`
 T11|.|`stats` verb w/ `itok` counts now vs after fix|`src/tokens:V10`
 T12|.|`explain` & `sets` verbs|`src/rules:V2`,V7
 T34|.|`explain --as` renderers (args, lines, prompt) + round-trip property test|V32,`src/rules:V18`
