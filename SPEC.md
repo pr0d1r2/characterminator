@@ -61,7 +61,7 @@ T1|x|ARCHIVED to SPEC-ARCHIVE.md|-
 T2|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V15,V16
 T3|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
 T4|x|ARCHIVED to SPEC-ARCHIVE.md|V15,V14
-T13|.|dogfood: `.ctrm` for own tree, `check` step in `hk.pkl`. BLOCKED til T22/T23 ship sets|V13
+T13|x|dogfood: `.ctrm` for own tree, `check` step in `hk.pkl`. BLOCKED til T22/T23 ship sets|V13
 T14|.|`sherd check` + `sherd budget` + `sherd sync --check` in `hk.pkl`|V16
 T16|.|README, AGENTS.md, `docs/LLM-DISCLAIMER.md`, `docs/THIRD-PARTY-NOTICES.md` per fleet|-
 T17|.|release: `release.toml` (`cargo-release`) + crates.io publish, ∵ T13 & T16 land|-

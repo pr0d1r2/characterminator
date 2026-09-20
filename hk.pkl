@@ -38,6 +38,25 @@ local fast = new Mapping<String, Step> {
     depends = List("clippy")
     check = "cargo test"
   }
+  // THE DOGFOOD (V13). The tool gates its own tree, against the `.ctrm` and
+  // `.ctrm-sets` beside this file -- so every grant this repo relies on is
+  // one a user could write, and a preset that stopped working would fail
+  // HERE before it failed for anybody else.
+  //
+  // It runs the tool from SOURCE rather than a binary on PATH: the thing
+  // under test is this working tree, and a check that silently graded an
+  // installed older build would be worse than no check.
+  //
+  // Chained after `test` for the target-directory lock reason above, and
+  // because a tree whose tests fail has nothing to say about its own
+  // characters yet.
+  ["ctrm"] {
+    glob = List("**/*")
+    depends = List("test")
+    check = """
+      cargo run --quiet --bin ctrm -- check || { echo 'hk: a tracked file holds a character its set does not grant. Each line above is path:line:col, the code point, and the set it was judged against. Fix the character, or grant it in `.ctrm` -- a grant is a decision, so say why in the commit.' >&2; exit 1; }
+      """
+  }
   // THE SPEC FORM, checked by its OWNER. The format has one implementation
   // and this repo calls it rather than porting it. Every node's SPEC.md is
   // checked, not only the root: the federation put rules in nine other
