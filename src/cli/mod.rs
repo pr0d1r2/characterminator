@@ -5,8 +5,10 @@
 //! by launching a process.
 
 mod check;
+mod explain;
 
 use crate::render::Format;
+use crate::rules::TEXT;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -51,6 +53,8 @@ pub fn run(args: &[String]) -> ExitCode {
     match verb_of(args) {
         Some("--version" | "-V") => version(),
         Some("check") => checked(args).code(),
+        Some("explain") => explained(args).code(),
+        Some("sets") => listed(args).code(),
         _ => usage().code(),
     }
 }
@@ -83,13 +87,26 @@ fn paths_of(args: &[String]) -> Vec<String> {
     let mut paths = Vec::new();
     let mut words = args.iter().skip(1);
     while let Some(word) = words.next() {
-        if word == "--format" {
+        if word == "--format" || word == "--fidelity" {
             words.next();
         } else if !word.starts_with('-') {
             paths.push(word.clone());
         }
     }
     paths
+}
+
+/// The word after a named flag, read positionally for the reason
+/// `format_of` states: sniffing argv for a bare value would read a path
+/// as a flag's argument.
+fn value_of<'a>(args: &'a [String], flag: &str) -> Option<&'a str> {
+    let mut words = args.iter();
+    while let Some(word) = words.next() {
+        if word == flag {
+            return words.next().map(String::as_str);
+        }
+    }
+    None
 }
 
 fn root() -> PathBuf {
@@ -104,6 +121,33 @@ fn checked(args: &[String]) -> Outcome {
             Outcome::Usage
         }
     }
+}
+
+/// `explain` and `sets` REPORT and exit 0 whatever they find (V7): they
+/// answer questions about configuration, so there is nothing to fail at.
+/// A usage error is still a usage error.
+fn said(answer: Result<String, String>) -> Outcome {
+    match answer {
+        Ok(text) => {
+            println!("{text}");
+            Outcome::Ok
+        }
+        Err(message) => {
+            eprintln!("ctrm: {message}");
+            Outcome::Usage
+        }
+    }
+}
+
+fn explained(args: &[String]) -> Outcome {
+    said(explain::run(&root(), &paths_of(args), format_of(args)))
+}
+
+/// The fidelity a listing is resolved at (`src/charset:V41`), which
+/// `--fidelity` names and `src/rules:V29` defaults to `text`.
+fn listed(args: &[String]) -> Outcome {
+    let family = value_of(args, "--fidelity").unwrap_or(TEXT);
+    said(explain::sets(&root(), family, format_of(args)))
 }
 
 fn report_of(report: &check::Report) -> Outcome {
@@ -126,8 +170,10 @@ fn version() -> ExitCode {
 fn usage() -> Outcome {
     eprintln!(
         "ctrm -- eliminate characters outside an allowed set\n\n  \
-         ctrm check [--format json]   report characters outside the set\n\n\
-         planned: fix, stats, explain, sets, guard"
+         ctrm check [<path>...]       report characters outside the set\n  \
+         ctrm explain [<path>]        the set in force, and the rule behind it\n  \
+         ctrm sets [--fidelity <f>]   every declared set and what it holds\n\n\
+         any verb takes --format json; planned: fix, stats, guard"
     );
     Outcome::Usage
 }

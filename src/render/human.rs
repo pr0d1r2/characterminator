@@ -112,7 +112,11 @@ pub fn explain(item: &Explanation<'_>) -> String {
         format!("path {}", item.path.unwrap_or("(whole repo)")),
         format!("set {}", item.set.name),
     ];
-    lines.extend(rule_lines(item.rule));
+    match item.rule {
+        Some(rule) => lines.extend(rule_lines(rule)),
+        // V1: the strict default, with no line behind it to name.
+        None => lines.push(String::from("rule none -- unmatched path")),
+    }
     lines.join("\n")
 }
 
@@ -138,13 +142,19 @@ fn levels(items: &[LevelChoice]) -> String {
     words(&parts)
 }
 
+/// The ONE spelling `src/rules:V20` fixes: `<file>:<line>`,
+/// `argv[<n>]`, `builtin:<line>`.
+///
+/// Spelled here rather than called from `src/rules::describe`, because
+/// this node calls no sibling (`src:V39`) -- and kept identical to it,
+/// because V20 says one spelling serves a parse error and what `explain`
+/// prints. This renderer used to say `.ctrm line 2` while an error about
+/// the same line said `.ctrm:2`, which is exactly the drift V20 forbids.
 fn origin(item: &Origin) -> String {
     match item {
-        Origin::File { path, line } => {
-            format!("{} line {line}", path.display())
-        }
-        Origin::Argument { index } => format!("argument {index}"),
-        Origin::Builtin { line } => format!("builtin line {line}"),
+        Origin::File { path, line } => format!("{}:{line}", path.display()),
+        Origin::Argument { index } => format!("argv[{index}]"),
+        Origin::Builtin { line } => format!("builtin:{line}"),
     }
 }
 
@@ -265,7 +275,7 @@ mod tests {
         explain(&Explanation {
             path: None,
             set: &set,
-            rule: &rule,
+            rule: Some(&rule),
         })
     }
 
@@ -340,7 +350,7 @@ mod tests {
     fn explain_labels_every_line_rather_than_writing_config_syntax() {
         let expected = concat!(
             "path (whole repo)\nset ascii\npattern docs/**\nsets ascii\n",
-            "family none\nlevels none\norigin builtin line 3"
+            "family none\nlevels none\norigin builtin:3"
         );
         assert_eq!(explained(), expected);
     }

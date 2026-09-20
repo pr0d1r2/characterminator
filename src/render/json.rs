@@ -136,7 +136,7 @@ pub fn explain(item: &Explanation<'_>) -> String {
         field("verb", &string("explain")),
         field("path", &optional(item.path)),
         field("set", &char_set(item.set)),
-        field("rule", &rule(item.rule)),
+        field("rule", &item.rule.map_or_else(null, rule)),
     ])
 }
 
@@ -164,6 +164,11 @@ fn range(item: &CharRange) -> String {
         field("start", &string(&codepoint(item.start))),
         field("end", &string(&codepoint(item.end))),
     ])
+}
+
+/// The absent rule: nothing matched, so `src/rules:V1` decided.
+fn null() -> String {
+    String::from("null")
 }
 
 fn rule(item: &Rule) -> String {
@@ -314,7 +319,7 @@ mod tests {
         explain(&Explanation {
             path,
             set: &set,
-            rule: &rule,
+            rule: Some(&rule),
         })
     }
 

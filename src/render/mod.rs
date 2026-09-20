@@ -102,7 +102,13 @@ pub struct FileStats<'a> {
 pub struct Explanation<'a> {
     pub path: Option<&'a str>,
     pub set: &'a CharSet,
-    pub rule: &'a Rule,
+    /// The rule that won, or NONE when nothing matched.
+    ///
+    /// Absent is not the same as a rule granting `ascii`: `src/rules:V1`
+    /// gives an unmatched path the strict default with no line behind it,
+    /// and a synthesised rule would put an origin in the report that no
+    /// file could be opened at.
+    pub rule: Option<&'a Rule>,
 }
 
 /// `check`: the violations, then the files that could not be read.

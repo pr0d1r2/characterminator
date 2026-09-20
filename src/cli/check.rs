@@ -88,18 +88,52 @@ impl Checker {
 
     /// What one path may contain, and how loudly a stray character there
     /// is reported.
-    ///
-    /// The union is named after the sets it came FROM, because that name
-    /// lands in the json contract: `set: "effective"` would tell a reader
-    /// nothing, while `ascii+caveman` says what the file was judged
-    /// against and which rule to look for.
     fn law(&self, shown: &str) -> Result<(CharSet, Levels), String> {
         let found = rules::resolve(shown, &self.rules, &rules::matches);
-        let set = self
-            .catalog
+        Ok((self.granted(&found)?, levels_for(&found)?))
+    }
+
+    /// What one path may contain, and the rule that decided it -- which
+    /// is `explain`'s whole question (`src/rules:V2`).
+    ///
+    /// The winner is CLONED rather than borrowed: it is one small struct,
+    /// and handing back a reference would tie every caller's lifetime to
+    /// this checker for no gain.
+    ///
+    /// # Errors
+    ///
+    /// A rule naming a set nothing declares, or one that cycles.
+    pub fn effective(
+        &self,
+        shown: &str,
+    ) -> Result<(CharSet, Option<Rule>), String> {
+        let found = rules::resolve(shown, &self.rules, &rules::matches);
+        Ok((self.granted(&found)?, found.winner.cloned()))
+    }
+
+    /// Every declared set, resolved at one fidelity -- `sets`' answer.
+    ///
+    /// # Errors
+    ///
+    /// A declared set that cannot be resolved: a cycle, or a member
+    /// naming a set nothing declares.
+    pub fn declared(&self, family: &str) -> Result<Vec<CharSet>, String> {
+        self.catalog
+            .names()
+            .map(|name| self.catalog.resolve(name, family))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|bad| bad.to_string())
+    }
+
+    /// The union a resolution grants, named after the sets it came FROM.
+    ///
+    /// That name lands in the json contract: `set: "effective"` would
+    /// tell a reader nothing, while `ascii+caveman` says what the file
+    /// was judged against and which rule to look for.
+    fn granted(&self, found: &Resolution<'_>) -> Result<CharSet, String> {
+        self.catalog
             .resolve_union(&found.sets.join("+"), &found.sets, &found.family)
-            .map_err(|e| e.to_string())?;
-        Ok((set, levels_for(&found)?))
+            .map_err(|bad| bad.to_string())
     }
 }
 
