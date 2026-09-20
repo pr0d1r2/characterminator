@@ -25,7 +25,7 @@ self|.|-
 - fs walk = `itok::walk::tracked`. `itok::glob::matches` & `itok::estimate::select_paths` = `pub(crate)` ∴ OWN glob matcher (zero-dep, `src/rules:T42`) & explicit-path selection lives in `src/tokens`.
 - federation = `sherd`: dir = node = Rust module (dir + `mod.rs`), ⊥ 2018 `foo.rs`+`foo/`.
 - gate runner = `hk` from `nix-hk`; ops in `hk.pkl`; schema vendored `pkl/Config.pkl` ∴ gate runs w/ ⊥ network.
-- dev shell = `flake.nix`; ∀ inputs follow `nixpkgs-lock`; pins: `microlith` `v0.7.3` ?, `itok` `v0.3.1`, `sherd` `v0.5.0`.
+- dev shell = `flake.nix`; ∀ inputs follow `nixpkgs-lock`; pins: `microlith` `v0.7.3`, `itok` `v0.3.1`, `sherd` `v0.5.0`. pin policy = V44.
 - source ASCII-only (dogfood, V13).
 - deps minimal; each direct dep justified in `docs/THIRD-PARTY-NOTICES.md`.
 - ⊥ non-public repo named in spec, source, or commit message. private repos ? scanned & improved; their data cited as anonymous counts only. named only once verified public; unknown → private (fail closed).
@@ -52,21 +52,24 @@ V15: SPEC.md capped from commit one: `.context-limits` row gated by `itok check`
 V16: `sherd check`, `sherd budget` & `sherd sync --check` gate; federation live since the split ∴ ⊥ deferred.
 V40: dev shell installs a hook ONLY into its OWN repo (crate-name marker @ worktree root) & ONLY into an UNTRACKED hooks dir ∵ `core.hooksPath` ? be tracked. refusal LOUD.
 
+V44: ∀ flake input pins a TAG, bumped in its OWN reviewed commit. FOLLOWING a branch REJECTED ∵ what the gate enforces ? then change w/ ⊥ diff to read, & a gate whose rules move unreviewed gates ⊥. `nixpkgs-lock` & `nix-hk` = the fleet authorities, pinned by their own lock ∴ exempt.
+
 ## §T TASKS
 
 id|status|task|cites
-T1|x|scaffold crate: `Cargo.toml` edition 2024, MSRV 1.95, lints, lib+bin, `rustfmt.toml`, `clippy.toml`|-
-T2|x|`flake.nix` dev shell: `nixpkgs-lock`, `nix-hk`, `microlith`, `itok`, `sherd` inputs, ∀ following `nixpkgs-lock`|V14,V15,V16
-T3|x|`hk.pkl` gate: fmt, clippy `-D warnings`, test, `mth` & `mth-check` ∀ node spec, `sherd check`, `sherd sync --check`; schema vendored `pkl/Config.pkl`|V14,V16
-T4|x|`.context-limits` per node; `.spec-records` baseline; then `itok check` & `mth check --records` steps in `hk.pkl`|V15,V14
+T1|x|ARCHIVED to SPEC-ARCHIVE.md|-
+T2|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V15,V16
+T3|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
+T4|x|ARCHIVED to SPEC-ARCHIVE.md|V15,V14
 T13|.|dogfood: `.ctrm` for own tree, `check` step in `hk.pkl`. BLOCKED til T22/T23 ship sets|V13
 T14|.|`sherd check` + `sherd budget` + `sherd sync --check` in `hk.pkl`|V16
 T16|.|README, AGENTS.md, `docs/LLM-DISCLAIMER.md`, `docs/THIRD-PARTY-NOTICES.md` per fleet|-
-T17|.|release: `release.toml` (`cargo-release`), crates.io publish ?|-
+T17|.|release: `release.toml` (`cargo-release`) + crates.io publish, ∵ T13 & T16 land|-
 T27|.|dogfood wave 1: `check` + `stats` over sibling Rust repos (`src/charset:R1`); record anonymized savings in §R; fixes land via each repo's own review|`src/tokens:V10`,`src/cli:V7`
 T28|.|dogfood wave 2: extend to rest of fleet (`src/charset:R4`) once wave 1 confirms presets|`src/charset:V23`
-T40|x|seam: public type vocabulary per node (`src/*/mod.rs`), ⊥ logic ∴ ∀ node buildable in parallel|`src:V38`,`src:V39`
+T40|x|ARCHIVED to SPEC-ARCHIVE.md|`src:V38`,`src:V39`
 T45|.|gate runs UNATTENDED: CI workflow + hooks REFUSE ⊥ skip|V14,V16
+T48|.|gate step: ∀ flake input URL carries a TAG|V44
 
 ## §B BUGS
 

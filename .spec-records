@@ -29,3 +29,9 @@
 # obvious short form, and nothing in the spec would say it was already tried
 # and dropped because containerd ships that command on most Linux hosts.
 V13  ctrm
+
+# The PIN POLICY. Without this, a later reader proposes following a branch --
+# it removes the bump commits, which look like pure overhead until you ask
+# what changed. The answer is that the gate's rules would move with no diff
+# to review, which is the one property a spec gate cannot give up.
+V44  FOLLOWING a branch REJECTED

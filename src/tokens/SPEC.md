@@ -27,7 +27,10 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 V9: default fileset = git-tracked (`itok::walk::tracked`); explicit paths reach untracked.
 V10: token figure self-describes unit & method, per `itok`: `~` = bytes/4 estimate, `(o200k)` = `--bpe`. ⊥ claim measurement it cannot make.
 
+V43: named DIRECTORY → expands to the tracked files under it (prefix over V9 fileset), ⊥ refused. 0 tracked file under it → error naming the dir, exit 2. `ctrm check src/` = what a reader types ∴ refusing that spelling teaches ⊥.
+
 ## §T TASKS
 
 id|status|task|cites
-T41|x|`itok` facade: fileset, explicit paths, counts w/ method label|V9,V10
+T41|x|ARCHIVED to SPEC-ARCHIVE.md|V9,V10
+T47|.|expand a named directory to its tracked files; empty dir = error naming it|V43,`src/cli:T44`

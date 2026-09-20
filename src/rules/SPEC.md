@@ -26,7 +26,7 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
 V1: path w/ no matching rule → `ascii`. strict default; extended set = explicit grant. ≠ `itok`'s opt-in `.context-limits`: here an unguarded char IS the cost.
 V2: rule resolution: later matching line wins (gitignore semantics); per-type glob & per-file path share one grammar ∴ per-file line placed after per-type line overrides it. `explain` ! print winner.
-V17: locale separation: extended sets granted to data paths (`locales/**`, `*.po`, `config/locales/*.yml`); code stays `ascii`. non-ASCII string literal in code file → hint: move to locale file ?.
+V17: locale separation: extended sets granted to data paths (`locales/**`, `*.po`, `config/locales/*.yml`); code stays `ascii`. non-ASCII string literal in code file → the `locale-literal` pedantic lint (`src/lint:V37`), ⊥ a mechanism of its own.
 V18: ∀ data-file line kind → flag twin: `--rule` ≡ rules line, `--map` ≡ map line, `--set` ≡ sets line. flag value = exactly 1 line, same parser ∴ ∀ file F: `--no-files` + 1 flag per line of F ≡ F, property-tested.
 V19: precedence, low → high: builtin → discovered dotfiles → `--*-file` (argv order) → inline flags (argv order). later wins: rule per V2, map entry per char, set per name.
 V20: ∀ effective rule, map entry, set → origin (`<file>:<line>` | `argv[<n>]` | `builtin:<line>`). `explain` ! print it. export via `explain --as` (`src/cli:V32`).
@@ -37,12 +37,12 @@ V29: fidelity = family name, default `text`; per rule `@<family>` suffix (`docs/
 ## §T TASKS
 
 id|status|task|cites
-T6|x|`.ctrm` parse & rule resolution, last match wins|V1,V2
-T15|.|locale hint on non-ASCII literal in code file ?|V17
-T18|x|one line parser per kind (rules, map, sets); flag twins feed same parser|V18,`.:I.flag`
-T19|x|property test: file ≡ `--no-files` + flag sequence, ∀ kinds|V18
-T20|x|config assembly: precedence chain, origin per entry, `explain` prints origin|V19,V20
-T21|x|zero-file mode; `ascii` as intrinsic constant|V21,V1
-T24|x|rule resolution: `ascii` implicit base|V24
-T31|x|fidelity: `@<family>` in rules, `--fidelity`, family-aware presets|V29,V24
-T42|x|own glob matcher, zero-dep: `?` · `*` (⊥ cross `/`) · `**` · gitignore surface (⊥ `/` ⇒ `**/` prefix · leading `/` anchors · trailing `/` ⇒ dir). feeds `resolve`'s matcher parameter|V2
+T6|x|ARCHIVED to SPEC-ARCHIVE.md|V1,V2
+T15|.|[superseded by `src/lint:T39`] locale hint = the `locale-literal` pedantic lint|V17,`src/lint:V37`
+T18|x|ARCHIVED to SPEC-ARCHIVE.md|V18,`.:I.flag`
+T19|x|ARCHIVED to SPEC-ARCHIVE.md|V18
+T20|x|ARCHIVED to SPEC-ARCHIVE.md|V19,V20
+T21|x|ARCHIVED to SPEC-ARCHIVE.md|V21,V1
+T24|x|ARCHIVED to SPEC-ARCHIVE.md|V24
+T31|x|ARCHIVED to SPEC-ARCHIVE.md|V29,V24
+T42|x|ARCHIVED to SPEC-ARCHIVE.md|V2

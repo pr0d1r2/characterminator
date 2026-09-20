@@ -20,8 +20,8 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
 ## §I INTERFACES
 
-- file: `.ctrm-sets` — custom sets, `<name> <member>...`: member = literal char | `U+XXXX` | `U+XXXX-U+YYYY` | set name (≥2 chars, V25).
-- sets (builtin function presets, V23): `ascii` intrinsic (U+0020–U+007E + `\t` `\n`, `src/rules:V21`) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§` + measured `⇒∵·×∨∧¬←↔⇔≈∅⊆∪∩↑↓`, R3) · `box` (U+2500–U+257F, U+25A0–U+25FF) · `marks` (per fidelity, `src/rules:V29`: `✓✗⚠→` @`text`, `✅❌⚠➡` @`emoji`) · `math` (`×÷±°²³≤≥≠≈∞µ√∑π`) · `legal` (`©®™`) · `emoji` (single code points: U+1F300–U+1FAFF, U+2600–U+27BF; sequences compress, `src/fix:V31`) · letters ∀ CLDR locale (`pl`, `de`, `fr`, `ja`, …, V30) · `cr` (`\r`) · `typography` (`—–‘’“”…«»` + NBSP + `−`; grant ⇒ `src/fix:V26` map leaves them) · coarse blocks `latin1` (U+0080–U+00FF), `latin-ext` (U+0100–U+017F), `cyrillic`, `greek`, `arabic` · `hazard` (`src/lint:V34`; ∈ `any` like any set — the FORBID level is what fires, ⊥ the set) · `any`. custom sets via `.ctrm-sets`.
+- file: `.ctrm-sets` — custom sets, `<name> <member>...`: member = literal char | `U+XXXX` | `U+XXXX-U+YYYY` | set name (≥2 chars, V25) | `<family>:<member>` (V41).
+- sets (builtin function presets, V23): `ascii` intrinsic (U+0020–U+007E + `\t` `\n`, `src/rules:V21`) · `caveman` (FORMAT.md symbols `→∴∀∃⊥≠∈∉≤≥§` + measured `⇒∵·×∨∧¬←↔⇔≈∅⊆∪∩↑↓`, R3) · `box` (U+2500–U+257F, U+25A0–U+25FF) · `marks` (labelled members, V41: `✓✗→` @`text`, `✅❌➡` @`emoji`, `⚠` unlabelled) · `math` (`×÷±°²³≤≥≠≈∞µ√∑π`) · `legal` (`©®™`) · `emoji` (single code points: U+1F300–U+1F3FA, U+1F400–U+1FAFF, U+2600–U+27BF; skin tone gap per V42; sequences compress, `src/fix:V31`) · letters ∀ CLDR locale (`pl`, `de`, `fr`, `ja`, …, V30) · `cr` (`\r`) · `typography` (`—–‘’“”…«»` + NBSP + `−`; grant ⇒ `src/fix:V26` map leaves them) · coarse blocks `latin1` (U+0080–U+00FF), `latin-ext` (U+0100–U+017F), `cyrillic`, `greek`, `arabic` · `hazard` (`src/lint:V34`; ∈ `any` like any set — the FORBID level is what fires, ⊥ the set) · `any`. custom sets via `.ctrm-sets`.
 
 ## §R RESEARCH
 
@@ -39,13 +39,22 @@ V3: sets compose by union only (`ascii+latin-ext`). ⊥ subtraction. effective s
 V22: builtin map & sets ship as data files in same grammar as user files, compiled in via `include_str!`, written in `U+XXXX` form only ∴ ASCII, `.:V13` holds w/ ⊥ grant.
 V23: builtin sets = small function presets, sized from R2 & R4: typical file = `ascii` + 1 preset after map. coarse blocks (`latin1`, `latin-ext`, scripts) only for multi-language data (locales), ⊥ recommended for code | docs.
 V25: set member ? names another set (name ≥2 chars; 1 char = literal) ∴ user presets = compositions (`spec caveman box marks`). cycle → error naming cycle, exit 2.
-V30: language letter presets ∀ CLDR locale, named by locale code (`pl`, `pt-BR`): main `exemplarCharacters` − ASCII, + uppercase forms. data vendored (Unicode License v3, R6), generated into `U+XXXX` data file (V22), ⊥ fetched at runtime. `auxiliary` loan letters → `<code>-aux` ?.
+V30: language letter presets ∀ CLDR locale, named by locale code (`pl`, `pt-BR`): main `exemplarCharacters` − ASCII, + uppercase forms. data vendored (Unicode License v3, R6), generated into `U+XXXX` data file (V22), ⊥ fetched at runtime. `auxiliary` loan letters ship as `<code>-aux` from same vendoring ∴ 1 generator run, 2 presets.
+
+V41: labelled set member `<family>:<member>`, notation ≡ `src/fix:V28`. unlabelled granted ∀ fidelity; labelled granted ⟺ label = resolved family (`src/rules:V29`). ⊥ family-tree walk here ∵ tree lives in the MAP (`src/fix:V27`) ∴ walking it = this node depending on `src/fix`. family = opaque NAME.
+V42: preset range written so ⊥ code point another node WITHHOLDS falls inside (`src/fix:V31`: skin tone, VS, ZWJ, keycap, tag). V3 ⊥ subtraction ∴ gap ! be IN the range. §I = summary, data file SHIPS; test asserts ∀ exclusion.
 
 ## §T TASKS
 
 id|status|task|cites
-T5|x|charset model: builtin sets, union compose, custom ranges|V3,`.:I.file`
-T22|x|builtin map & sets as `U+XXXX` data files via `include_str!`|V22,`.:V13`
+T5|x|ARCHIVED to SPEC-ARCHIVE.md|V3,`.:I.file`
+T22|x|ARCHIVED to SPEC-ARCHIVE.md|V22,`.:V13`
 T23|~|preset data files per V23, contents from R2 & R4|V22,V23
-T25|x|set composition & cycle detection|V25
-T32|.|vendor CLDR exemplars; generator → language preset data file; license notice|V30,V22
+T25|x|ARCHIVED to SPEC-ARCHIVE.md|V25
+T32|.|vendor CLDR exemplars; generator → `<code>` & `<code>-aux` preset data files; license notice|V30,V22
+T46|.|labelled members: parse `<family>:<member>`, resolve against a family, `marks` preset data|V41,`src/rules:V29`
+
+## §B BUGS
+
+id|date|cause|fix
+B2|2026-09-20|§I stated `emoji` unbroken U+1F300–U+1FAFF; skin tone U+1F3FB–U+1F3FF sit INSIDE & `src/fix:V31` withholds them ∴ data file from §I granted them|V42
