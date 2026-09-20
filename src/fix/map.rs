@@ -64,15 +64,36 @@ impl Map {
         source: &str,
         origin: &dyn Fn(usize) -> Origin,
     ) -> Result<Self, Error> {
-        let mut map = Self::default();
+        Self::default().layer(source, origin)
+    }
+
+    /// Read another source OVER this map, later winning per source and
+    /// per class name (`src/rules:V19`).
+    ///
+    /// The precedence chain hands its sources in order, and each one is a
+    /// WHOLE text rather than a line: a `family` line declares a tree a
+    /// later line may use, so a map cannot be assembled entry by entry
+    /// the way rules and sets can. Validation runs after every layer, so
+    /// a source that breaks the tree is refused where it was added rather
+    /// than blamed on whatever came last.
+    ///
+    /// # Errors
+    ///
+    /// As [`Map::parse`]: a malformed line, a cyclic family tree, or a
+    /// class naming a family nothing declared.
+    pub fn layer(
+        mut self,
+        source: &str,
+        origin: &dyn Fn(usize) -> Origin,
+    ) -> Result<Self, Error> {
         for (index, line) in source.lines().enumerate() {
-            map.read(line, index.saturating_add(1), origin)?;
+            self.read(line, index.saturating_add(1), origin)?;
         }
-        map.entries.sort_by_key(|entry| Reverse(entry.from.len()));
-        map.tree.validate()?;
-        map.validate_classes()?;
-        map.index();
-        Ok(map)
+        self.entries.sort_by_key(|entry| Reverse(entry.from.len()));
+        self.tree.validate()?;
+        self.validate_classes()?;
+        self.index();
+        Ok(self)
     }
 
     /// The family tree these lines declared, on top of the builtin one.

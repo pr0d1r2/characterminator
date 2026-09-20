@@ -6,6 +6,7 @@
 
 mod check;
 mod explain;
+mod fix;
 
 use crate::render::Format;
 use crate::rules::TEXT;
@@ -55,6 +56,7 @@ pub fn run(args: &[String]) -> ExitCode {
         Some("check") => checked(args).code(),
         Some("explain") => explained(args).code(),
         Some("sets") => listed(args).code(),
+        Some("fix") => fixed(args).code(),
         _ => usage().code(),
     }
 }
@@ -150,6 +152,30 @@ fn listed(args: &[String]) -> Outcome {
     said(explain::sets(&root(), family, format_of(args)))
 }
 
+/// `fix` WRITES unless `--check` is given, which is V7's split: the verb
+/// that rewrites files is the one a caller names deliberately.
+fn fixed(args: &[String]) -> Outcome {
+    let write = !args.iter().any(|word| word == "--check");
+    match fix::run(&root(), &paths_of(args), format_of(args), write) {
+        Ok(report) => fix_report_of(&report),
+        Err(message) => {
+            eprintln!("ctrm: {message}");
+            Outcome::Usage
+        }
+    }
+}
+
+fn fix_report_of(report: &fix::Report) -> Outcome {
+    if !report.text.is_empty() {
+        println!("{}", report.text);
+    }
+    if report.code == 0 {
+        Outcome::Ok
+    } else {
+        Outcome::Violation
+    }
+}
+
 fn report_of(report: &check::Report) -> Outcome {
     if !report.text.is_empty() {
         println!("{}", report.text);
@@ -172,8 +198,9 @@ fn usage() -> Outcome {
         "ctrm -- eliminate characters outside an allowed set\n\n  \
          ctrm check [<path>...]       report characters outside the set\n  \
          ctrm explain [<path>]        the set in force, and the rule behind it\n  \
-         ctrm sets [--fidelity <f>]   every declared set and what it holds\n\n\
-         any verb takes --format json; planned: fix, stats, guard"
+         ctrm sets [--fidelity <f>]   every declared set and what it holds\n  \
+         ctrm fix [--check] [<path>...] rewrite them, or report the drift\n\n\
+         any verb takes --format json; planned: stats, guard"
     );
     Outcome::Usage
 }

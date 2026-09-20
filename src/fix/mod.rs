@@ -85,3 +85,54 @@ pub enum Error {
     /// `fix(fix(x))` would differ from `fix(x)` (V5).
     NotIdempotent,
 }
+
+impl Error {
+    /// What the refusal is ABOUT: the line, the family, or nothing when
+    /// the fault belongs to the map as a whole.
+    fn subject(&self) -> String {
+        match self {
+            Self::Syntax { line } => format!("map line {line}"),
+            Self::UnknownFamily { name }
+            | Self::FamilyCycle { name }
+            | Self::UnrootedFamily { name } => format!("family '{name}'"),
+            Self::MapCycle
+            | Self::RootReparented
+            | Self::TouchedAllowedBytes
+            | Self::NotIdempotent => String::from("the map"),
+        }
+    }
+
+    /// V6, which this node checks on itself before anything is written.
+    const REFUSED_TOUCH: &'static str =
+        "would have touched an allowed byte, so it was refused (V6)";
+
+    /// V5, checked the same way.
+    const REFUSED_UNSETTLED: &'static str =
+        "would not settle when run twice, so it was refused (V5)";
+
+    /// Why it refused.
+    ///
+    /// Each names the RULE, because half of these are this node catching
+    /// ITSELF: a reader who sees one needs to know whether their config
+    /// is wrong or this crate is.
+    const fn reason(&self) -> &'static str {
+        match self {
+            Self::Syntax { .. } => "is not a declared form",
+            Self::MapCycle => "rewrites in a cycle and never settles",
+            Self::UnknownFamily { .. } => "is not declared",
+            Self::FamilyCycle { .. } => "is its own ancestor (V27)",
+            Self::UnrootedFamily { .. } => "never reaches `ascii` (V27)",
+            Self::RootReparented => "takes no parent: `ascii` is the root",
+            Self::TouchedAllowedBytes => Self::REFUSED_TOUCH,
+            Self::NotIdempotent => Self::REFUSED_UNSETTLED,
+        }
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.subject(), self.reason())
+    }
+}
+
+impl std::error::Error for Error {}

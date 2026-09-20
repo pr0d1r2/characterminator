@@ -223,7 +223,7 @@ fn reportable(hits: Vec<Hit>, levels: &Levels, lint: Lint) -> Vec<Finding> {
 
 /// The path as a reader typed it: relative to the root, so it matches the
 /// patterns in `.ctrm` and reads like the file they meant.
-fn shown_path(root: &Path, full: &Path) -> String {
+pub(super) fn shown_path(root: &Path, full: &Path) -> String {
     full.strip_prefix(root)
         .unwrap_or(full)
         .to_string_lossy()
