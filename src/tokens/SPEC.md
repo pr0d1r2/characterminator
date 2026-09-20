@@ -33,4 +33,4 @@ V43: named DIRECTORY → expands to the tracked files under it (prefix over V9 f
 
 id|status|task|cites
 T41|x|ARCHIVED to SPEC-ARCHIVE.md|V9,V10
-T47|.|expand a named directory to its tracked files; empty dir = error naming it|V43,`src/cli:T44`
+T47|x|expand a named directory to its tracked files; empty dir = error naming it|V43,`src/cli:T44`

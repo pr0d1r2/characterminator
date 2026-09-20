@@ -10,23 +10,39 @@
 //! the thing you just wrote.
 
 use crate::tokens::Error;
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-/// A directory is a category error, not a small file: its inode size is
-/// not text, and counting it would report a number nothing wrote.
-const DIRECTORY: &str = "is a directory -- name files, or name no path \
-                         at all for the git-tracked set";
+/// A named directory holding nothing git tracks (V43). An error rather
+/// than an empty run, which would report a clean answer about no files.
+const EMPTY: &str = "holds no git-tracked file -- name a file inside it, \
+                     or track what is there";
 
 /// The fileset for a run: the git-tracked files under `root`, or exactly
 /// the paths named. Every path comes back joined to `root`, ready to read.
 ///
+/// A named DIRECTORY expands to the tracked files under it (V43). Naming
+/// a directory and a file inside it yields that file once: a path asked
+/// for twice is still one file, and a count that added it twice would be
+/// wrong rather than merely repetitive.
+///
 /// # Errors
-/// When a named path is not a readable file.
+/// When a named path is not readable, or is a directory holding nothing
+/// git tracks.
 pub fn select(root: &Path, paths: &[String]) -> Result<Vec<PathBuf>, Error> {
     if paths.is_empty() {
         return Ok(tracked(root));
     }
-    paths.iter().map(|p| named(root, p)).collect()
+    let mut seen = BTreeSet::new();
+    let mut chosen = Vec::new();
+    for shown in paths {
+        for full in named(root, shown)? {
+            if seen.insert(full.clone()) {
+                chosen.push(full);
+            }
+        }
+    }
+    Ok(chosen)
 }
 
 /// The git index, via itok. An empty answer where `root` is not a
@@ -39,22 +55,40 @@ fn tracked(root: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-/// A named path must be a readable file, and says so by name when it is
-/// not -- a set silently short of what was asked for is a total that
-/// understates without admitting it.
-fn named(root: &Path, shown: &str) -> Result<PathBuf, Error> {
+/// What one named path contributes: itself, or the tracked files under
+/// it when it names a directory.
+///
+/// A path that cannot be read says so BY NAME -- a set silently short of
+/// what was asked for is a total that understates without admitting it.
+fn named(root: &Path, shown: &str) -> Result<Vec<PathBuf>, Error> {
     let full = root.join(shown);
     let meta = std::fs::metadata(&full).map_err(|e| Error {
         path: full.clone(),
         reason: e.to_string(),
     })?;
     if meta.is_dir() {
+        return under(root, full);
+    }
+    Ok(vec![full])
+}
+
+/// The tracked files under a named directory (V43).
+///
+/// Filtered from the git-tracked set rather than walked: `ctrm check src/`
+/// then answers about exactly the files a bare run would, and a build
+/// directory inside the named one does not quietly join the set.
+fn under(root: &Path, full: PathBuf) -> Result<Vec<PathBuf>, Error> {
+    let inside: Vec<PathBuf> = tracked(root)
+        .into_iter()
+        .filter(|path| path.starts_with(&full))
+        .collect();
+    if inside.is_empty() {
         return Err(Error {
             path: full,
-            reason: DIRECTORY.to_owned(),
+            reason: EMPTY.to_owned(),
         });
     }
-    Ok(full)
+    Ok(inside)
 }
 
 #[cfg(test)]
@@ -105,13 +139,44 @@ mod tests {
         assert_eq!(err.map(|e| e.path), Some(root.join("no/such/file")));
     }
 
-    /// A directory is refused WITH its reason, so the fix is readable
-    /// from the message.
+    /// V43: a named directory EXPANDS to the tracked files under it,
+    /// which is the spelling everybody types.
     #[test]
-    fn a_named_directory_is_refused_with_its_reason() {
+    fn a_named_directory_expands_to_its_tracked_files() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-        let err = select(root, &["src".to_owned()]).err();
+        if !root.join(".git").exists() {
+            return;
+        }
+        let set = select(root, &["src".to_owned()]).unwrap_or_default();
+        assert!(set.iter().any(|p| p.ends_with("src/lib.rs")), "{set:?}");
+        // Bounded by the directory named: the manifest sits above it.
+        assert!(!set.iter().any(|p| p.ends_with("Cargo.toml")), "{set:?}");
+    }
+
+    /// A directory holding nothing tracked is an ERROR naming it, not an
+    /// empty run -- which would report a clean answer about no files.
+    #[test]
+    fn a_directory_with_nothing_tracked_is_refused_with_its_reason() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        if std::fs::create_dir_all(root.join("target")).is_err() {
+            return;
+        }
+        let err = select(root, &["target".to_owned()]).err();
         let reason = err.map(|e| e.reason).unwrap_or_default();
-        assert!(reason.contains("directory"), "{reason}");
+        assert!(reason.contains("no git-tracked file"), "{reason}");
+    }
+
+    /// A file named twice, once by itself and once inside a directory, is
+    /// one file: a count that added it twice would be wrong.
+    #[test]
+    fn a_file_reached_two_ways_appears_once() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        if !root.join(".git").exists() {
+            return;
+        }
+        let asked = ["src".to_owned(), "src/lib.rs".to_owned()];
+        let set = select(root, &asked).unwrap_or_default();
+        let hits = set.iter().filter(|p| p.ends_with("src/lib.rs")).count();
+        assert_eq!(hits, 1, "{set:?}");
     }
 }
