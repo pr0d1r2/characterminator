@@ -27,17 +27,31 @@ src/SPEC.md           420
 # The nodes, largest first. charset carries the measurement evidence (the
 # research rows), fix carries the map, families and classes, and lint carries
 # the hazard set -- the three that earn their size.
-src/charset/SPEC.md  1840
+#
+# RAISED 1840 -> 2240, reviewed. The node is about to gain two invariants and
+# its first bug record: the spelling for a family-aware preset member, which
+# nothing in the grammar had, and the rule that a preset's ranges must be
+# written around what another node withholds -- the thing a test caught after
+# a data file written from the summary in §I granted the skin tone modifiers.
+# Compaction was tried FIRST and is in the same wave: three finished rows
+# moved to SPEC-ARCHIVE.md, which bought 48 tokens against the 154 needed.
+# The rest is content, so the number moves rather than the words. 2240 is
+# ~12% over the new measured 1994.
+src/charset/SPEC.md  2240
 src/fix/SPEC.md      1240
 src/rules/SPEC.md    1160
 src/lint/SPEC.md     1100
 src/cli/SPEC.md       740
 src/scan/SPEC.md      400
-# RAISED once, 375 -> 420, the first raise in this file and a reviewed one.
-# The node did not bloat: it gained the §T section every other node already
-# had, recording work that had invariants but no task row, and that section
-# cost the whole 12% band at once. Trimming words to fit under 375 would have
-# been gaming the number rather than reviewing it. 420 is ~12% over the new
-# measured 376, and is the hub's number too.
-src/tokens/SPEC.md    420
+# RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
+# every other node already had, recording work that had invariants but no
+# task row, and that section cost the whole 12% band at once. Trimming words
+# to fit under 375 would have been gaming the number rather than reviewing
+# it. 420 was ~12% over the then measured 376, and was the hub's number too.
+#
+# 420 -> 520: a directory named on the command line is now EXPANDED rather
+# than refused, which is one invariant and one task row here, and the one
+# finished row this node had is already archived. 520 is ~12% over the new
+# measured 461.
+src/tokens/SPEC.md    520
 src/render/SPEC.md    315
