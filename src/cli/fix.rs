@@ -83,7 +83,7 @@ pub fn run(
 
 /// The map in force: the builtin (`src/fix:V26`), then `.ctrm-map` over
 /// it (`src/rules:V19`, `src/rules:V45`).
-fn map_of(root: &Path) -> Result<Map, String> {
+pub(super) fn map_of(root: &Path) -> Result<Map, String> {
     let map = Map::parse(engine::BUILTIN, &|line| Origin::Builtin { line })
         .map_err(|bad| bad.to_string())?;
     let Ok(text) = std::fs::read_to_string(root.join(MAP)) else {

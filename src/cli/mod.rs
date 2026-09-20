@@ -7,6 +7,7 @@
 mod check;
 mod explain;
 mod fix;
+mod stats;
 
 use crate::render::Format;
 use crate::rules::TEXT;
@@ -57,6 +58,7 @@ pub fn run(args: &[String]) -> ExitCode {
         Some("explain") => explained(args).code(),
         Some("sets") => listed(args).code(),
         Some("fix") => fixed(args).code(),
+        Some("stats") => counted(args).code(),
         _ => usage().code(),
     }
 }
@@ -176,6 +178,13 @@ fn fix_report_of(report: &fix::Report) -> Outcome {
     }
 }
 
+/// `--bpe` asks for the real tokenizer. The default is the estimate,
+/// which the figure itself declares (`src/tokens:V10`).
+fn counted(args: &[String]) -> Outcome {
+    let bpe = args.iter().any(|word| word == "--bpe");
+    said(stats::run(&root(), &paths_of(args), format_of(args), bpe))
+}
+
 fn report_of(report: &check::Report) -> Outcome {
     if !report.text.is_empty() {
         println!("{}", report.text);
@@ -199,8 +208,9 @@ fn usage() -> Outcome {
          ctrm check [<path>...]       report characters outside the set\n  \
          ctrm explain [<path>]        the set in force, and the rule behind it\n  \
          ctrm sets [--fidelity <f>]   every declared set and what it holds\n  \
-         ctrm fix [--check] [<path>...] rewrite them, or report the drift\n\n\
-         any verb takes --format json; planned: stats, guard"
+         ctrm fix [--check] [<path>...] rewrite them, or report the drift\n  \
+         ctrm stats [--bpe] [<path>...] what they cost now, and after a fix\n\n\
+         any verb takes --format json; planned: guard"
     );
     Outcome::Usage
 }
