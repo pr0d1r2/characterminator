@@ -59,13 +59,14 @@ T1|x|scaffold crate: `Cargo.toml` edition 2024, MSRV 1.95, lints, lib+bin, `rust
 T2|x|`flake.nix` dev shell: `nixpkgs-lock`, `nix-hk`, `microlith`, `itok`, `sherd` inputs, ∀ following `nixpkgs-lock`|V14,V15,V16
 T3|x|`hk.pkl` gate: fmt, clippy `-D warnings`, test, `mth` & `mth-check` ∀ node spec, `sherd check`, `sherd sync --check`; schema vendored `pkl/Config.pkl`|V14,V16
 T4|x|`.context-limits` per node; `.spec-records` baseline; then `itok check` & `mth check --records` steps in `hk.pkl`|V15,V14
-T13|.|dogfood: `.ctrm` for own tree, `check` step in `hk.pkl`|V13
+T13|.|dogfood: `.ctrm` for own tree, `check` step in `hk.pkl`. BLOCKED til T22/T23 ship sets|V13
 T14|.|`sherd check` + `sherd budget` + `sherd sync --check` in `hk.pkl`|V16
 T16|.|README, AGENTS.md, `docs/LLM-DISCLAIMER.md`, `docs/THIRD-PARTY-NOTICES.md` per fleet|-
 T17|.|release: `release.toml` (`cargo-release`), crates.io publish ?|-
 T27|.|dogfood wave 1: `check` + `stats` over sibling Rust repos (`src/charset:R1`); record anonymized savings in §R; fixes land via each repo's own review|`src/tokens:V10`,`src/cli:V7`
 T28|.|dogfood wave 2: extend to rest of fleet (`src/charset:R4`) once wave 1 confirms presets|`src/charset:V23`
 T40|x|seam: public type vocabulary per node (`src/*/mod.rs`), ⊥ logic ∴ ∀ node buildable in parallel|`src:V38`,`src:V39`
+T45|.|gate runs UNATTENDED: CI workflow + hooks REFUSE ⊥ skip|V14,V16
 
 ## §B BUGS
 
