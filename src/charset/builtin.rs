@@ -1,17 +1,20 @@
-//! The sets that are CODE rather than data.
+//! The builtin sets: one that is CODE, the rest DATA.
 //!
-//! Only `ascii` lives here. Every other builtin preset ships as a data file
-//! written in the `.ctrm-sets` grammar and compiled in with `include_str!`
-//! (V22) -- that is T22, T23 and T32, a later wave. Nothing here invents
-//! their contents: a preset whose members were guessed would be a grant
-//! nobody reviewed.
+//! Every preset but `ascii` ships as a data file written in the
+//! `.ctrm-sets` grammar and compiled in with `include_str!` (V22), so the
+//! contents a user reads and the contents the tool enforces are the same
+//! bytes. `sets.ctrm-sets` is that file. The locale letter presets (V30)
+//! are generated into a file of their own and are still to come with T32.
 //!
 //! `ascii` is the exception on purpose. `src/rules:V21` requires a run with
 //! `--no-files --no-builtin-map --no-builtin-sets` to still resolve a
 //! default set, so the one set that every path falls back to (`src/rules`
 //! V1) cannot itself be a file that the flags remove.
 
-use super::{CharRange, CharSet, SetCatalog, SetDefinition, SetMember};
+use super::{
+    CharRange, CharSet, ParseError, SetCatalog, SetDefinition, SetMember,
+    parse_line,
+};
 
 /// The name of the intrinsic set.
 pub const ASCII: &str = "ascii";
@@ -67,9 +70,58 @@ pub fn intrinsic_catalog() -> SetCatalog {
     catalog
 }
 
+/// The preset data file, in the `.ctrm-sets` grammar (V22).
+///
+/// Public as TEXT because that is what the precedence chain takes: the
+/// builtin is the lowest source in `src/rules:V19` and arrives there the
+/// same way a dotfile or a `--sets-file` does. One grammar, one parser,
+/// and a preset a user overrides by declaring the name again.
+pub const SETS: &str = include_str!("sets.ctrm-sets");
+
+/// The presets the data file declares, unresolved.
+///
+/// Members stay unresolved for the reason [`SetDefinition`] states: a
+/// preset here may name another, and `any` would otherwise expand in
+/// every catalog that never uses it.
+///
+/// # Errors
+///
+/// Returns a [`ParseError`] if a line of the compiled-in file cannot be
+/// read. That is a defect in THIS crate, not in anyone's configuration --
+/// the test below is what keeps it from shipping -- but it is returned
+/// rather than panicked, because a library that kills the process leaves
+/// its caller no way to say which set was wrong.
+pub fn definitions() -> Result<Vec<SetDefinition>, ParseError> {
+    SETS.lines()
+        .map(parse_line)
+        .filter_map(Result::transpose)
+        .collect()
+}
+
+/// The intrinsic set plus every preset the data file declares.
+///
+/// This is the floor of `src/rules:V19` with the builtin source present,
+/// as [`intrinsic_catalog`] is the floor with it removed. The data file
+/// is inserted OVER `ascii`, which costs nothing today and is the right
+/// order the moment the file has anything to say about it.
+///
+/// # Errors
+///
+/// As [`definitions`].
+pub fn catalog() -> Result<SetCatalog, ParseError> {
+    let mut catalog = intrinsic_catalog();
+    for definition in definitions()? {
+        catalog.insert(definition);
+    }
+    Ok(catalog)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{ASCII, ascii, ascii_definition, intrinsic_catalog};
+    use super::{
+        ASCII, CharSet, SETS, SetDefinition, SetMember, ascii,
+        ascii_definition, catalog, definitions, intrinsic_catalog,
+    };
 
     #[test]
     fn ascii_grants_printable_text() {
@@ -119,5 +171,173 @@ mod tests {
         let catalog = intrinsic_catalog();
         let listed = catalog.names().collect::<Vec<_>>();
         assert_eq!(listed, vec![ASCII]);
+    }
+    /// The presets `src/charset/SPEC.md` §I names and this file ships.
+    ///
+    /// Written out rather than read back from the catalog: a test that
+    /// asked the data file what it declares would pass just as happily
+    /// after a preset was deleted from it.
+    const DECLARED: [&str; 12] = [
+        "any",
+        "arabic",
+        "box",
+        "caveman",
+        "cr",
+        "cyrillic",
+        "emoji",
+        "greek",
+        "latin-ext",
+        "latin1",
+        "legal",
+        "math",
+        // `typography` is tested by name below rather than listed here:
+        // the array length is the count this file promises, and a preset
+        // added without a test is what that count is for.
+    ];
+
+    fn declared() -> Vec<SetDefinition> {
+        let parsed = definitions();
+        assert!(parsed.is_ok(), "the compiled-in data file must parse");
+        parsed.unwrap_or_default()
+    }
+
+    fn preset(name: &str) -> CharSet {
+        let resolved = catalog().ok().and_then(|sets| sets.resolve(name).ok());
+        assert!(resolved.is_some(), "{name} must resolve");
+        resolved.unwrap_or_else(|| CharSet::new(name.to_owned(), Vec::new()))
+    }
+
+    #[test]
+    fn the_data_file_parses() {
+        assert!(definitions().is_ok());
+    }
+
+    #[test]
+    fn the_data_file_is_pure_ascii() {
+        assert!(SETS.is_ascii());
+    }
+
+    #[test]
+    fn every_member_is_written_as_a_code_point() {
+        for definition in declared() {
+            for member in definition.members {
+                assert!(
+                    matches!(member, SetMember::Range(_)),
+                    "{} holds a member that is not U+XXXX",
+                    definition.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn every_preset_the_spec_names_is_declared_and_grants_something() {
+        for name in DECLARED {
+            assert!(!preset(name).is_empty(), "{name} grants nothing");
+        }
+        assert!(!preset("typography").is_empty());
+    }
+
+    #[test]
+    fn the_data_file_declares_no_set_twice() {
+        let mut names: Vec<String> =
+            declared().into_iter().map(|set| set.name).collect();
+        let total = names.len();
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), total);
+    }
+
+    #[test]
+    fn the_data_file_does_not_declare_ascii() {
+        let ascii_declared = declared().iter().any(|set| set.name == ASCII);
+        assert!(!ascii_declared);
+    }
+
+    #[test]
+    fn the_catalog_carries_ascii_as_well_as_the_presets() {
+        assert_eq!(preset(ASCII), ascii());
+        assert!(catalog().is_ok_and(|sets| sets.get("caveman").is_some()));
+    }
+
+    #[test]
+    fn caveman_grants_the_format_symbols() {
+        let set = preset("caveman");
+        assert!(set.contains('\u{2192}'));
+        assert!(set.contains('\u{22A5}'));
+        assert!(set.contains('\u{00A7}'));
+    }
+
+    /// R3: stopping at FORMAT.md's own list misses 32% of the files.
+    #[test]
+    fn caveman_grants_the_measured_symbols_too() {
+        let set = preset("caveman");
+        assert!(set.contains('\u{21D2}'));
+        assert!(set.contains('\u{2235}'));
+        assert!(set.contains('\u{00B7}'));
+        assert!(!set.contains('\u{1F600}'));
+    }
+
+    #[test]
+    fn box_grants_both_drawing_blocks() {
+        let set = preset("box");
+        assert!(set.contains('\u{250C}'));
+        assert!(set.contains('\u{257F}'));
+        assert!(set.contains('\u{25A0}'));
+        assert!(!set.contains('\u{2580}'));
+    }
+
+    #[test]
+    fn typography_grants_what_the_builtin_map_targets() {
+        let set = preset("typography");
+        assert!(set.contains('\u{2014}'));
+        assert!(set.contains('\u{2019}'));
+        assert!(set.contains('\u{201D}'));
+        assert!(set.contains('\u{2026}'));
+        assert!(set.contains('\u{00A0}'));
+        assert!(set.contains('\u{2212}'));
+    }
+
+    #[test]
+    fn emoji_grants_single_code_points_and_withholds_the_joiners() {
+        let set = preset("emoji");
+        assert!(set.contains('\u{1F600}'));
+        assert!(set.contains('\u{2600}'));
+        assert!(!set.contains('\u{200D}'));
+        assert!(!set.contains('\u{FE0F}'));
+        assert!(!set.contains('\u{1F3FB}'));
+        assert!(!set.contains('\u{20E3}'));
+    }
+
+    #[test]
+    fn cr_grants_only_the_carriage_return() {
+        let set = preset("cr");
+        assert!(set.contains('\u{000D}'));
+        assert_eq!(set.ranges.len(), 1);
+    }
+
+    #[test]
+    fn a_coarse_block_grants_its_whole_block() {
+        assert!(preset("latin1").contains('\u{00E9}'));
+        assert!(preset("latin-ext").contains('\u{0142}'));
+        assert!(preset("cyrillic").contains('\u{0416}'));
+        assert!(preset("greek").contains('\u{03B1}'));
+        assert!(preset("arabic").contains('\u{0645}'));
+    }
+
+    #[test]
+    fn any_grants_every_code_point_there_is() {
+        let set = preset("any");
+        assert!(set.contains('\u{0000}'));
+        assert!(set.contains('\u{E000}'));
+        assert!(set.contains('\u{10FFFF}'));
+    }
+
+    #[test]
+    fn a_preset_is_a_handful_of_ranges() {
+        for name in DECLARED {
+            let ranges = preset(name).ranges.len();
+            assert!(ranges <= 32, "{name} holds {ranges} ranges");
+        }
     }
 }

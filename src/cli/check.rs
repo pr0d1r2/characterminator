@@ -63,6 +63,15 @@ impl Checker {
     /// Its ABSENCE is not an error: V1 gives an unmatched path `ascii`, so
     /// a repo that has never been configured is still checkable, and the
     /// answer it gets is the strict one.
+    ///
+    /// The catalog is the builtin one, so a rule may name a preset that
+    /// ships as data (`src/charset:V22`) and not only the intrinsic set.
+    ///
+    /// # Errors
+    ///
+    /// A `.ctrm` that cannot be read, or a compiled-in preset that cannot
+    /// be parsed -- the second is a defect in this crate rather than in
+    /// the tree being checked, and it says so.
     pub fn load(root: &Path) -> Result<Self, String> {
         let rules = match std::fs::read_to_string(root.join(CONFIG)) {
             Ok(text) => parse(text)?,
@@ -70,7 +79,7 @@ impl Checker {
         };
         Ok(Self {
             rules,
-            catalog: builtin::intrinsic_catalog(),
+            catalog: builtin::catalog().map_err(|e| e.to_string())?,
         })
     }
 
@@ -233,11 +242,11 @@ fn skip(source: &Skip) -> Skipped<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Looked, OUTSIDE, inspect, levels_for, shown_path};
-    use crate::charset::builtin;
+    use super::{Checker, Looked, OUTSIDE, inspect, levels_for, shown_path};
+    use crate::charset::{CharSet, builtin};
     use crate::lint::{Level, Levels, Lint};
     use crate::rules::{self, Rule};
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
 
     fn lint() -> Lint {
         match Lint::named(OUTSIDE) {
@@ -320,5 +329,42 @@ mod tests {
             shown_path(root, Path::new("/elsewhere/a.rs")),
             "/elsewhere/a.rs"
         );
+    }
+
+    /// A tree whose `.ctrm` grants a preset, or `None` if it cannot be
+    /// written: a test should not fail for the disk's reasons.
+    ///
+    /// It lives under `target/`, which `.gitignore` excludes, so it is
+    /// untracked by construction rather than by hoping.
+    fn preset_fixture() -> Option<PathBuf> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("ctrm-preset-fixture");
+        std::fs::create_dir_all(&root).ok()?;
+        std::fs::write(root.join(".ctrm"), "*.md ascii+caveman\n").ok()?;
+        Some(root)
+    }
+
+    /// The set one path is judged against, in a tree of our own.
+    fn granted(root: &Path, shown: &str) -> Result<CharSet, String> {
+        Checker::load(root)?.law(shown).map(|(set, _)| set)
+    }
+
+    /// A rule may name a preset that ships as DATA, not only the
+    /// intrinsic set: `src/charset:V22` compiles the preset file in, and
+    /// this is the path that makes it reachable from a `.ctrm` line.
+    #[test]
+    fn a_rule_may_grant_a_preset_that_ships_as_data() {
+        let Some(root) = preset_fixture() else {
+            return;
+        };
+        let found = granted(&root, "notes.md");
+        let why = found.as_ref().err().cloned().unwrap_or_default();
+        let set = found.unwrap_or_else(|_| unreachable!("{why}"));
+        assert_eq!(set.name, "ascii+caveman");
+        // RIGHTWARDS ARROW, granted by the preset, and EM DASH, which is
+        // the map's business rather than a grant (`src/fix:V26`).
+        assert!(set.contains('\u{2192}'));
+        assert!(!set.contains('\u{2014}'));
     }
 }

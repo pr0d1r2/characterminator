@@ -45,7 +45,7 @@ V30: language letter presets ∀ CLDR locale, named by locale code (`pl`, `pt-BR
 
 id|status|task|cites
 T5|x|charset model: builtin sets, union compose, custom ranges|V3,`.:I.file`
-T22|.|builtin map & sets as `U+XXXX` data files via `include_str!`|V22,`.:V13`
-T23|.|preset data files per V23, contents from R2 & R4|V22,V23
+T22|x|builtin map & sets as `U+XXXX` data files via `include_str!`|V22,`.:V13`
+T23|~|preset data files per V23, contents from R2 & R4|V22,V23
 T25|x|set composition & cycle detection|V25
 T32|.|vendor CLDR exemplars; generator → language preset data file; license notice|V30,V22
