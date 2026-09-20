@@ -34,6 +34,8 @@ V21: zero-file run: `--no-files --no-builtin-map --no-builtin-sets` → config f
 V24: `ascii` = implicit base ∀ rule: effective set = `ascii` ∪ named sets ∴ `*.md caveman` ≡ `*.md ascii+caveman`. explicit `ascii+` stays legal.
 V29: fidelity = family name, default `text`; per rule `@<family>` suffix (`docs/** marks @emoji`); last matching rule naming one wins. `--fidelity <f>` ≡ `--rule '* @<f>'` (V19 order). presets w/ classes grant only resolved family's members ∴ other families compress into it; `src/fix:V6` holds. mix → grant variants explicitly.
 
+V45: DISCOVERED dotfile = `.ctrm`, `.ctrm-sets`, `.ctrm-map` @ the RUN ROOT only (`-C <dir>` | cwd). ⊥ per-dir & ⊥ ancestor walk ∵ a law that ? sit in any ancestor is one ⊥ reader resolves by looking.
+
 ## §T TASKS
 
 id|status|task|cites
@@ -46,3 +48,4 @@ T21|x|ARCHIVED to SPEC-ARCHIVE.md|V21,V1
 T24|x|ARCHIVED to SPEC-ARCHIVE.md|V24
 T31|x|ARCHIVED to SPEC-ARCHIVE.md|V29,V24
 T42|x|ARCHIVED to SPEC-ARCHIVE.md|V2
+T49|x|discover `.ctrm-sets` & `.ctrm-map` at the run root, into the V19 chain|V45,V19

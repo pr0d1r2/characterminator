@@ -1,0 +1,37 @@
+# The sets this repo declares for itself, over the compiled-in presets.
+#
+# Written in `U+XXXX` form for the same reason the builtin file is: the
+# grammar allows the character itself, and using it here would mean this
+# file needed a grant of its own to pass the check it configures.
+
+# What our own specs document and no preset holds.
+#
+# A spec that DEFINES the character sets has to print the characters, so
+# these are not stray -- they are the subject. Granting them beats the two
+# alternatives: `any` would switch the check off for the files that most
+# need it, and rewriting the rows into code point notation would make the
+# evidence in them unreadable.
+#
+# N-ARY SUMMATION as the Greek letter, IDENTICAL TO, MUCH LESS-THAN,
+# SUPERSET OF OR EQUAL TO, N-ARY UNION, LEFT RIGHT DOUBLE ARROW, SET MINUS,
+# DOUBLE LOW-9 QUOTATION MARK (the Polish opening quote, from the CLDR
+# research row), HEAVY CHECK MARK.
+spec-symbol U+03A3 U+2261 U+226A U+2287 U+22C3 U+27FA U+2216 U+201E U+2714
+
+# The marks, until the `marks` preset ships with T46: WHITE HEAVY CHECK
+# MARK, CROSS MARK, CHECK MARK, BALLOT X, WARNING SIGN, BLACK RIGHTWARDS
+# ARROW.
+spec-mark U+2705 U+274C U+2713 U+2717 U+26A0 U+27A1
+
+# The joiners the `emoji` preset withholds BY DESIGN (`src/fix:V31`), which
+# `src/fix/SPEC.md` has to print to state what it compresses: ZERO WIDTH
+# JOINER, VARIATION SELECTOR-16, and the five skin tone modifiers.
+#
+# WHEN T36 LANDS this stops working, and that is correct rather than a
+# problem to prevent: the zero width joiner is a hazard (`src/lint:V34`)
+# and a hazard fires at `forbid`, which no grant lowers. The rows that
+# print one move to `U+XXXX` notation then.
+spec-joiner U+200D U+FE0F U+1F3FB-U+1F3FF
+
+# What a SPEC.md in this repo may hold.
+spec caveman typography math legal emoji spec-symbol spec-mark spec-joiner

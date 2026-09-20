@@ -6,7 +6,7 @@
 //! said (`src/lint`), and how the report reads (`src/render`). V7 makes
 //! this one of the two verbs that GATE.
 
-use crate::charset::{CharSet, SetCatalog, builtin};
+use crate::charset::{self, CharSet, SetCatalog, SetDefinition, builtin};
 use crate::lint::{Finding, Level, Levels, Lint, Target, exit_code};
 use crate::render::{self, Format, Skipped, Violation};
 use crate::rules::{self, Resolution, Rule, Sources};
@@ -17,6 +17,9 @@ use std::path::Path;
 /// The rules file discovered at the repo root: the dotfile tier of the
 /// precedence chain (`src/rules:V19`).
 const CONFIG: &str = ".ctrm";
+
+/// The sets file discovered beside it (`src/rules:V45`).
+const SETS: &str = ".ctrm-sets";
 
 /// The lint a character outside its set is reported under. Named for what
 /// is true of the character, not for its group (`src/lint` registry).
@@ -64,14 +67,14 @@ impl Checker {
     /// a repo that has never been configured is still checkable, and the
     /// answer it gets is the strict one.
     ///
-    /// The catalog is the builtin one, so a rule may name a preset that
-    /// ships as data (`src/charset:V22`) and not only the intrinsic set.
+    /// `.ctrm-sets` is read the same way, so a repo may declare a set of
+    /// its own and a rule may name it (`src/rules:V45`).
     ///
     /// # Errors
     ///
-    /// A `.ctrm` that cannot be read, or a compiled-in preset that cannot
-    /// be parsed -- the second is a defect in this crate rather than in
-    /// the tree being checked, and it says so.
+    /// A discovered file that cannot be parsed, or a compiled-in preset
+    /// that cannot be -- the second is a defect in this crate rather than
+    /// in the tree being checked, and it says so.
     pub fn load(root: &Path) -> Result<Self, String> {
         let rules = match std::fs::read_to_string(root.join(CONFIG)) {
             Ok(text) => parse(text)?,
@@ -79,7 +82,7 @@ impl Checker {
         };
         Ok(Self {
             rules,
-            catalog: builtin::catalog().map_err(|e| e.to_string())?,
+            catalog: catalog(root)?,
         })
     }
 
@@ -105,6 +108,43 @@ fn parse(text: String) -> Result<Vec<Rule>, String> {
         .dotfile(CONFIG, text)
         .rules()
         .map_err(|e| e.to_string())
+}
+
+/// The sets a run resolves against: the compiled-in presets, then what
+/// `.ctrm-sets` declares over them (`src/rules:V19`, `src/rules:V45`).
+///
+/// A repo whose files hold characters no preset covers declares a set of
+/// its own rather than reaching for `any`, which is the difference
+/// between a grant somebody wrote down and a check switched off.
+fn catalog(root: &Path) -> Result<SetCatalog, String> {
+    let mut sources = Sources::new().builtin(builtin::SETS);
+    if let Ok(text) = std::fs::read_to_string(root.join(SETS)) {
+        sources = sources.dotfile(SETS, text);
+    }
+    let declared = sources.assemble(set_line).map_err(|e| e.to_string())?;
+    let mut catalog = builtin::intrinsic_catalog();
+    for definition in declared {
+        catalog.insert(definition);
+    }
+    Ok(catalog)
+}
+
+/// One `.ctrm-sets` line, at the origin the chain gave it.
+///
+/// The grammar's parser belongs to `src/charset` and the precedence chain
+/// to `src/rules`, and neither calls the other: the parser travels as an
+/// argument, so this adapter is the one place their two error types meet.
+fn set_line(
+    line: &str,
+    origin: rules::Origin,
+) -> Result<SetDefinition, rules::ParseError> {
+    match charset::parse_line(line) {
+        Ok(Some(declared)) => Ok(declared),
+        // The chain skips blank and comment lines before calling this, so
+        // a line declaring nothing cannot arrive here.
+        Ok(None) => Err(rules::error(origin, "declares no set")),
+        Err(bad) => Err(rules::error(origin, bad.to_string())),
+    }
 }
 
 /// The level directives of the winning rules, as the lint node's own
@@ -331,18 +371,25 @@ mod tests {
         );
     }
 
-    /// A tree whose `.ctrm` grants a preset, or `None` if it cannot be
+    /// A tree carrying the dotfiles named, or `None` if it cannot be
     /// written: a test should not fail for the disk's reasons.
     ///
     /// It lives under `target/`, which `.gitignore` excludes, so it is
-    /// untracked by construction rather than by hoping.
-    fn preset_fixture() -> Option<PathBuf> {
+    /// untracked by construction rather than by hoping, and each caller
+    /// names its own directory so two tests never share one tree.
+    fn fixture(name: &str, files: &[(&str, &str)]) -> Option<PathBuf> {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("target")
-            .join("ctrm-preset-fixture");
+            .join(name);
         std::fs::create_dir_all(&root).ok()?;
-        std::fs::write(root.join(".ctrm"), "*.md ascii+caveman\n").ok()?;
+        for (file, text) in files {
+            std::fs::write(root.join(file), text).ok()?;
+        }
         Some(root)
+    }
+
+    fn preset_fixture() -> Option<PathBuf> {
+        fixture("ctrm-preset-fixture", &[(".ctrm", "*.md ascii+caveman\n")])
     }
 
     /// The set one path is judged against, in a tree of our own.
@@ -366,5 +413,58 @@ mod tests {
         // the map's business rather than a grant (`src/fix:V26`).
         assert!(set.contains('\u{2192}'));
         assert!(!set.contains('\u{2014}'));
+    }
+
+    /// `.ctrm-sets` is DISCOVERED beside `.ctrm` (`src/rules:V45`), so a
+    /// repo whose files hold characters no preset covers declares a set
+    /// rather than reaching for `any`.
+    #[test]
+    fn a_declared_set_is_discovered_beside_the_rules() {
+        // IDENTICAL TO, which no builtin preset grants.
+        let files = [
+            (".ctrm", "*.md ascii+house\n"),
+            (".ctrm-sets", "house U+2261\n"),
+        ];
+        let Some(root) = fixture("ctrm-declared-fixture", &files) else {
+            return;
+        };
+        let found = granted(&root, "notes.md");
+        let why = found.as_ref().err().cloned().unwrap_or_default();
+        let set = found.unwrap_or_else(|_| unreachable!("{why}"));
+        assert!(set.contains('\u{2261}'));
+    }
+
+    /// A declared set REPLACES the builtin of the same name (V19), which
+    /// is what "later wins" means for a set, and is how a repo narrows a
+    /// preset it finds too generous.
+    #[test]
+    fn a_declared_set_replaces_the_builtin_it_renames() {
+        let files = [
+            (".ctrm", "*.md ascii+legal\n"),
+            // The builtin `legal` also grants REGISTERED and TRADE MARK.
+            (".ctrm-sets", "legal U+00A9\n"),
+        ];
+        let Some(root) = fixture("ctrm-override-fixture", &files) else {
+            return;
+        };
+        let set = granted(&root, "notes.md").unwrap_or_else(|why| {
+            unreachable!("{why}");
+        });
+        assert!(set.contains('\u{00A9}'));
+        assert!(!set.contains('\u{00AE}'));
+    }
+
+    /// A `.ctrm-sets` line that cannot be read names the FILE and LINE,
+    /// not just the complaint: the origin travels with the error
+    /// (`src/rules:V20`).
+    #[test]
+    fn a_bad_declared_line_is_reported_at_its_origin() {
+        let files = [(".ctrm-sets", "\n\nbad U+ZZZZ\n")];
+        let Some(root) = fixture("ctrm-badset-fixture", &files) else {
+            return;
+        };
+        let why = Checker::load(&root).err().unwrap_or_default();
+        assert!(why.contains(".ctrm-sets:3"), "{why}");
+        assert!(why.contains("U+ZZZZ"), "{why}");
     }
 }

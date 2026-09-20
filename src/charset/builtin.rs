@@ -172,7 +172,9 @@ mod tests {
         let listed = catalog.names().collect::<Vec<_>>();
         assert_eq!(listed, vec![ASCII]);
     }
-    /// The presets `src/charset/SPEC.md` §I names and this file ships.
+
+    /// The presets `src/charset/SPEC.md` INTERFACES names, which this
+    /// file ships.
     ///
     /// Written out rather than read back from the catalog: a test that
     /// asked the data file what it declares would pass just as happily

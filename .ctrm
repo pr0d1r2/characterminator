@@ -1,0 +1,21 @@
+# What this repo grants itself (`.:V13`). The tool gates its own tree, so
+# this file is the dogfood: every grant here is one a user could write.
+
+# The floor. Source, config and data files are plain ASCII, which is the
+# strict default V1 would give them anyway -- stated because a reader
+# should not have to know that to read this file.
+* ascii
+
+# The specs, their archives and the README: prose that DOCUMENTS character
+# sets, so it holds the characters it documents. `spec` is declared in
+# `.ctrm-sets` beside this file.
+*.md ascii+spec
+
+# The token ceilings, which cite spec sections by the section sign.
+.context-limits ascii+caveman
+
+# VENDORED, not ours to rewrite: the upstream `hk` Pkl schema, kept here so
+# the gate runs offline (`.:C`). Granting `any` is the honest spelling for
+# a file this repo does not author -- narrowing it would mean editing
+# someone else's document to fit our rule.
+pkl/Config.pkl any
