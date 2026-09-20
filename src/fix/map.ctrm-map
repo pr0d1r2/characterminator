@@ -1,0 +1,61 @@
+# THE BUILTIN TRANSLITERATION MAP (V26), in the same grammar a user writes
+# and compiled in with `include_str!` (`src/charset:V22`).
+#
+# Both sides are written `U+XXXX` wherever the character is not ASCII, so
+# this file is pure ASCII and needs no grant to pass the check it feeds.
+# An ASCII replacement is written as itself where that is legible (`--`)
+# and as a code point where it is not (a space, a quote).
+#
+# WHAT THIS IS FOR, measured rather than assumed: R4 found that the
+# typography map ALONE settles 45.1% of the fleet's non-ASCII files. These
+# are characters a writer did not choose -- an editor or a word processor
+# substituted them -- so rewriting them takes nothing away.
+#
+# WHAT IT IS NOT: a default grant. `typography` is a SET a file may ask
+# for (`src/charset`), and a file that asks keeps its real typography
+# because `fix` never touches an allowed character (V6). The map decides
+# what happens to a character that is NOT allowed, which is the only
+# question it is ever asked.
+
+# EM DASH and EN DASH. The em dash doubles because a single hyphen where a
+# sentence breaks reads as a word join.
+U+2014 --
+U+2013 -
+
+# MINUS SIGN, which is a dash a keyboard cannot type and arithmetic does
+# not need: the ASCII hyphen is what every compiler and calculator reads.
+U+2212 -
+
+# The curly quotes, all four, to their straight forms. LEFT and RIGHT
+# SINGLE QUOTATION MARK to APOSTROPHE; LEFT and RIGHT DOUBLE to QUOTATION
+# MARK.
+U+2018 U+0027
+U+2019 U+0027
+U+201C U+0022
+U+201D U+0022
+
+# The angle quotes used as quotation marks in several languages, to the
+# straight double. A locale that wants its own quotation marks grants
+# them; per-locale punctuation is `typography-<code>`, deferred until T32
+# vendors CLDR.
+U+00AB U+0022
+U+00BB U+0022
+
+# HORIZONTAL ELLIPSIS to three full stops, which is what it abbreviates.
+U+2026 ...
+
+# NO-BREAK SPACE to an ordinary space. The replacement is `U+0020` and not
+# a trailing blank: the line is split on whitespace, so a space nobody can
+# see would be a poor way to declare one.
+U+00A0 U+0020
+
+# DELETED, which is a replacement written as nothing at all -- the one way
+# this crate ever removes a character (V4), and explicit for that reason.
+#
+# ZERO WIDTH SPACE and BYTE ORDER MARK carry no glyph, so there is nothing
+# to transliterate them INTO: any visible replacement would put a
+# character on the page that the author never typed. Both are also
+# hazards (`src/lint:V34`) when they turn up where nobody expects them,
+# which is the other half of why they leave rather than change.
+U+200B
+U+FEFF

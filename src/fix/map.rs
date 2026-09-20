@@ -17,6 +17,14 @@ use crate::fix::{Class, Error, Family, MapEntry};
 use crate::rules::Origin;
 use std::cmp::Reverse;
 
+/// The builtin map, in the `.ctrm-map` grammar (`src/charset:V22`).
+///
+/// Public as TEXT for the reason the sets file is: the builtin is the
+/// lowest source of the precedence chain (`src/rules:V19`) and arrives
+/// there the same way a `.ctrm-map` or a `--map` flag does. One grammar,
+/// one parser, and an entry a user overrides by declaring it again.
+pub const BUILTIN: &str = include_str!("map.ctrm-map");
+
 /// A declared source matched at the current position.
 pub(crate) struct Match {
     pub(crate) len: usize,
@@ -423,5 +431,71 @@ mod tests {
         assert_eq!(parse("family nerd\n"), line);
         assert_eq!(parse("family a b c\n"), line);
         assert_eq!(parse("family we:ird emoji\n"), line);
+    }
+    /// The builtin map ships as DATA in this grammar (V26,
+    /// `src/charset:V22`), so it has to parse -- and a defect here is a
+    /// defect in this crate, not in anyone's configuration.
+    #[test]
+    fn the_builtin_map_parses() {
+        assert!(parse(super::BUILTIN).is_ok());
+    }
+
+    #[test]
+    fn the_builtin_map_is_pure_ascii() {
+        assert!(super::BUILTIN.is_ascii());
+    }
+
+    /// V26 names what it targets. Written out rather than read back from
+    /// the map: a test that asked the file what it declares would pass
+    /// just as happily after an entry was deleted from it.
+    fn rewrites(map: &Map, from: char, to: &str) {
+        let found = map
+            .entries()
+            .iter()
+            .find(|entry| entry.from == from.to_string());
+        assert_eq!(found.map(|e| e.to.as_str()), Some(to), "{from:?}");
+    }
+
+    #[test]
+    fn the_builtin_map_targets_what_v26_names() {
+        let map = parsed(super::BUILTIN);
+        let rewrites = |from, to| rewrites(&map, from, to);
+        rewrites('\u{2014}', "--");
+        rewrites('\u{2013}', "-");
+        rewrites('\u{2212}', "-");
+        rewrites('\u{2018}', "'");
+        rewrites('\u{2019}', "'");
+        rewrites('\u{201C}', "\"");
+        rewrites('\u{201D}', "\"");
+        rewrites('\u{00AB}', "\"");
+        rewrites('\u{00BB}', "\"");
+        rewrites('\u{2026}', "...");
+        rewrites('\u{00A0}', " ");
+    }
+
+    /// The two that leave rather than change: they carry no glyph, so any
+    /// visible replacement would put a character on the page the author
+    /// never typed (V4 makes the delete explicit).
+    #[test]
+    fn the_builtin_map_deletes_the_invisibles() {
+        let map = parsed(super::BUILTIN);
+        for gone in ['\u{200B}', '\u{FEFF}'] {
+            let found = map
+                .entries()
+                .iter()
+                .find(|entry| entry.from == gone.to_string());
+            assert_eq!(found.map(|e| e.to.as_str()), Some(""), "{gone:?}");
+        }
+    }
+
+    /// Every replacement the builtin offers is itself ASCII. A map whose
+    /// answer was another non-ASCII character would move the problem
+    /// rather than solve it, and `fix` would report the result as a
+    /// violation of the same rule (V4).
+    #[test]
+    fn every_builtin_replacement_is_ascii() {
+        for entry in parsed(super::BUILTIN).entries() {
+            assert!(entry.to.is_ascii(), "{} -> {}", entry.from, entry.to);
+        }
     }
 }

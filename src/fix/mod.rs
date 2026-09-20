@@ -14,7 +14,7 @@ mod map;
 pub use apply::{Fixed, Report, check, fix};
 pub use class::resolve;
 pub use family::{ROOT, Tree};
-pub use map::Map;
+pub use map::{BUILTIN, Map};
 
 use crate::rules::Origin;
 use crate::scan::Hit;

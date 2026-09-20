@@ -36,7 +36,7 @@ V31: `emoji` preset = single code points only: ⊥ VS15/VS16, ⊥ skin tone U+1F
 
 id|status|task|cites
 T10|x|transliteration map + `fix` & `fix --check`; property tests: idempotency, untouched bytes|V4,V5,V6
-T26|.|builtin map: typography defaults|V26,`src/charset:V22`
+T26|x|builtin map: typography defaults|V26,`src/charset:V22`
 T29|x|family lines: parse, tree validation, fallback path|V27
 T30|x|class lines: parse, family-labelled members, resolution along fallback path|V28,V27
 T33|.|vendor Unicode emoji data; sequence map generator; longest-match scan|V31,`src/charset:V22`
