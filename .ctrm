@@ -6,10 +6,23 @@
 # should not have to know that to read this file.
 * ascii
 
-# The specs, their archives and the README: prose that DOCUMENTS character
-# sets, so it holds the characters it documents. `spec` is declared in
-# `.ctrm-sets` beside this file.
+# The specs and their archives: prose that DOCUMENTS character sets, so it
+# holds the characters it documents. `spec` is declared in `.ctrm-sets`
+# beside this file.
 *.md ascii+spec
+
+# The prose a READER meets first is held to the strict default, narrower
+# than the specs beside it. Nothing in a README or a notices file needs a
+# character outside ASCII, and a tool arguing for plain text whose own
+# front page is full of curly quotes is arguing against itself.
+#
+# These lines sit AFTER the one above and so override it (V2, last match
+# wins) -- which is the per-file-beats-per-type case, dogfooded here
+# rather than only tested.
+README.md ascii
+AGENTS.md ascii
+LICENSE ascii
+docs/**/*.md ascii
 
 # The token ceilings, which cite spec sections by the section sign.
 .context-limits ascii+caveman
