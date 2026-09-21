@@ -18,7 +18,16 @@
 
 # The root: goal, constraints, the command surface, the repo gate. Loaded on
 # EVERY chain, so it is the one number that is paid ten times over.
-SPEC.md              2000
+#
+# RAISED 2000 -> 2280, reviewed. Four things landed at the root since this
+# number was set: V44 and T48 (flake inputs pin tags, and the step that
+# checks it), and V46 and T51 (the coverage floor and ceiling, and theirs).
+# Both are rules WITH runners, which is the pairing this repo requires and
+# the reason the root is the file they live in. Compaction ran first: `mth
+# archive` folded two finished rows out, worth 45 tokens against the 59
+# needed; what is left in §T is open work plus the id-keeping stubs that
+# archiving leaves behind. 2280 is ~12% over the new measured 2037.
+SPEC.md              2280
 
 # The hub. It owns no logic and should stay this small; if it grows, the
 # growth belongs in a node.
