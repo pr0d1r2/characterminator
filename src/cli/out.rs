@@ -15,7 +15,12 @@ use std::io::{ErrorKind, Write};
 /// changes nothing about whether the tree was clean, so a `set -o pipefail`
 /// caller still learns the answer.
 pub(super) fn shown(text: &str, verdict: Outcome) -> Outcome {
-    match written(&mut std::io::stdout().lock(), text) {
+    shown_to(&mut std::io::stdout().lock(), text, verdict)
+}
+
+/// `shown`, to any writer, which is what lets a test reach the verdict.
+fn shown_to(out: &mut impl Write, text: &str, verdict: Outcome) -> Outcome {
+    match written(out, text) {
         Ok(()) => verdict,
         Err(message) => {
             eprintln!("ctrm: {message}");
@@ -38,7 +43,7 @@ fn written(out: &mut impl Write, text: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::written;
+    use super::{Outcome, shown_to, written};
     use std::io::{Error, ErrorKind, Write};
 
     /// A writer that fails every write with one kind of error.
@@ -72,5 +77,21 @@ mod tests {
         let mut out = Failing(ErrorKind::StorageFull);
         let said = written(&mut out, "x").err().unwrap_or_default();
         assert!(said.starts_with("stdout: "), "{said}");
+    }
+
+    /// V47's verdict half: the reader leaving says nothing about the tree,
+    /// so a violation found is still a violation reported by exit code.
+    #[test]
+    fn a_closed_pipe_keeps_the_verdict() {
+        let mut out = Failing(ErrorKind::BrokenPipe);
+        let kept = shown_to(&mut out, "x", Outcome::Violation);
+        assert_eq!(kept, Outcome::Violation);
+    }
+
+    /// Lost output is not a verdict at all: exit 2, whatever was found.
+    #[test]
+    fn lost_output_is_a_usage_exit() {
+        let mut out = Failing(ErrorKind::StorageFull);
+        assert_eq!(shown_to(&mut out, "x", Outcome::Ok), Outcome::Usage);
     }
 }
