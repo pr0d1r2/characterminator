@@ -7,6 +7,7 @@
 mod check;
 mod explain;
 mod fix;
+mod out;
 mod stats;
 
 use crate::render::Format;
@@ -132,10 +133,7 @@ fn checked(args: &[String]) -> Outcome {
 /// A usage error is still a usage error.
 fn said(answer: Result<String, String>) -> Outcome {
     match answer {
-        Ok(text) => {
-            println!("{text}");
-            Outcome::Ok
-        }
+        Ok(text) => out::shown(&text, Outcome::Ok),
         Err(message) => {
             eprintln!("ctrm: {message}");
             Outcome::Usage
@@ -168,14 +166,7 @@ fn fixed(args: &[String]) -> Outcome {
 }
 
 fn fix_report_of(report: &fix::Report) -> Outcome {
-    if !report.text.is_empty() {
-        println!("{}", report.text);
-    }
-    if report.code == 0 {
-        Outcome::Ok
-    } else {
-        Outcome::Violation
-    }
+    reported(&report.text, report.code)
 }
 
 /// `--bpe` asks for the real tokenizer. The default is the estimate,
@@ -186,19 +177,30 @@ fn counted(args: &[String]) -> Outcome {
 }
 
 fn report_of(report: &check::Report) -> Outcome {
-    if !report.text.is_empty() {
-        println!("{}", report.text);
-    }
-    if report.code == 0 {
+    reported(&report.text, report.code)
+}
+
+/// A gating verb's report and verdict. Success is silence, so a clean run
+/// writes nothing at all rather than an empty line.
+fn reported(text: &str, code: u8) -> Outcome {
+    let verdict = if code == 0 {
         Outcome::Ok
     } else {
         Outcome::Violation
+    };
+    if text.is_empty() {
+        return verdict;
     }
+    out::shown(text, verdict)
 }
 
 fn version() -> ExitCode {
-    println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-    ExitCode::SUCCESS
+    let name = env!("CARGO_PKG_NAME");
+    out::shown(
+        &format!("{name} {}", env!("CARGO_PKG_VERSION")),
+        Outcome::Ok,
+    )
+    .code()
 }
 
 /// Exit 2 names the surface rather than pretending to offer it.
