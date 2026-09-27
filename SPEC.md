@@ -44,6 +44,13 @@ self|.|-
 - lib: `characterminator::{scan, fix, resolve}` — pure fn over `&str`.
 - exit: 0 ok · 1 violation | drift · 2 usage.
 
+## §R RESEARCH
+
+id|topic|finding|src
+R7|wave 1 corpus|12 sibling Rust repos: public `itok` `microlith` `pklith` `sherd` `xenolith` + 7 private. `rekall` ⊥ scanned ∵ B4. 1,484 tracked files, 561 non-ASCII, 17,271 chars outside `ascii`, 85% in `.md`. top: `⊥` 3660, `§` 3374, U+2014 2439, `→` 1717, `∴` 1703, `·` 1460|scan 2026-09-27, `ctrm` @`61b40d2`, private repos anonymous
+R8|builtin map saving|`fix` over whole corpus: 3,589,988 → 3,589,906 tok (o200k) = 82 saved, 0.002%; 1 private repo +1. per char in prose: U+2014 U+2013 U+2026 U+2212 U+201C U+201D → 0 saved; U+2019 1; NBSP 1; ZWSP 2 ∴ typography rewrite buys ⊥ tokens, only apostrophe & invisibles do|same scan + 200-line probe per char
+R9|caveman cost|o200k per use: `⊥` 3 tok vs `not` 1; `∴` `∀` `∵` 2 vs `so` `all` `because` 1; `→` `§` `·` 1 = parity. 148 `SPEC*.md` (corpus + this repo): `⊥∴∀∵` → words = 391,852 → 381,007 tok (-10,845, -2.8%) ≈ 130× whole map|same scan. o200k only; Claude tokenizer ⊥ measured
+
 ## §V INVARIANTS
 
 V13: dogfood: `ctrm check` gates own tree in `hk.pkl`; `.ctrm` grants `SPEC.md` `ascii+caveman`, rest `ascii`.
@@ -67,12 +74,12 @@ T13|x|ARCHIVED to SPEC-ARCHIVE.md|V13
 T14|.|`sherd check` + `sherd budget` + `sherd sync --check` in `hk.pkl`|V16
 T16|x|ARCHIVED to SPEC-ARCHIVE.md|-
 T17|~|release: `release.toml` (`cargo-release`) + crates.io publish, ∵ T13 & T16 land|-
-T27|.|dogfood wave 1: `check` + `stats` over sibling Rust repos (`src/charset:R1`); record anonymized savings in §R; fixes land via each repo's own review|`src/tokens:V10`,`src/cli:V7`
+T27|x|ARCHIVED to SPEC-ARCHIVE.md|`src/tokens:V10`,`src/cli:V7`
 T28|.|dogfood wave 2: extend to rest of fleet (`src/charset:R4`) once wave 1 confirms presets|`src/charset:V23`
 T40|x|ARCHIVED to SPEC-ARCHIVE.md|`src:V38`,`src:V39`
-T45|x|gate runs UNATTENDED: CI workflow + hooks REFUSE ⊥ skip|V14,V16
+T45|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
 T48|.|gate step: ∀ flake input URL carries a TAG|V44
-T51|x|coverage: `cargo llvm-cov` in dev shell & gate, `.coverage` claim, floor|V46
+T51|x|ARCHIVED to SPEC-ARCHIVE.md|V46
 
 ## §B BUGS
 
