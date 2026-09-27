@@ -61,9 +61,9 @@ T1|x|ARCHIVED to SPEC-ARCHIVE.md|-
 T2|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V15,V16
 T3|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
 T4|x|ARCHIVED to SPEC-ARCHIVE.md|V15,V14
-T13|x|dogfood: `.ctrm` for own tree, `check` step in `hk.pkl`. BLOCKED til T22/T23 ship sets|V13
+T13|x|ARCHIVED to SPEC-ARCHIVE.md|V13
 T14|.|`sherd check` + `sherd budget` + `sherd sync --check` in `hk.pkl`|V16
-T16|x|README, AGENTS.md, `docs/LLM-DISCLAIMER.md`, `docs/THIRD-PARTY-NOTICES.md` per fleet|-
+T16|x|ARCHIVED to SPEC-ARCHIVE.md|-
 T17|.|release: `release.toml` (`cargo-release`) + crates.io publish, ∵ T13 & T16 land|-
 T27|.|dogfood wave 1: `check` + `stats` over sibling Rust repos (`src/charset:R1`); record anonymized savings in §R; fixes land via each repo's own review|`src/tokens:V10`,`src/cli:V7`
 T28|.|dogfood wave 2: extend to rest of fleet (`src/charset:R4`) once wave 1 confirms presets|`src/charset:V23`
