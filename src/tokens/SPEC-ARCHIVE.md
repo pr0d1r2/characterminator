@@ -10,3 +10,4 @@ correctly and uselessly. The verb that reads it is `mth tasks`.
 ## §T TASKS
 
 T41|x|`itok` facade: fileset, explicit paths, counts w/ method label|V9,V10
+T47|x|expand a named directory to its tracked files; empty dir = error naming it|V43,`src/cli:T44`

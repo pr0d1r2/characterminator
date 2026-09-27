@@ -52,7 +52,19 @@ fn tracked(root: &Path) -> Vec<PathBuf> {
     itok::walk::tracked(root)
         .iter()
         .map(|f| root.join(f))
+        .filter(|full| !is_link(full))
         .collect()
+}
+
+/// A tracked SYMLINK is left out of the set (V48). Git stores the link's
+/// TEXT, not what it points at, so reading through one scans something
+/// else: a directory aborted the whole run (B4), and a file is counted a
+/// second time, or from outside the repository altogether.
+///
+/// Only the tracked set is filtered. A link named on the command line is
+/// followed, because a path you point at is a path you meant (V9).
+fn is_link(full: &Path) -> bool {
+    std::fs::symlink_metadata(full).is_ok_and(|m| m.file_type().is_symlink())
 }
 
 /// What one named path contributes: itself, or the tracked files under
@@ -164,6 +176,39 @@ mod tests {
         let err = select(root, &["target".to_owned()]).err();
         let reason = err.map(|e| e.reason).unwrap_or_default();
         assert!(reason.contains("no git-tracked file"), "{reason}");
+    }
+
+    /// B4: a link to a directory is what aborted a whole run, and a link
+    /// to a file is what would count one file twice. Both are links; the
+    /// file and the directory they point at are not.
+    #[cfg(unix)]
+    #[test]
+    fn a_symlink_is_told_apart_from_what_it_points_at() {
+        let Some(root) = links() else {
+            return;
+        };
+        assert!(is_link(&root.join("to-dir")));
+        assert!(is_link(&root.join("to-file")));
+        assert!(!is_link(&root.join("real.md")));
+        assert!(!is_link(&root.join("dir")));
+        assert!(!is_link(&root.join("absent")));
+    }
+
+    /// A file, a directory, and a link to each. `None` if the disk refuses,
+    /// for the reason `untracked` gives.
+    #[cfg(unix)]
+    fn links() -> Option<PathBuf> {
+        use std::os::unix::fs::symlink;
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("ctrm-symlink-fixture");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("dir"))
+            .and_then(|()| std::fs::write(root.join("real.md"), "x"))
+            .and_then(|()| symlink("dir", root.join("to-dir")))
+            .and_then(|()| symlink("real.md", root.join("to-file")))
+            .ok()?;
+        Some(root)
     }
 
     /// A file named twice, once by itself and once inside a directory, is

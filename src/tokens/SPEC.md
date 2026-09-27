@@ -29,8 +29,15 @@ V10: token figure self-describes unit & method, per `itok`: `~` = bytes/4 estima
 
 V43: named DIRECTORY → expands to the tracked files under it (prefix over V9 fileset), ⊥ refused. 0 tracked file under it → error naming the dir, exit 2. `ctrm check src/` = what a reader types ∴ refusing that spelling teaches ⊥.
 
+V48: tracked SYMLINK ⊥ in V9 fileset nor V43 expansion ∵ git stores link TEXT ⊥ target: reading through scans a dir (abort), or a file twice or outside repo. link NAMED on command line followed (V9).
+
 ## §T TASKS
 
 id|status|task|cites
 T41|x|ARCHIVED to SPEC-ARCHIVE.md|V9,V10
-T47|x|expand a named directory to its tracked files; empty dir = error naming it|V43,`src/cli:T44`
+T47|x|ARCHIVED to SPEC-ARCHIVE.md|V43,`src/cli:T44`
+
+## §B BUGS
+
+id|date|cause|fix
+B4|2026-09-27|V9 fileset took `itok::walk::tracked` as-is, symlinks incl. ∴ tracked link to a dir → `Is a directory`, exit 2, WHOLE run aborted (`.:R7`)|V48
