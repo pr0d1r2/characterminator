@@ -167,6 +167,10 @@
             # package below, because they are not in nixpkgs' rustc.
             pkgs.cargo-llvm-cov
             (coverageLlvm pkgs)
+            # The release runner (T17). `release.toml` configures it; the
+            # order of the tail is written there, and the gate is its
+            # pre-release hook rather than a step somebody remembers.
+            pkgs.cargo-release
           ];
           # Pin locale so tool output is deterministic across machines.
           LANG = "C.UTF-8";

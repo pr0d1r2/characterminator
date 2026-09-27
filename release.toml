@@ -1,0 +1,56 @@
+# The release, configured rather than scripted (T17).
+#
+# The runner is `cargo-release`, the fleet's one release tool (itok, sherd,
+# microlith, rekall, xenolith). It already does the whole list -- clean
+# tree, allowed branch, tag scheme, dry-run first, verify, publish, push --
+# and a shell script re-implementing that would be a second implementation
+# of one rule set that nothing keeps in step with the first.
+#
+# HOW IT IS RUN. Dry-run is `cargo-release`'s DEFAULT, and it reports every
+# problem in one pass rather than the first one it hits.
+#
+# THE BUMP DOES NOT HAPPEN HERE. cargo-release's default flow bumps the
+# version, COMMITS it, and pushes that commit to the release branch, and
+# `main` refuses direct commits (a hook here, branch protection on the
+# server). So the version is bumped in a pull request like any other change:
+#
+#     cargo release version minor --execute   # edits Cargo.toml, no commit
+#
+# and only the TAIL runs from `main` once that merges:
+#
+#     cargo release hook                  # the gate; dry-run is enough
+#     cargo release tag --execute
+#     cargo release publish --execute
+#     cargo release push --execute
+#
+# `hook` IS FIRST ON PURPOSE. `tag`, `publish` and `push` do NOT run
+# `pre-release-hook` -- only the full flow does, and `cargo release hook` on
+# its own. A sequence starting at `tag` publishes whatever the tree happens
+# to hold. Running it dry is enough: the hook executes, and a non-zero
+# return aborts.
+
+# The branch a release may happen from. The `.crate` records the commit it
+# was built from (`.cargo_vcs_info.json`), and a squash merge orphans a PR
+# branch's sha -- so publishing off one leaves the artifact naming a commit
+# that is on no branch. `main` is also the only branch whose tree CI gated.
+allow-branch = ["main"]
+
+# THE GATE, called rather than re-checked. A non-zero return ABORTS the
+# release, which makes the gate a precondition of publishing rather than
+# something the releaser is trusted to have run.
+#
+# `--check` because the fix commands would rewrite a tree cargo-release has
+# just asserted is clean. `--no-fail-fast` because a release is the one
+# moment where a complete list beats an early one.
+pre-release-hook = ["hk", "check", "--all", "--check", "--no-fail-fast"]
+
+# `v<x.y.z>`, the fleet's tag shape, so a later step that diffs the public
+# API against the last `v*` tag finds its baseline.
+tag-name = "v{{version}}"
+
+# `verify` builds the packaged tarball before upload. It is the default; it
+# is written down because it catches a `.crate` that cannot compile from what
+# it actually ships, and a default nobody wrote down is a default somebody
+# eventually turns off.
+publish = true
+verify = true
