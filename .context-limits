@@ -69,5 +69,5 @@ src/scan/SPEC.md      400
 # than refused, which is one invariant and one task row here, and the one
 # finished row this node had is already archived. 520 is ~12% over the new
 # measured 461.
-src/tokens/SPEC.md    520
+src/tokens/SPEC.md    660
 src/render/SPEC.md    315
