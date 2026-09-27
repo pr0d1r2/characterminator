@@ -1,0 +1,80 @@
+name: ci
+
+# The gate, run exactly the way it runs locally (T45): `nix develop`
+# supplies the toolchain flake.lock pins, and `hk check` runs the ops
+# hk.pkl defines. One definition, one toolchain, no second install path --
+# which is why this file installs no linter of its own.
+#
+# Same shape as the siblings' ci.yml, deliberately: a reader who knows one
+# knows this one.
+#
+# NO MSRV AXIS. `rust-version = "1.95"` in Cargo.toml is the rustc
+# flake.lock pins, so an MSRV job would rebuild the identical toolchain and
+# report the identical answer -- a green check that cannot fail. It becomes
+# real the day the declared minimum drops below the pin.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Re-run the gate without inventing a commit.
+  workflow_dispatch:
+
+# A second push to the same ref makes the first run's answer worthless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Nothing here writes to the repository, so read is the whole requirement.
+# Stating it means a future step that needs more has to ask in the diff.
+permissions:
+  contents: read
+
+jobs:
+  # One runner per `systems` entry in flake.nix, so the platform claim is
+  # gated rather than asserted:
+  #
+  #   ubuntu-latest     x86_64-linux
+  #   ubuntu-24.04-arm  aarch64-linux
+  #   macos-latest      aarch64-darwin
+  gate:
+    name: gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    # A BOUND, not hygiene: GitHub serves no log for a running job and
+    # defaults to 360 minutes, so an unbounded hang is six hours of silence.
+    # 30 is a GUESS -- nothing here has been timed on a runner yet, and the
+    # coverage step adds an instrumented build on top of the plain one.
+    # Tighten it to ~2x the worst measured job after the first green run.
+    timeout-minutes: 30
+    strategy:
+      # Every platform reports: whether a failure is platform-specific is
+      # the first question anyone asks, and the one a matrix exists to
+      # answer.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # `.coverage`'s key is a hash over `git ls-files`, and hk reads
+          # the index; a shallow clone is enough for neither to care, but
+          # full history keeps any future history-reading step honest.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
+      # The fleet's binary cache: `hk`, `mth`, `itok` and `sherd` are Rust
+      # crates built from source without it. PUSH only from main -- a pull
+      # request from a fork gets no secrets, and cachix-action skips the
+      # push rather than failing when the token is empty, so the cache stays
+      # a speedup and never a gate.
+      - uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
+        with:
+          name: pr0d1r2
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          skipPush:
+            ${{ github.ref != 'refs/heads/main' || github.event_name ==
+            'pull_request' }}
+      # `--check` never rewrites: CI reports drift, a human fixes it.
+      # `--no-fail-fast` so one red step does not hide the others.
+      - run: nix develop --command hk check --all --check --no-fail-fast
+      - run: nix flake check
