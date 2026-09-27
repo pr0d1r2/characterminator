@@ -54,6 +54,8 @@ V40: dev shell installs a hook ONLY into its OWN repo (crate-name marker @ workt
 
 V44: ∀ flake input pins a TAG, bumped in its OWN reviewed commit. FOLLOWING a branch REJECTED ∵ what the gate enforces ? then change w/ ⊥ diff to read, & a gate whose rules move unreviewed gates ⊥. `nixpkgs-lock` & `nix-hk` = the fleet authorities, pinned by their own lock ∴ exempt.
 
+V46: line coverage GATED, ⊥ reported. FLOOR = hard min; `.coverage` = CEILING, the figure the badge CLAIMS. measured < floor → FAIL. measured < claim → FAIL ∵ badge OVERSTATES. measured − claim > 0.5 → FAIL ∵ badge stale. `cargo llvm-cov` needs llvm tools matching `rustc`s LLVM ∴ gate asserts the majors agree: a mismatch reads as a crash, ⊥ as a pin.
+
 ## §T TASKS
 
 id|status|task|cites
@@ -70,6 +72,7 @@ T28|.|dogfood wave 2: extend to rest of fleet (`src/charset:R4`) once wave 1 con
 T40|x|ARCHIVED to SPEC-ARCHIVE.md|`src:V38`,`src:V39`
 T45|.|gate runs UNATTENDED: CI workflow + hooks REFUSE ⊥ skip|V14,V16
 T48|.|gate step: ∀ flake input URL carries a TAG|V44
+T51|x|coverage: `cargo llvm-cov` in dev shell & gate, `.coverage` claim, floor|V46
 
 ## §B BUGS
 

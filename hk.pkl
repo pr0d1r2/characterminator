@@ -121,6 +121,77 @@ local fast = new Mapping<String, Step> {
     depends = List("sherd-check")
     check = "sherd sync --check || { echo 'hk: a NAV section is stale against the FEDERATION section above it. Run `sherd sync`, then `git add` the result.' >&2; exit 1; }"
   }
+  // THE BADGE READS THE CLAIM (V46). The coverage figure in README.md is
+  // copied from `.coverage`, never typed, so a badge cannot say one number
+  // while the file the gate keeps honest says another.
+  //
+  // It lives in the FAST set because it only compares two files already on
+  // disk: a hand edit to either is caught at pre-commit, long before the
+  // instrumented build in pre-push would notice.
+  //
+  // Colour is fixed at brightgreen: the floor in the `coverage` step already
+  // refuses anything low enough to deserve another.
+  ["coverage-badge"] {
+    glob = List("README.md", ".coverage")
+    check = """
+      claim=$(awk '/^lines /{printf "%.1f", $2}' .coverage)
+      want="[![coverage $claim%](https://img.shields.io/badge/coverage-$claim%25-brightgreen)](.coverage)"
+      grep -qxF "$want" README.md || { echo "hk: .coverage claims $claim% but README.md has no badge saying so. Run 'hk run fix' -- the badge is copied from .coverage, never typed." >&2; exit 1; }
+      """
+    fix = """
+      claim=$(awk '/^lines /{printf "%.1f", $2}' .coverage)
+      mkdir -p target
+      awk -v c="$claim" 'index($0, "[![coverage ") == 1 {print "[![coverage " c "%](https://img.shields.io/badge/coverage-" c "%25-brightgreen)](.coverage)"; next} {print}' README.md > target/README.new
+      mv target/README.new README.md
+      """
+  }
+}
+
+/// The full set adds line coverage (V46), which pre-commit does not run.
+///
+/// It costs an instrumented build, and the point of pre-commit is that it
+/// is cheap enough that nobody reaches for `--no-verify`. Pre-push and CI
+/// are where a slower truth belongs.
+local all = (fast) {
+  ["coverage"] {
+    glob = List("src/**", ".coverage")
+    depends = List("test")
+    check = """
+      command -v cargo-llvm-cov >/dev/null 2>&1 || { echo 'hk: cargo-llvm-cov is not on PATH, so coverage was NOT measured -- re-enter the dev shell. Examined nothing; this is not a pass.' >&2; exit 1; }
+      rustc_llvm=$(rustc -vV | awk '/^LLVM version:/{split($3,a,"."); print a[1]}')
+      tool_llvm=$(llvm-profdata --version | awk '/LLVM version/{split($3,a,"."); print a[1]}')
+      if test "$rustc_llvm" != "$tool_llvm"; then
+        echo "hk: rustc was built against LLVM $rustc_llvm but llvm-profdata is $tool_llvm. Coverage data would fail to parse and it would read as a broken test. Update coverageLlvm in flake.nix to match (V46)." >&2
+        exit 1
+      fi
+      mkdir -p target
+      cargo llvm-cov --summary-only --fail-under-lines 93 > target/coverage.txt || { cat target/coverage.txt >&2; echo 'hk: below the coverage FLOOR. Cover the gap; lowering the floor is a reviewed decision and belongs in its own commit.' >&2; exit 1; }
+      cat target/coverage.txt
+      measured=$(awk '/^TOTAL/{gsub("%","",$10); printf "%.1f", int($10*10)/10}' target/coverage.txt)
+      claim=$(awk '/^lines /{printf "%.1f", $2}' .coverage)
+      if awk -v m="$measured" -v c="$claim" 'BEGIN{exit !(m+0 < c+0)}'; then
+        echo "hk: .coverage claims $claim% and this machine measures $measured%, so the README badge OVERSTATES coverage. Run 'hk run fix', then stage .coverage and the README." >&2
+        exit 1
+      fi
+      if awk -v m="$measured" -v c="$claim" 'BEGIN{exit !(m+0 - c+0 > 0.5)}'; then
+        echo "hk: .coverage claims $claim% and this machine measures $measured%, more than half a point above it. The badge is not wrong, only stale -- run 'hk run fix' to take the credit." >&2
+        exit 1
+      fi
+      """
+    fix = """
+      mkdir -p target
+      cargo llvm-cov --summary-only --fail-under-lines 93 > target/coverage.txt || { cat target/coverage.txt >&2; exit 1; }
+      measured=$(awk '/^TOTAL/{gsub("%","",$10); printf "%.1f", int($10*10)/10}' target/coverage.txt)
+      key=$(git ls-files -s -- src | git hash-object --stdin)
+      awk -v k="$key" -v m="$measured" '/^key /{print "key " k; next} /^lines /{print "lines " m; next} {print}' .coverage > target/coverage.new
+      mv target/coverage.new .coverage
+      """
+  }
+  // Measured first, so in fix mode the badge is rewritten from the figure
+  // this run just wrote rather than from the one it replaced.
+  ["coverage-badge"] {
+    depends = List("coverage")
+  }
 }
 
 /// The pre-commit set adds the branch guard. Never commit to main: the
@@ -147,14 +218,14 @@ hooks {
     steps = precommit
   }
   ["pre-push"] {
-    steps = fast
+    steps = all
   }
   /// What `hk check` runs -- the CI entry point.
   ["check"] {
-    steps = fast
+    steps = all
   }
   ["fix"] {
     fix = true
-    steps = fast
+    steps = all
   }
 }

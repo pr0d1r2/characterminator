@@ -1,0 +1,32 @@
+# The line coverage this repository CLAIMS, written by hk's `coverage` step
+# in fix mode (`hk run fix`) and read by the README badge.
+#
+# WHY A FILE AND NOT A MEASUREMENT: a badge has to be regenerated whenever
+# the README is, and measuring costs a full instrumented test run. This is
+# the cached answer, and the gate's job is to keep it honest rather than to
+# trust it.
+#
+# V46 calls this the CEILING, and the name is exact: it is what the badge
+# claims, and the gate refuses a measurement BELOW it -- a badge that
+# overstates is worse than no badge. It also refuses a measurement more than
+# half a point ABOVE it, because a claim that far behind the truth is stale
+# rather than wrong, and stale claims are how a number nobody trusts gets
+# into a README. The FLOOR is separate and lives in `hk.pkl`: a hard minimum
+# that failing is a test-coverage problem, not a bookkeeping one.
+#
+# key is a git SHA over everything under `src/`, which is every file that can
+# move the number -- the Rust sources, and the two data files compiled into
+# them with `include_str!`:
+#
+#   git ls-files -s -- src | git hash-object --stdin
+#
+# README.md is deliberately NOT in the key. It is regenerated FROM this file,
+# so including it would make every badge update invalidate the cache that
+# produced the badge -- a loop with no fixed point.
+#
+# ONE DECIMAL, TRUNCATED rather than rounded. Coverage is platform-dependent,
+# so a second decimal is a digit no single machine can reproduce; truncating
+# keeps two machines that measure 93.98 and 93.94 on the same side of the
+# claim, where rounding would not.
+key e98a89437a55ec36253f808e5066e3b5b8ee7cdf
+lines 93.9

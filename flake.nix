@@ -86,6 +86,19 @@
           exec hk run ${name} "$@"
         '';
 
+      # The llvm that READS coverage data, pinned to the major `rustc` was
+      # built against (21, as `rustc -vV` reports). Named once here because
+      # it is referenced three times below: as a package, and as the two
+      # environment variables `cargo llvm-cov` reads.
+      #
+      # A BARE `pkgs.llvmPackages.llvm` WOULD BE WRONG. That is nixpkgs'
+      # default llvm, which tracks its own schedule and is not promised to
+      # be the one inside `pkgs.rustc`. When those differ the failure is a
+      # `.profraw` version error in the middle of a coverage run, which
+      # reads as a broken test rather than as a pin to update -- so the
+      # gate compares the two majors and says which it is (V46).
+      coverageLlvm = pkgs: pkgs.llvmPackages_21.llvm;
+
       # The reproducible build. Possible because the flake sits at the root
       # and `Cargo.lock` is tracked: flakes copy git-tracked files into the
       # store and the build sandbox has no network, so the lock is what lets
@@ -143,9 +156,25 @@
             # `nixfmt --check` gates this very file: the flake decides what
             # every other step runs with, so drift here is drift everywhere.
             pkgs.nixfmt
+            # Line coverage (V46). `cargo llvm-cov` drives the instrumented
+            # build; the llvm tools that READ what it produces come from the
+            # package below, because they are not in nixpkgs' rustc.
+            pkgs.cargo-llvm-cov
+            (coverageLlvm pkgs)
           ];
           # Pin locale so tool output is deterministic across machines.
           LANG = "C.UTF-8";
+          # WHERE `cargo llvm-cov` LOOKS. Without these it searches for a
+          # rustup `llvm-tools-preview` component that a nix toolchain does
+          # not have, and fails with a message about installing rustup.
+          #
+          # The version has to MATCH the LLVM rustc was built against: a
+          # `.profraw` carries a format version, and an older `llvm-profdata`
+          # rejects a newer one. The gate asserts the two majors agree
+          # (V46) rather than trusting this line to stay true through a
+          # `nixpkgs-lock` bump.
+          LLVM_COV = "${coverageLlvm pkgs}/bin/llvm-cov";
+          LLVM_PROFDATA = "${coverageLlvm pkgs}/bin/llvm-profdata";
           # Entering installs the git hooks, unconditionally rewriting them,
           # so the hook a contributor has is always the one this file
           # describes.
