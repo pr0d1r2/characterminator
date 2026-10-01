@@ -28,5 +28,5 @@
 # so a second decimal is a digit no single machine can reproduce; truncating
 # keeps two machines that measure 93.98 and 93.94 on the same side of the
 # claim, where rounding would not.
-key e98a89437a55ec36253f808e5066e3b5b8ee7cdf
-lines 93.9
+key 89d4b1733a465618f1b6619bd09b0b393e0dd589
+lines 95.8
