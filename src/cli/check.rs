@@ -83,8 +83,15 @@ impl Judge<'_> {
     /// lint speaks is the level's question, asked once in `loudest`.
     fn passes(&self, character: char) -> bool {
         self.set.contains(character)
-            && !self.hazards.contains(character)
+            && !self.hazard(character)
             && unicode_space(character).is_none()
+    }
+
+    /// Whether a character is a hazard IN THIS FILE: a joiner the file's
+    /// own script preset grants is spelling, not a hazard (`src/lint:V57`).
+    fn hazard(&self, character: char) -> bool {
+        self.hazards.contains(character)
+            && !self.hazards.excuses(&self.set.name, character)
     }
 
     /// The lints one hit could fire, the strongest claim first: a hazard,
@@ -92,7 +99,8 @@ impl Judge<'_> {
     /// is the byte order mark at byte 0 in a file whose set grants it: no
     /// hazard (V34), and not outside the set either.
     fn lints_for(&self, hit: Hit) -> Vec<Lint> {
-        let hazard = self.hazards.lint_for(hit);
+        let excused = self.hazards.excuses(&self.set.name, hit.character);
+        let hazard = self.hazards.lint_for(hit).filter(|_| !excused);
         let outside =
             (!self.set.contains(hit.character)).then_some(self.outside);
         let space = unicode_space(hit.character);
@@ -815,6 +823,34 @@ mod tests {
 
     /// The human report for `files` under `ctrm`, with every file that is
     /// not a dotfile named on the command line.
+    /// `src/lint:V57`: a Persian word spelled with ZWNJ (mi-khaham, "I
+    /// want") is clean where the rule names `persian`, and the same bytes
+    /// under `any` still fire -- granting everything excuses nothing.
+    #[test]
+    fn a_script_preset_excuses_its_own_joiner_and_any_does_not() {
+        let word = "\u{0645}\u{06CC}\u{200C}\u{062E}\u{0648}\u{0627}\u{0647}\u{0645}\n";
+        let files = [("fa.md", word)];
+        let fa = report("ctrm-joiner-fa", "* ascii+persian\n", &files);
+        assert_eq!(fa, "");
+        let any = report("ctrm-joiner-any", "* any\n", &files);
+        assert!(any.contains("U+200C"), "{any}");
+    }
+
+    /// The excuse is the joiner the preset grants and nothing else: a bidi
+    /// control in a Persian file still fires, and `persian` does not
+    /// excuse the ZERO WIDTH JOINER that `hindi` does.
+    #[test]
+    fn a_script_preset_excuses_nothing_but_its_joiners() {
+        let bidi = [("fa.md", "\u{0645}\u{202E}\u{0645}\n")];
+        let fired = report("ctrm-joiner-bidi", "* ascii+persian\n", &bidi);
+        assert!(fired.contains("U+202E"), "{fired}");
+        let conjunct = [("hi.md", "\u{0915}\u{094D}\u{200D}\u{0937}\n")];
+        let hi = report("ctrm-joiner-hi", "* ascii+hindi\n", &conjunct);
+        assert_eq!(hi, "");
+        let fa = report("ctrm-joiner-zwj", "* ascii+persian\n", &conjunct);
+        assert!(fa.contains("U+200D"), "{fa}");
+    }
+
     fn report(name: &str, ctrm: &str, files: &[(&str, &str)]) -> String {
         let mut tree = vec![(".ctrm", ctrm)];
         tree.extend_from_slice(files);

@@ -220,7 +220,7 @@ mod tests {
     /// Written out rather than read back from the catalog: a test that
     /// asked the data file what it declares would pass just as happily
     /// after a preset was deleted from it.
-    const DECLARED: [&str; 14] = [
+    const DECLARED: [&str; 16] = [
         "any",
         "arabic",
         "box",
@@ -230,11 +230,13 @@ mod tests {
         "emoji",
         "greek",
         "hazard",
+        "hindi",
         "latin-ext",
         "latin1",
         "legal",
         "marks",
         "math",
+        "persian",
         // `typography` is tested by name below rather than listed here:
         // the array length is the count this file promises, and a preset
         // added without a test is what that count is for.

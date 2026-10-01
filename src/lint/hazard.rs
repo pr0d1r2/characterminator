@@ -46,6 +46,8 @@ const FAMILY: &str = "text";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Hazards {
     classes: Vec<(Lint, CharSet)>,
+    /// Each compiled-in preset that excuses joiners, and which (V57).
+    excusing: Vec<Excuse>,
 }
 
 impl Hazards {
@@ -70,7 +72,20 @@ impl Hazards {
                 Ok((lint, set.map_err(|e| e.to_string())?))
             })
             .collect::<Result<Vec<_>, String>>()?;
-        Ok(Self { classes })
+        let excusing = excusing(&classes)?;
+        Ok(Self { classes, excusing })
+    }
+
+    /// Whether a file granted `granted` (a `+`-joined set name, as `check`
+    /// names a union) is excused `character` (V57). Only a joiner can be,
+    /// and only by a COMPILED-IN preset that grants it and no other hazard:
+    /// `persian` excuses ZWNJ, `any` excuses nothing.
+    pub fn excuses(&self, granted: &str, character: char) -> bool {
+        granted.split('+').any(|name| {
+            self.excusing.iter().any(|(set, joiners)| {
+                set == name && joiners.contains(&character)
+            })
+        })
     }
 
     /// Whether a character is in ANY class, wherever it sits.
@@ -96,6 +111,44 @@ impl Hazards {
     }
 }
 
+/// ZERO WIDTH NON-JOINER and ZERO WIDTH JOINER: the only hazards a grant
+/// may excuse (V57). Persian needs ZWNJ inside words and Devanagari needs
+/// both, so in those scripts they are SPELLING; a bidi control, a tag
+/// character or a C0 control is never anybody's spelling.
+const JOINERS: [char; 2] = ['\u{200C}', '\u{200D}'];
+
+/// A preset name and the joiners it excuses.
+type Excuse = (String, Vec<char>);
+
+/// The compiled-in presets that grant a joiner and NO other hazard, with
+/// the joiners each grants. Read from the builtin catalog, never the
+/// run's: a `.ctrm-sets` redeclaring `persian` cannot widen this.
+fn excusing(classes: &[(Lint, CharSet)]) -> Result<Vec<Excuse>, String> {
+    let catalog = builtin::catalog().map_err(|e| e.to_string())?;
+    let mut found = Vec::new();
+    for name in catalog.names() {
+        let set = catalog.resolve(name, FAMILY).map_err(|e| e.to_string())?;
+        let joiners: Vec<char> =
+            JOINERS.into_iter().filter(|j| set.contains(*j)).collect();
+        if !joiners.is_empty() && !grants_other_hazard(&set, classes) {
+            found.push((name.to_owned(), joiners));
+        }
+    }
+    Ok(found)
+}
+
+/// Whether `set` grants any hazard that is not a joiner. `any` does, so
+/// granting everything never excuses anything.
+fn grants_other_hazard(set: &CharSet, classes: &[(Lint, CharSet)]) -> bool {
+    classes
+        .iter()
+        .flat_map(|(_, class)| &class.ranges)
+        .any(|range| {
+            (range.start..=range.end)
+                .any(|c| !JOINERS.contains(&c) && set.contains(c))
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::Hazards;
@@ -107,6 +160,7 @@ mod tests {
         assert!(built.is_ok(), "{built:?}");
         built.unwrap_or(Hazards {
             classes: Vec::new(),
+            excusing: Vec::new(),
         })
     }
 

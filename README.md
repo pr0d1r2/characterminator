@@ -258,6 +258,7 @@ plus **one** of these.
 | `emoji` | emoji as single code points |
 | `cr` | carriage return, alone |
 | `latin1`, `latin-ext`, `cyrillic`, `greek`, `arabic` | coarse blocks |
+| `persian`, `hindi` | a script whose spelling needs a zero width joiner: naming one is what lets that joiner through, and nothing else |
 | `any` | everything, for a file you do not own -- hazards still fire |
 | `hazard` | invisible and reordering characters: never granted, see below |
 
@@ -465,9 +466,6 @@ list goes stale and that one does not.
   emoji sequence compression, so until then every joiner is reported.
 - **Locale letter presets** from CLDR, and **emoji sequence compression**,
   both need data vendored first.
-- **Prose that needs ZWNJ or ZWJ outside emoji** (Persian, Hindi) has no
-  way through yet: a hazard fires at `forbid`, which no rule lowers, and a
-  scoped exemption has to be specified before one ships.
 - **Four pedantic lints need data**: `not-nfc`, `nfkc-compat`,
   `mixed-script` and `confusable` are registered and fire nothing until
   Unicode normalization and UTS #39 data are vendored; `locale-literal` is

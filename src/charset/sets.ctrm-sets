@@ -101,6 +101,15 @@ cyrillic U+0400-U+04FF
 greek U+0370-U+03FF
 arabic U+0600-U+06FF
 
+# SCRIPTS WHOSE SPELLING NEEDS A JOINER (`src/lint:V57`). Persian writes
+# ZERO WIDTH NON-JOINER inside words; Devanagari uses it and ZERO WIDTH
+# JOINER to choose conjunct forms. Both are hazards everywhere else, and
+# naming one of these presets is the explicit grant that says this file is
+# in that script. Nothing else is excused: `persian` leaves out U+061C,
+# ARABIC LETTER MARK, because a bidi control stays a hazard in any script.
+persian U+0600-U+061B U+061D-U+06FF U+200C
+hindi U+0900-U+097F U+200C-U+200D
+
 # Every code point there is, which is how a file opts OUT of being checked
 # while staying in the configuration rather than disappearing from it: a
 # path granted `any` still has a rule, an origin, and a line `explain` can
