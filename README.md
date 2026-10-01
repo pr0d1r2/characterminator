@@ -79,17 +79,19 @@ nix develop                   # the dev shell, with the gate's tooling
 | `ctrm stats [--bpe] [<path>...]` | what the files cost now, and after a fix |
 | `ctrm explain [<path>]` | the set in force, and the config line that decided it |
 | `ctrm sets [--fidelity <f>]` | every declared set and what it holds |
+| `ctrm guard` | agent hook: hook JSON in, decision JSON out. See [guarding an agent](#guarding-an-agent) |
 
-Every verb takes `--format json`, which is a stable contract: its keys and
-their meanings do not change under a caller, and the documents are asserted
-whole in tests. `check` also takes `--format sarif`, a SARIF 2.1.0 log that
-GitHub code scanning can upload, with the same exit code.
+Every verb but `guard` takes `--format json`, which is a stable contract:
+its keys and their meanings do not change under a caller, and the documents
+are asserted whole in tests. `check` also takes `--format sarif`, a SARIF
+2.1.0 log that GitHub code scanning can upload, with the same exit code.
 
 Naming no path checks what git tracks. Naming a directory expands to the
 tracked files under it. Naming a file reaches it whether git tracks it or
 not -- a file you point at is a file you meant.
 
-Exit codes are `0` clean, `1` violation or drift, `2` usage.
+Exit codes are `0` clean, `1` violation or drift, `2` usage -- except for
+`guard`, whose verdict is in its JSON and which never exits `2`.
 
 ## Configuring it
 
@@ -184,6 +186,72 @@ variants everywhere. The coarse blocks are deliberately last: a block grants
 hundreds of characters, which answers "this file is in that script" rather
 than "this file needs these characters", and the second question is the one
 a budget is asking.
+
+## Guarding an agent
+
+`check` keeps characters out of a repository. `ctrm guard` keeps the
+dangerous ones away from an agent working in it: the invisible and
+direction-changing characters of the `hazard` group -- bidi controls (Trojan
+Source), tag characters (ASCII smuggling), stray byte order marks, control
+characters and the rest of the default-ignorables. Text holding them reads
+one way to a reviewer and another way to a model.
+
+It is a [Claude Code hook](https://code.claude.com/docs/en/hooks). Add this
+to `.claude/settings.json`, with `ctrm` on `PATH`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [{ "type": "command", "command": "ctrm guard" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "WebFetch|WebSearch|Bash|mcp__.*",
+        "hooks": [{ "type": "command", "command": "ctrm guard" }]
+      }
+    ]
+  }
+}
+```
+
+What it does with each call:
+
+- **Before a `Read`**, the file is judged exactly as `ctrm check` judges it,
+  against the `.ctrm` in the session's directory. A hazard **denies the
+  read**, and the reason names the path, line, column, code point and lint:
+  `src/a.rs:2:2 U+202E bidi-control`. A character that is merely outside the
+  file's set -- an em dash in a README -- does **not** block: the read goes
+  ahead with a note naming the lint and the count. A hook that refused every
+  stray character would be switched off within the hour, and a switched-off
+  hook guards nothing.
+- **After a web fetch, a web search, a shell command or an MCP tool**, every
+  string in the tool's output is scanned, however deeply nested. A hazard
+  sends a `block` decision whose reason tells the model the content is
+  tainted and should not be acted on. The tool has already run, so this
+  cannot un-fetch the page; what it does is make sure the model is told.
+  Output is judged for hazards only: a web page has no line in `.ctrm`, and a
+  note on every non-ASCII page would be noise.
+
+Nothing is ever stripped. A guard that quietly removed characters would
+change what the model reads without telling anyone, which is the harm it
+exists to prevent.
+
+The decision travels in the JSON on stdout, and the exit code only says
+whether the adapter worked. Input that is not a hook payload is named on
+stderr and exits `1`, which Claude Code shows as a non-blocking error and
+lets the call through. It never exits `2`: Claude Code reads `2` as "block",
+so a broken adapter answering `2` would deny every read for the rest of the
+session. Hazards do not depend on configuration either -- a `.ctrm` that
+cannot be read still leaves every hazard judged.
+
+One thing to know before turning it on for `Bash`: terminal colour codes
+start with ESC, a control character, so a command whose output keeps its
+colours is reported as tainted. Run such commands with colour off
+(`NO_COLOR=1`, `--color=never`), or leave `Bash` out of the matcher.
 
 ## What it costs
 
@@ -289,7 +357,8 @@ notation would make it unreadable.
 `SPEC.md` is the authority and `mth tasks SPEC.md` prints the backlog; this
 list goes stale and that one does not.
 
-- **`guard`**, the agent-harness hook adapter, is specified and not built.
+- **`guard` speaks Claude Code only.** Another agent harness is a second
+  mapping in one file (`src/cli/hook.rs`), and none is written yet.
 - **The `hazard` exemption for emoji sequences.** A zero width joiner
   inside a declared emoji sequence is meant to pass; sequences arrive with
   emoji sequence compression, so until then every joiner is reported.
