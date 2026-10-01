@@ -27,7 +27,14 @@
 # archive` folded two finished rows out, worth 45 tokens against the 59
 # needed; what is left in §T is open work plus the id-keeping stubs that
 # archiving leaves behind. 2280 is ~12% over the new measured 2037.
-SPEC.md              2720
+#
+# 2720 -> 3250 before open-sourcing. Three topics landed root rows together:
+# the SARIF format on the flag line (`src/render:V50`), the adoption
+# surfaces (V52, T54), and R11, the measured words-map saving -- the one
+# research row that turns "what it costs" into a number. Compaction ran
+# first: `mth archive` folded T48 and T54, worth 21 tokens against ~180
+# needed. 3250 is ~12% over the measured 2901.
+SPEC.md              3250
 
 # The hub. It owns no logic and should stay this small; if it grows, the
 # growth belongs in a node.
