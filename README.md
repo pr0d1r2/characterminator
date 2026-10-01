@@ -140,6 +140,42 @@ pattern *.md
 origin .ctrm:2
 ```
 
+### Flags
+
+Every line of every dotfile has a flag twin that takes exactly one line of
+the same grammar, so a run can be configured from the command line alone.
+They work on every verb, repeat, and stack in a fixed order: the builtins,
+then the dotfiles, then `--*-file` in the order given, then the inline
+flags in the order given. Later wins.
+
+| | |
+|---|---|
+| `--rule <line>`, `--rules-file <f>` | a `.ctrm` line, or a whole file of them |
+| `--set <line>`, `--sets-file <f>` | a `.ctrm-sets` line, or a file |
+| `--map <line>`, `--map-file <f>` | a `.ctrm-map` line, or a file |
+| `--no-files` | do not read the dotfiles at the root |
+| `--no-builtin-map`, `--no-builtin-sets` | start from an empty map, or with no presets |
+| `--fidelity <family>` | the same as `--rule '* @<family>'` |
+| `--pedantic` | the same as `--rule '* !pedantic=warn'` |
+| `--strict` | a warning fails the run, as clippy's `-D warnings` does |
+| `-C <dir>` | run as if started in `<dir>` |
+
+`--no-files` followed by one flag per line of a dotfile is the same run as
+the dotfile itself, and that is tested. A flag's origin is its position in
+argv, so `explain` answers `origin argv[3]` for the rule a flag added:
+
+```text
+$ ctrm explain --rule '*.md caveman' a.md
+path a.md
+set ascii+caveman
+origin argv[3]
+```
+
+A flag the tool does not know is refused with exit 2, and so is a flag that
+belongs to another verb (`check --bpe`). A typo that was quietly ignored
+would read exactly like a flag that worked. `--` ends the flags, for a path
+that starts with a dash.
+
 ## The sets
 
 `ctrm sets` lists them with their members. The shape is small on purpose:
