@@ -286,11 +286,13 @@ mod tests {
     }
 
     /// The one row a reader of this file can check by eye, pinned whole:
-    /// the tool's ordinary violation, first in the registry.
+    /// the tool's ordinary violation. Pinned by CONTENT, not position: the
+    /// registry lists the loudest group first, so the hazard lints precede
+    /// it, and a test that assumed it led the list broke when they landed.
     #[test]
-    fn the_first_rule_is_the_ordinary_violation() {
+    fn the_ordinary_violation_is_a_rule() {
         let row = concat!(
-            r#""rules":[{"id":"outside-set","#,
+            r#"{"id":"outside-set","#,
             r#""defaultConfiguration":{"level":"error"},"#,
             r#""properties":{"tags":["charset"]}}"#
         );
