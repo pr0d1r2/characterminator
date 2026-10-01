@@ -48,4 +48,4 @@ T21|x|ARCHIVED to SPEC-ARCHIVE.md|V21,V1
 T24|x|ARCHIVED to SPEC-ARCHIVE.md|V24
 T31|x|ARCHIVED to SPEC-ARCHIVE.md|V29,V24
 T42|x|ARCHIVED to SPEC-ARCHIVE.md|V2
-T49|x|discover `.ctrm-sets` & `.ctrm-map` at the run root, into the V19 chain|V45,V19
+T49|x|ARCHIVED to SPEC-ARCHIVE.md|V45,V19

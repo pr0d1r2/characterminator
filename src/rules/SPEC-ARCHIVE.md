@@ -17,3 +17,4 @@ T21|x|zero-file mode; `ascii` as intrinsic constant|V21,V1
 T24|x|rule resolution: `ascii` implicit base|V24
 T31|x|fidelity: `@<family>` in rules, `--fidelity`, family-aware presets|V29,V24
 T42|x|own glob matcher, zero-dep: `?` · `*` (⊥ cross `/`) · `**` · gitignore surface (⊥ `/` ⇒ `**/` prefix · leading `/` anchors · trailing `/` ⇒ dir). feeds `resolve`'s matcher parameter|V2
+T49|x|discover `.ctrm-sets` & `.ctrm-map` at the run root, into the V19 chain|V45,V19
