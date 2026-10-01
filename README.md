@@ -209,9 +209,63 @@ emoji, symbols -- and today the builtin map does not rewrite those, so
 `stats` reports no saving for them either, honestly, rather than an
 estimate of one.
 
+**Notation is where the tokens are, and rewriting it is opt-in.** Compressed
+("caveman") prose spends two or three tokens on a logic symbol where the
+word it stands for costs one. The `words` map rewrites those symbols back
+into words, and it is **off** unless a map line asks for it, because these
+characters were typed on purpose and carry meaning:
+
+```text
+# .ctrm-map
+use words
+```
+
+| symbol | becomes | saved / uses |
+|---|---|---|
+| `U+22A5` up tack | `not` | 4817 / 2447 |
+| `U+2234` therefore | `so` | 1366 / 1366 |
+| `U+2235` because | `because` | 359 / 359 |
+| `U+2200` for all | `all` | 332 / 354 |
+| `U+2208` element of | `in` | 36 / 36 |
+| `U+2260` not equal | `!=` | 28 / 28 |
+| `U+2203` there exists | `exists` | 21 / 21 |
+| `U+2192` `U+21D2` arrows | `->` `=>` | 0 / 1242 |
+
+Measured with `ctrm stats --bpe` over 112 caveman `SPEC*.md` files (this
+repository and five public siblings): 266,472 -> 259,513 tokens, **-2.6%**.
+Every entry costs no more than its symbol; the arrows save nothing and are
+in the map only so an opted-in file can reach ASCII. **Only o200k was
+measured. The Claude tokenizer was not**, so treat the figure as one
+tokenizer's answer, not a promise.
+
+A word never fuses with the letter beside it: `U+22A5owns` becomes
+`not owns`, not `notowns`.
+
+`fix` only rewrites characters **outside** the file's set, so a file that
+grants the notation keeps it. To get the rewrite, narrow the grant. Here it
+is on a scratch copy of this repository's own ten `SPEC.md` files, which
+normally grant `ascii+spec`:
+
+```text
+$ cat .ctrm
+SPEC.md ascii
+src/**/SPEC.md ascii
+
+$ ctrm stats --bpe SPEC.md          # with `use words` in .ctrm-map
+SPEC.md outside 134 bytes 7651 tokens 2702 (o200k) -> 2622 (o200k)
+```
+
+Across all ten: 10,901 -> 10,617 tokens (-284, -2.6%), against -20 for the
+builtin map alone. `ctrm fix` then made 338 rewrites and left 209 characters
+it has no word for -- mostly the section sign (66) and the middle dot (56),
+which `SPEC.md` R9 measured at parity -- kept and reported, exit 1, never
+dropped. Grant those back in a set of your own, or leave the file failing until you
+decide.
+
 Which leaves the claim this tool can actually support today: it makes the
-cost **visible**, and it stops the characters **arriving**. A saving figure
-that flattered the tool would be the first number to re-measure, so the two
+cost **visible**, it stops the characters **arriving**, and for notation it
+saves a measured few percent when you ask it to. A saving figure that
+flattered the tool would be the first number to re-measure, so the ones
 above are printed as found.
 
 ## It gates itself
