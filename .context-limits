@@ -49,7 +49,14 @@ src/SPEC.md           420
 src/charset/SPEC.md  2240
 src/fix/SPEC.md      1240
 src/rules/SPEC.md    1160
-src/lint/SPEC.md     1100
+# RAISED 1100 -> 1420, reviewed. T36 built the hazard set, and the node
+# gained V49: which lint each hazard class reports under, that the classes
+# are read from compiled-in data rather than the run's catalog, and that the
+# emoji-sequence exemption waits for `src/fix:T33` instead of being guessed.
+# That is a rule WITH its runner, which is the pairing this repo requires.
+# Compaction ran first: `mth archive` folded T36 out, worth 10 tokens against
+# the 168 needed. 1420 is ~12% over the new measured 1268.
+src/lint/SPEC.md     1420
 # RAISED 740 -> 860, reviewed. The node gained a task row for the `fix`
 # verbs, which had NO row at all: the root spec's interface section named
 # `ctrm fix`, `src/fix` built the engine under T10, and nothing in any §T
