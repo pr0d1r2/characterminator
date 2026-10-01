@@ -121,6 +121,29 @@ local fast = new Mapping<String, Step> {
     depends = List("sherd-check")
     check = "sherd sync --check || { echo 'hk: a NAV section is stale against the FEDERATION section above it. Run `sherd sync`, then `git add` the result.' >&2; exit 1; }"
   }
+  // THE PINS ARE TAGS (V44). A flake input that follows a branch moves the
+  // rules this gate enforces with no diff to read, so every `url` line in
+  // flake.nix must end in a `vX.Y.Z` tag. The two fleet authorities are
+  // exempt by NAME, because they are pinned by their own lock.
+  //
+  // It fails CLOSED on shape: a `url` line it cannot read -- an attribute
+  // set form, a `?ref=` query, a bare repo -- is refused rather than
+  // passed, so a new spelling cannot slip a branch past it.
+  ["flake-tags"] {
+    glob = List("flake.nix")
+    check = """
+      awk '
+        /url *=/ {
+          seen++
+          if (match($0, /^ *[A-Za-z0-9_-]+[.]url *= *"[^"]*" *; *$/) == 0) { print "flake.nix:" NR ": cannot read this url line"; bad++; next }
+          name = $0; sub(/^ */, "", name); sub(/[.]url.*/, "", name)
+          if (name == "nixpkgs-lock" || name == "nix-hk") next
+          if ($0 !~ /[/]v[0-9]+[.][0-9]+[.][0-9]+" *; *$/) { print "flake.nix:" NR ": " name " does not pin a vX.Y.Z tag"; bad++ }
+        }
+        END { if (seen == 0) { print "flake.nix: no url line examined"; bad++ } exit bad > 0 }
+      ' flake.nix >&2 || { echo 'hk: a flake input is not pinned to a tag (V44). Pin `github:owner/repo/vX.Y.Z` and bump it in its own reviewed commit; following a branch is rejected.' >&2; exit 1; }
+      """
+  }
   // THE BADGE READS THE CLAIM (V46). The coverage figure in README.md is
   // copied from `.coverage`, never typed, so a badge cannot say one number
   // while the file the gate keeps honest says another.

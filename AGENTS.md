@@ -46,6 +46,7 @@ The steps, and what each is for:
 | `mth`, `mth-check` | every `SPEC.md` is well formed and still correct |
 | `context-limits` | no spec is over the token ceiling it declared |
 | `sherd-check`, `sherd-sync` | the node tree resolves and `NAV` is not stale |
+| `flake-tags` | every flake input pins a `vX.Y.Z` tag, not a branch (V44) |
 
 The cargo steps are chained on purpose. Cargo locks the target directory, so
 two cargo jobs launched in parallel do not run in parallel -- the second
