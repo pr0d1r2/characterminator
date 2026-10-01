@@ -18,4 +18,6 @@ T16|x|README, AGENTS.md, `docs/LLM-DISCLAIMER.md`, `docs/THIRD-PARTY-NOTICES.md`
 T27|x|dogfood wave 1: `check` + `stats` over sibling Rust repos (`src/charset:R1`); record anonymized savings in §R; fixes land via each repo's own review|`src/tokens:V10`,`src/cli:V7`
 T40|x|seam: public type vocabulary per node (`src/*/mod.rs`), ⊥ logic ∴ ∀ node buildable in parallel|`src:V38`,`src:V39`
 T45|x|gate runs UNATTENDED: CI workflow + hooks REFUSE ⊥ skip|V14,V16
+T48|x|gate step: ∀ flake input URL carries a TAG|V44
 T51|x|coverage: `cargo llvm-cov` in dev shell & gate, `.coverage` claim, floor|V46
+T54|x|adoption: `.pre-commit-hooks.yaml` + composite `action.yml` + CI job running `uses: ./`|V52

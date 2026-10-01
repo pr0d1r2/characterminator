@@ -81,9 +81,9 @@ T27|x|ARCHIVED to SPEC-ARCHIVE.md|`src/tokens:V10`,`src/cli:V7`
 T28|.|dogfood wave 2: extend to rest of fleet (`src/charset:R4`) once wave 1 confirms presets|`src/charset:V23`
 T40|x|ARCHIVED to SPEC-ARCHIVE.md|`src:V38`,`src:V39`
 T45|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
-T48|x|gate step: ∀ flake input URL carries a TAG|V44
+T48|x|ARCHIVED to SPEC-ARCHIVE.md|V44
 T51|x|ARCHIVED to SPEC-ARCHIVE.md|V46
-T54|x|adoption: `.pre-commit-hooks.yaml` + composite `action.yml` + CI job running `uses: ./`|V52
+T54|x|ARCHIVED to SPEC-ARCHIVE.md|V52
 
 ## §B BUGS
 
