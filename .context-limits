@@ -64,7 +64,10 @@ src/charset/SPEC.md  2240
 # from ~380 tokens to ~270 before this number moved. 1600 is ~12% over the
 # new measured 1426.
 src/fix/SPEC.md      1600
-src/rules/SPEC.md    1160
+# 1160 -> 1460: V56 and B5, the node's first bug row, land with the fix
+# they describe -- a level-only line used to win the set grant. Archiving
+# T49 ran first and bought 15 tokens. 1460 is ~12% over the measured 1305.
+src/rules/SPEC.md    1460
 # RAISED 1100 -> 1420, reviewed. T36 built the hazard set, and the node
 # gained V49: which lint each hazard class reports under, that the classes
 # are read from compiled-in data rather than the run's catalog, and that the
