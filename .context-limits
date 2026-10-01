@@ -70,4 +70,13 @@ src/scan/SPEC.md      400
 # finished row this node had is already archived. 520 is ~12% over the new
 # measured 461.
 src/tokens/SPEC.md    660
-src/render/SPEC.md    315
+# RAISED 315 -> 630, reviewed. The node gains its second output form: V50,
+# the SARIF log `check --format sarif` writes for code scanning, and T52,
+# the row that builds it. The rule is long because SARIF is exacting about
+# what a consumer infers when a field is absent -- columns default to UTF-16
+# units, a missing end column means the rest of the line -- and each of
+# those is a sentence the renderer and its tests answer to. Compaction was
+# looked at first and buys nothing: the node's only finished rows are T9,
+# its one-line origin, and T43, which lands in the same wave. 630 is ~12%
+# over the new measured 559.
+src/render/SPEC.md    630
