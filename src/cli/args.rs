@@ -212,6 +212,15 @@ mod tests {
         assert!(read.flags.is_empty());
     }
 
+    /// The usage text names every flag the table accepts, so a flag
+    /// cannot ship that `ctrm` with no arguments does not mention.
+    #[test]
+    fn the_usage_names_every_flag() {
+        for flag in super::VALUED.iter().chain(super::SWITCHES) {
+            assert!(crate::cli::USAGE.contains(flag), "{flag}");
+        }
+    }
+
     #[test]
     fn the_last_value_of_a_repeated_flag_wins() {
         let read = parsed(&["check", "--format", "json", "--format", "sarif"]);

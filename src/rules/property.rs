@@ -17,18 +17,16 @@
 //!
 //! The whole file is test-only.
 
+/// The generator, shared: `src/cli:V32`'s round trip draws its files from
+/// the same corpus and the same sequence, so "a file of every shape" means
+/// one thing wherever the property is claimed.
 #[cfg(test)]
-mod tests {
-    use crate::rules::line::{ParseError, error, parse_file, parse_flag};
-    use crate::rules::rule_line::parse_rule;
-    use crate::rules::{Origin, Rule, Sources};
-    use std::path::Path;
-
+pub(crate) mod corpus {
     /// The line shapes a generated file is built from. Comments, blanks
     /// and a whitespace-only line are IN the corpus on purpose: they are
     /// the lines that yield no entry, and the property has to survive
     /// them on both sides.
-    const SHAPES: [&str; 12] = [
+    pub(crate) const SHAPES: [&str; 12] = [
         "* caveman",
         "*.md ascii+caveman",
         "# a comment",
@@ -43,27 +41,13 @@ mod tests {
         "Makefile\tascii+cr",
     ];
 
-    /// Line shapes of a DIFFERENT grammar, to show the skeleton is not
-    /// specific to `.ctrm`.
-    const PAIRS: [&str; 6] = [
-        "U+2014 --",
-        "U+2019 '",
-        "# typography",
-        "",
-        "U+2026 ...",
-        "U+2212 -",
-    ];
-
-    /// A line no parser accepts, spliced in to test failure parity.
-    const BAD: &str = "*.md !loud";
-
     /// A fixed-seed sequence. `wrapping_*` throughout: the arithmetic is
     /// meant to wrap, and saying so is what keeps it from being an
     /// overflow.
-    struct Noise(u64);
+    pub(crate) struct Noise(pub(crate) u64);
 
     impl Noise {
-        fn next(&mut self) -> usize {
+        pub(crate) fn next(&mut self) -> usize {
             let stepped = self.0.wrapping_mul(6364136223846793005);
             self.0 = stepped.wrapping_add(1442695040888963407);
             usize::try_from(self.0 >> 33).unwrap_or(0)
@@ -77,7 +61,11 @@ mod tests {
     }
 
     /// Build a file of `count` lines.
-    fn file(noise: &mut Noise, shapes: &[&str], count: usize) -> String {
+    pub(crate) fn file(
+        noise: &mut Noise,
+        shapes: &[&str],
+        count: usize,
+    ) -> String {
         let mut text = String::new();
         for _ in 0..count {
             text.push_str(noise.pick(shapes));
@@ -85,6 +73,29 @@ mod tests {
         }
         text
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::corpus::{Noise, SHAPES, file};
+    use crate::rules::line::{ParseError, error, parse_file, parse_flag};
+    use crate::rules::rule_line::parse_rule;
+    use crate::rules::{Origin, Rule, Sources};
+    use std::path::Path;
+
+    /// Line shapes of a DIFFERENT grammar, to show the skeleton is not
+    /// specific to `.ctrm`.
+    const PAIRS: [&str; 6] = [
+        "U+2014 --",
+        "U+2019 '",
+        "# typography",
+        "",
+        "U+2026 ...",
+        "U+2212 -",
+    ];
+
+    /// A line no parser accepts, spliced in to test failure parity.
+    const BAD: &str = "*.md !loud";
 
     fn path() -> &'static Path {
         Path::new(".ctrm")

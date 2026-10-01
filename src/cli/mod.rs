@@ -13,11 +13,13 @@ mod args;
 mod check;
 mod config;
 mod explain;
+mod export;
 mod fix;
 mod guard;
 mod hook;
 mod json;
 mod out;
+mod prompt;
 mod stats;
 
 pub use config::{Config, from_argv};
@@ -194,8 +196,13 @@ fn said(answer: Result<String, String>) -> Outcome {
     }
 }
 
+/// `--as` asks for the configuration in another form (`src/cli:V32`).
 fn explained(run: &Run<'_>) -> Outcome {
-    said(explain::run(run.config, &run.args.paths, run.format))
+    let (config, paths) = (run.config, &run.args.paths);
+    said(match run.args.value("--as") {
+        Some(form) => explain::exported(config, paths, run.format, form),
+        None => explain::run(config, paths, run.format),
+    })
 }
 
 /// The fidelity a listing is resolved at (`src/charset:V41`), which
@@ -294,6 +301,7 @@ const USAGE: &str = "ctrm -- eliminate characters outside an allowed set
 
   ctrm check [<path>...]         report characters outside the set
   ctrm explain [<path>]          the set in force, and the rule behind it
+    [--as args|lines|prompt]     or the config as flags, files, a prompt
   ctrm sets [--fidelity <f>]     every declared set and what it holds
   ctrm fix [--check] [<path>...] rewrite them, or report the drift
   ctrm stats [--bpe] [<path>...] what they cost now, and after a fix

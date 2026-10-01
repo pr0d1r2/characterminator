@@ -12,6 +12,8 @@
 
 use super::check::Checker;
 use super::config::Config;
+use super::export::{self, Shape};
+use super::prompt;
 use crate::charset::CharSet;
 use crate::render::{Explanation, Format};
 use crate::render::{explain as render_explain, sets as render_sets};
@@ -44,6 +46,34 @@ pub fn run(
             rule: winner.as_ref(),
         },
     ))
+}
+
+/// `explain [<path>] --as args|lines|prompt` (`src/cli:V32`): the same
+/// configuration, rendered for something else to take in.
+///
+/// Every form is TEXT for a shell, a file or a model, so `--format` has
+/// nothing to choose and asking for one is refused rather than ignored.
+///
+/// # Errors
+///
+/// An unknown form, a `--format` alongside it, or a configuration that
+/// does not parse.
+pub fn exported(
+    config: &Config,
+    paths: &[String],
+    format: Format,
+    form: &str,
+) -> Result<String, String> {
+    let shape = Shape::named(form)?;
+    if format != Format::Human {
+        return Err(String::from("--as writes text and takes no --format"));
+    }
+    let asked = paths.first().map(String::as_str);
+    match shape {
+        Shape::Args => export::args(config, asked),
+        Shape::Lines => export::lines(config, asked),
+        Shape::Prompt => prompt::render(config, asked),
+    }
 }
 
 /// `sets`: every declared set and what it holds.

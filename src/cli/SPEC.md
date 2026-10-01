@@ -32,7 +32,7 @@ id|status|task|cites
 T8|x|ARCHIVED to SPEC-ARCHIVE.md|V7,`src/tokens:V9`,`.:I.cmd`
 T11|x|ARCHIVED to SPEC-ARCHIVE.md|`src/tokens:V10`
 T12|x|ARCHIVED to SPEC-ARCHIVE.md|`src/rules:V2`,V7
-T34|.|`explain --as` renderers (args, lines, prompt) + round-trip property test|V32,`src/rules:V18`
+T34|x|`explain --as` renderers (args, lines, prompt) + round-trip property test|V32,`src/rules:V18`
 T37|x|`guard` hook adapter: pre-read block, post-output taint decision, harness JSON fixtures|V35,V53,`src/lint:V34`
 T44|x|ARCHIVED to SPEC-ARCHIVE.md|V7,`src/tokens:V43`
 T50|x|ARCHIVED to SPEC-ARCHIVE.md|V7,`src/fix:V4`,`src/rules:V45`

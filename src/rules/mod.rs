@@ -17,6 +17,8 @@ pub use line::{
     ParseError, describe, error, parse_builtin, parse_file, parse_flag,
     parse_lines,
 };
+#[cfg(test)]
+pub(crate) use property::corpus;
 pub use resolve::{PathMatcher, Resolution, resolve};
 pub use rule_line::parse_rule;
 
