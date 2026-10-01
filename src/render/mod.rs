@@ -27,10 +27,12 @@
 //! `rules` array is the one place this node READS a sibling's table: the
 //! lint registry, as data, so a newly registered lint needs no edit here.
 //!
-//! `guard` is absent on purpose. Its decision document is a HARNESS protocol
-//! rather than a report of this tool's findings, and `src/cli:V35` gives it
-//! to the cli node along with an open question about what non-hazard
-//! violations become in it.
+//! `guard` has no renderer here, on purpose. Its decision document is a
+//! HARNESS protocol rather than a report of this tool's findings, so
+//! `src/cli:V35` gives it to the cli node. What it borrows from this one is
+//! the two spellings a report must not fork: a json string literal, pure
+//! ASCII, and a code point as `U+XXXX`. Both are re-exported below, so the
+//! harness document and the reports cannot disagree about either.
 
 mod escape;
 mod human;
@@ -39,6 +41,9 @@ mod name;
 mod order;
 mod sarif;
 mod value;
+
+pub use escape::string as json_string;
+pub use name::codepoint;
 
 use crate::charset::CharSet;
 use crate::fix::Rewrite;
