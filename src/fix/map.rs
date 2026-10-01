@@ -509,6 +509,24 @@ mod tests {
         }
     }
 
+    /// `src/lint:V34`: a bidi control is REPORTED, never auto-removed. A
+    /// Trojan Source override deleted by `fix` would leave code that now
+    /// reads as it runs and no record that anyone tried to hide it, so
+    /// the map has no entry for any of them and they stay unmapped (V4).
+    #[test]
+    fn the_builtin_map_leaves_every_bidi_control_alone() {
+        let map = parsed(super::BUILTIN);
+        let bidi = ['\u{061C}', '\u{200E}', '\u{200F}']
+            .into_iter()
+            .chain('\u{202A}'..='\u{202E}')
+            .chain('\u{2066}'..='\u{2069}');
+        for kept in bidi {
+            let from = kept.to_string();
+            let mapped = map.entries().iter().any(|entry| entry.from == from);
+            assert!(!mapped, "U+{:04X} is mapped", u32::from(kept));
+        }
+    }
+
     /// Every replacement the builtin offers is itself ASCII. A map whose
     /// answer was another non-ASCII character would move the problem
     /// rather than solve it, and `fix` would report the result as a

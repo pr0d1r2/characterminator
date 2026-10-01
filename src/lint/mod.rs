@@ -7,6 +7,7 @@
 
 mod finding;
 mod group;
+mod hazard;
 mod level;
 mod registry;
 mod resolve;
@@ -14,6 +15,7 @@ mod target;
 
 pub use finding::{Finding, exit_code};
 pub use group::Group;
+pub use hazard::Hazards;
 pub use level::Level;
 pub use registry::{LINTS, Lint};
 pub use resolve::Levels;

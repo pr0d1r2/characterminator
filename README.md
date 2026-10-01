@@ -155,7 +155,18 @@ plus **one** of these.
 | `emoji` | emoji as single code points |
 | `cr` | carriage return, alone |
 | `latin1`, `latin-ext`, `cyrillic`, `greek`, `arabic` | coarse blocks |
-| `any` | everything, for a file you do not own |
+| `any` | everything, for a file you do not own -- hazards still fire |
+| `hazard` | invisible and reordering characters: never granted, see below |
+
+`hazard` is the one set that is not a grant. It holds the characters that
+hide or reorder text -- zero width characters, bidi controls (the Trojan
+Source attack), tag characters (invisible ASCII a model still reads), C0
+and C1 controls other than tab, newline and carriage return, and a byte
+order mark anywhere but byte 0 -- generated from the Unicode Character
+Database. One of them is reported at `forbid` whatever the file's set says,
+`any` included, and no later rule or flag lowers that. `fix` does not
+silently strip a bidi control either: it is reported, and a person removes
+it.
 
 `marks` is the one to look at twice. One name holds both spellings of the
 same mark, and which one you get depends on the fidelity in force:
@@ -225,9 +236,9 @@ notation would make it unreadable.
 list goes stale and that one does not.
 
 - **`guard`**, the agent-harness hook adapter, is specified and not built.
-- **The `hazard` set** -- zero width characters, bidi controls, tag
-  characters -- is specified and not built. Until it is, this tool finds
-  confusables only by them being outside a set, not by them being dangerous.
+- **The `hazard` exemption for emoji sequences.** A zero width joiner
+  inside a declared emoji sequence is meant to pass; sequences arrive with
+  emoji sequence compression, so until then every joiner is reported.
 - **Locale letter presets** from CLDR, and **emoji sequence compression**,
   both need data vendored first.
 - **No CI**, no release, nothing published. The gate is git hooks today.

@@ -91,8 +91,8 @@ mod tests {
     use crate::lint::{Group, Level, Lint, Target};
     use crate::scan::{Hit, Position};
 
-    /// A hazard lint as T36 will register one: the group is what forbids,
-    /// so no Unicode data is needed to test the floor.
+    /// A registered hazard lint (T36). The group is what forbids, so no
+    /// Unicode data is needed to test the floor.
     fn hazard() -> Lint {
         Lint::new("invisible", Group::Hazard)
     }
@@ -121,6 +121,7 @@ mod tests {
     fn the_test_lints_are_the_registered_ones() {
         assert_eq!(Lint::named("outside-set"), Some(charset()));
         assert_eq!(Lint::named("crlf"), Some(pedantic()));
+        assert_eq!(Lint::named("invisible"), Some(hazard()));
     }
 
     #[test]

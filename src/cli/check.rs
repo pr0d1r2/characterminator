@@ -7,7 +7,9 @@
 //! this one of the two verbs that GATE.
 
 use crate::charset::{self, CharSet, SetCatalog, SetDefinition, builtin};
-use crate::lint::{Finding, Level, Levels, Lint, Target, exit_code};
+use crate::lint::{
+    Finding, Group, Hazards, Level, Levels, Lint, Target, exit_code,
+};
 use crate::render::{self, Format, Skipped, Violation};
 use crate::rules::{self, Resolution, Rule, Sources};
 use crate::scan::{Hit, Unreadable, scan_bytes};
@@ -54,10 +56,44 @@ pub struct Report {
     pub code: u8,
 }
 
-/// The rules and the sets a run resolves against, read once.
+/// The rules and the sets a run resolves against, read once, and the
+/// lints `check` reports under.
 pub struct Checker {
     rules: Vec<Rule>,
     catalog: SetCatalog,
+    /// The hazard classes, from the COMPILED-IN data (`src/lint:V34`) and
+    /// never from `catalog`: nothing a run configures can reach them.
+    hazards: Hazards,
+    outside: Lint,
+}
+
+/// What one file's characters are judged against: its set, and the
+/// hazards that fire whatever the set says.
+struct Judge<'a> {
+    set: &'a CharSet,
+    hazards: &'a Hazards,
+    outside: Lint,
+}
+
+impl Judge<'_> {
+    /// Whether the scan may walk past a character without stopping.
+    ///
+    /// A HAZARD STOPS IT EVEN WHEN THE SET GRANTS IT. That is V34's whole
+    /// point: `any` grants every code point, and the exclusion lives in
+    /// the level, so the set alone cannot be what decides.
+    fn passes(&self, character: char) -> bool {
+        self.set.contains(character) && !self.hazards.contains(character)
+    }
+
+    /// The lint one hit fires, if any. A hazard wins over `outside-set`,
+    /// so a character that is both is reported ONCE, at the louder level.
+    /// `None` is the byte order mark at byte 0 in a file whose set grants
+    /// it: no hazard (V34), and not outside the set either.
+    fn lint_for(&self, hit: Hit) -> Option<Lint> {
+        self.hazards.lint_for(hit).or_else(|| {
+            (!self.set.contains(hit.character)).then_some(self.outside)
+        })
+    }
 }
 
 impl Checker {
@@ -83,7 +119,19 @@ impl Checker {
         Ok(Self {
             rules,
             catalog: catalog(root)?,
+            hazards: Hazards::builtin()?,
+            outside: Lint::named(OUTSIDE)
+                .ok_or_else(|| String::from("no `outside-set` lint"))?,
         })
+    }
+
+    /// What one file's characters are judged against.
+    fn judge<'a>(&'a self, set: &'a CharSet) -> Judge<'a> {
+        Judge {
+            set,
+            hazards: &self.hazards,
+            outside: self.outside,
+        }
     }
 
     /// What one path may contain, and how loudly a stray character there
@@ -205,18 +253,23 @@ fn unknown(target: &str) -> String {
 ///
 /// Pure, so every rule it encodes is testable without a filesystem: the
 /// I/O lives in the caller and this decides what the bytes MEAN.
-fn inspect(bytes: &[u8], set: &CharSet, levels: &Levels, lint: Lint) -> Looked {
-    match scan_bytes(bytes, |c| set.contains(c)) {
+fn inspect(bytes: &[u8], judge: &Judge<'_>, levels: &Levels) -> Looked {
+    match scan_bytes(bytes, |c| judge.passes(c)) {
         Err(reason) => Looked::Unread(reason),
-        Ok(hits) => Looked::Findings(reportable(hits, levels, lint)),
+        Ok(hits) => Looked::Findings(reportable(hits, judge, levels)),
     }
 }
 
 /// A finding at `allow` is not reported: the level system decides what is
-/// worth saying, and `allow` is how a project says "not this one".
-fn reportable(hits: Vec<Hit>, levels: &Levels, lint: Lint) -> Vec<Finding> {
+/// worth saying, and `allow` is how a project says "not this one". A
+/// hazard never reaches `allow`, because no rule lowers a forbid (V36).
+fn reportable(
+    hits: Vec<Hit>,
+    judge: &Judge<'_>,
+    levels: &Levels,
+) -> Vec<Finding> {
     hits.into_iter()
-        .map(|hit| levels.finding(hit, lint))
+        .filter_map(|hit| judge.lint_for(hit).map(|l| levels.finding(hit, l)))
         .filter(|finding| finding.level != Level::Allow)
         .collect()
 }
@@ -234,7 +287,6 @@ fn gather(
     checker: &Checker,
     root: &Path,
     paths: &[String],
-    lint: Lint,
 ) -> Result<Found, String> {
     let files = tokens::select(root, paths)
         .map_err(|e| format!("{}: {}", e.path.display(), e.reason))?;
@@ -242,8 +294,8 @@ fn gather(
     for full in &files {
         let shown = shown_path(root, full);
         let (set, levels) = checker.law(&shown)?;
-        let bytes = read(full)?;
-        found.absorb(shown, &set, inspect(&bytes, &set, &levels, lint));
+        let looked = inspect(&read(full)?, &checker.judge(&set), &levels);
+        found.absorb(shown, &set, looked);
     }
     Ok(found)
 }
@@ -267,12 +319,26 @@ impl Found {
                 for finding in findings {
                     self.rows.push(Row {
                         path: path.clone(),
-                        set: set.name.clone(),
+                        set: judged_against(&finding, set),
                         finding,
                     });
                 }
             }
         }
+    }
+}
+
+/// The set a finding names in the report.
+///
+/// A hazard names `hazard`, not the file's set: the set did not decide it
+/// (V34), and `notes.md:1:1 U+202E any` would read as though the override
+/// fell outside `any`, which is nonsense. Which hazard it was is the
+/// lint's name, carried in the json.
+fn judged_against(finding: &Finding, set: &CharSet) -> String {
+    if finding.lint.group == Group::Hazard {
+        String::from(Group::Hazard.name())
+    } else {
+        set.name.clone()
     }
 }
 
@@ -286,9 +352,7 @@ pub fn run(
     format: Format,
 ) -> Result<Report, String> {
     let checker = Checker::load(root)?;
-    let lint = Lint::named(OUTSIDE)
-        .ok_or_else(|| String::from("no `outside-set` lint registered"))?;
-    let found = gather(&checker, root, paths, lint)?;
+    let found = gather(&checker, root, paths)?;
     let violations: Vec<Violation<'_>> = found.rows.iter().map(row).collect();
     let skipped: Vec<Skipped<'_>> = found.skips.iter().map(skip).collect();
     let findings: Vec<Finding> =
@@ -316,9 +380,12 @@ fn skip(source: &Skip) -> Skipped<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Checker, Looked, OUTSIDE, inspect, levels_for, shown_path};
+    use super::{
+        Checker, Judge, Looked, OUTSIDE, inspect, levels_for, run, shown_path,
+    };
     use crate::charset::{CharSet, builtin};
-    use crate::lint::{Level, Levels, Lint};
+    use crate::lint::{Finding, Group, Hazards, Level, Levels, Lint};
+    use crate::render::Format;
     use crate::rules::{self, Rule};
     use std::path::{Path, PathBuf};
 
@@ -331,8 +398,48 @@ mod tests {
         }
     }
 
+    fn hazards() -> Hazards {
+        Hazards::builtin().unwrap_or_else(|why| unreachable!("{why}"))
+    }
+
+    /// What `check` finds in `bytes` when the file is granted `set`.
+    fn found_in(bytes: &[u8], set: &CharSet) -> Looked {
+        let hazards = hazards();
+        let judge = Judge {
+            set,
+            hazards: &hazards,
+            outside: lint(),
+        };
+        inspect(bytes, &judge, &Levels::new())
+    }
+
     fn found(bytes: &[u8]) -> Looked {
-        inspect(bytes, &builtin::ascii(), &Levels::new(), lint())
+        found_in(bytes, &builtin::ascii())
+    }
+
+    /// The findings, as `(lint name, level, byte)`, for a text that must
+    /// be readable.
+    fn findings(
+        text: &str,
+        set: &CharSet,
+    ) -> Vec<(&'static str, Level, usize)> {
+        match found_in(text.as_bytes(), set) {
+            Looked::Findings(all) => all.iter().map(summary).collect(),
+            Looked::Unread(_) => unreachable!("this text is readable"),
+        }
+    }
+
+    fn summary(finding: &Finding) -> (&'static str, Level, usize) {
+        let at = finding.hit.position.byte;
+        (finding.lint.name, finding.level, at)
+    }
+
+    /// `any`, as the builtin catalog resolves it.
+    fn any() -> CharSet {
+        builtin::catalog()
+            .ok()
+            .and_then(|sets| sets.resolve("any", "text").ok())
+            .unwrap_or_else(|| unreachable!("`any` ships as a preset"))
     }
 
     #[test]
@@ -521,5 +628,92 @@ mod tests {
         assert!(rich.contains('\u{2705}') && !rich.contains('\u{2713}'));
         // WARNING SIGN carries no label, so both spellings hold it.
         assert!(plain.contains('\u{26A0}') && rich.contains('\u{26A0}'));
+    }
+
+    /// Trojan Source (CVE-2021-42574) in a file granted EVERYTHING: a
+    /// RIGHT-TO-LEFT OVERRIDE and an isolate pair around a condition. The
+    /// set grants them; the level is what fires (V34).
+    #[test]
+    fn a_trojan_source_override_fires_under_any() {
+        let text = "x = \"\u{202E} }\u{2066}if ok\u{2069} {\";\n";
+        let fired = findings(text, &any());
+        assert_eq!(fired.len(), 3);
+        for (name, level, _) in fired {
+            assert_eq!((name, level), ("bidi-control", Level::Forbid));
+        }
+    }
+
+    /// ASCII smuggling: TAG LATIN CAPITAL LETTER A and B, invisible to a
+    /// reader and legible to a model, in a file granted everything.
+    #[test]
+    fn tag_letters_fire_under_any() {
+        let fired = findings("hi\u{E0041}\u{E0042}\n", &any());
+        let tag = ("tag-character", Level::Forbid);
+        assert_eq!(fired, vec![(tag.0, tag.1, 2), (tag.0, tag.1, 6)]);
+    }
+
+    /// The other three classes, one each, all under `any`.
+    #[test]
+    fn a_control_a_stray_bom_and_an_invisible_fire_under_any() {
+        let fired = findings("a\u{001B}b\u{FEFF}c\u{200B}\n", &any());
+        let names: Vec<&str> = fired.iter().map(|(n, _, _)| *n).collect();
+        assert_eq!(names, ["control-character", "stray-bom", "invisible"]);
+        assert!(fired.iter().all(|(_, level, _)| *level == Level::Forbid));
+    }
+
+    /// At byte 0 the BOM is a signature and no hazard: under `any` it is
+    /// nothing at all, and under `ascii` it is the ordinary charset
+    /// finding, at the ordinary level.
+    #[test]
+    fn a_bom_at_the_start_is_judged_by_the_set_alone() {
+        assert_eq!(findings("\u{FEFF}hello\n", &any()), vec![]);
+        let ascii = findings("\u{FEFF}hello\n", &builtin::ascii());
+        assert_eq!(ascii, vec![("outside-set", Level::Deny, 0)]);
+    }
+
+    /// A character that is both a hazard and outside the set is reported
+    /// ONCE, as the hazard, at the louder level.
+    #[test]
+    fn a_hazard_outside_the_set_is_reported_once_as_the_hazard() {
+        let fired = findings("a\u{200B}\n", &builtin::ascii());
+        assert_eq!(fired, vec![("invisible", Level::Forbid, 1)]);
+    }
+
+    /// The whole path, through a real `.ctrm`: a rule that grants `any`
+    /// and tries to allow the group, the lint, and the charset findings,
+    /// plus a `.ctrm-sets` that redeclares the class as harmless. None of
+    /// it lowers the forbid (V36), and the run fails.
+    #[test]
+    fn no_configuration_talks_a_hazard_down() {
+        let files = [
+            (".ctrm", "* any !hazard=allow !invisible=allow !allow\n"),
+            (".ctrm-sets", "hazard-invisible U+0041\n"),
+            ("smuggled.txt", "fine\u{200B}\n"),
+        ];
+        let Some(root) = fixture("ctrm-hazard-fixture", &files) else {
+            return;
+        };
+        let paths = [String::from("smuggled.txt")];
+        let report = run(&root, &paths, Format::Json);
+        let report = report.unwrap_or_else(|why| unreachable!("{why}"));
+        assert_eq!(report.code, 1, "{}", report.text);
+        assert!(report.text.contains("\"invisible\""), "{}", report.text);
+        assert!(report.text.contains("\"forbid\""), "{}", report.text);
+    }
+
+    /// The human row names the `hazard` set, not the file's: the set did
+    /// not decide a hazard, and `any` in that column would read as though
+    /// the override fell outside it.
+    #[test]
+    fn a_hazard_row_names_the_hazard_set() {
+        let files = [(".ctrm", "* any\n"), ("trojan.rs", "a\u{202E}b\n")];
+        let Some(root) = fixture("ctrm-hazard-row-fixture", &files) else {
+            return;
+        };
+        let paths = [String::from("trojan.rs")];
+        let report = run(&root, &paths, Format::Human);
+        let text = report.map(|r| r.text).unwrap_or_else(|why| why);
+        assert_eq!(text, "trojan.rs:1:2 U+202E hazard");
+        assert_eq!(Group::Hazard.name(), "hazard");
     }
 }

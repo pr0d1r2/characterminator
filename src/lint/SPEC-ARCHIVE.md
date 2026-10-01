@@ -9,4 +9,5 @@ correctly and uselessly. The verb that reads it is `mth tasks`.
 
 ## §T TASKS
 
+T36|x|vendor Unicode Default_Ignorable & bidi data; `hazard` set; forbid enforcement|V34,V36,V49
 T38|x|lint registry: names, groups, levels, `!<lint>=<level>`, forbid enforcement|V36

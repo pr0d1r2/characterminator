@@ -4,11 +4,11 @@
 //! name, and a name nobody registered is an error instead of a directive
 //! that silently matches nothing.
 //!
-//! HOW A HAZARD LINT ARRIVES (T36): it is a row here with
-//! `group: Group::Hazard`, and nothing else. The group already forbids and
-//! the resolver already refuses to lower a forbid, so the work left is the
-//! detection and the vendored Unicode properties V34 names -- no table of
-//! code points is shipped from this node.
+//! HOW A HAZARD LINT ARRIVED (T36): a row here with `group:
+//! Group::Hazard`, and nothing else. The group forbids and the resolver
+//! refuses to lower a forbid; the detection is `hazard.rs`, and the code
+//! points it reads are the charset node's generated data file -- no table
+//! of code points is shipped from this node.
 
 use crate::lint::{Group, Level};
 
@@ -33,6 +33,15 @@ pub struct Lint {
 /// names up front is what lets `--pedantic` and `!not-nfc=warn` be parsed,
 /// explained and rejected-on-typo before any of them can fire.
 pub const LINTS: &[Lint] = &[
+    // V34's classes, one lint each, in the order `hazard.rs` tries them.
+    // One lint per class rather than one `hazard` lint: the json names
+    // the lint, and "this is a bidi override" is the sentence a reader of
+    // a Trojan Source finding needs, where "this is a hazard" is not.
+    Lint::new("bidi-control", Group::Hazard),
+    Lint::new("tag-character", Group::Hazard),
+    Lint::new("stray-bom", Group::Hazard),
+    Lint::new("control-character", Group::Hazard),
+    Lint::new("invisible", Group::Hazard),
     // The tool's ordinary violation: a character outside the set the rules
     // granted this path. Named for what is true of the character rather
     // than for its group, because `charset` is already the group's name.
@@ -113,6 +122,15 @@ mod tests {
         assert_eq!(outside.map(Lint::default_level), Some(Level::Deny));
         let nfc = Lint::named("not-nfc");
         assert_eq!(nfc.map(Lint::default_level), Some(Level::Allow));
+    }
+
+    #[test]
+    fn every_hazard_lint_forbids_before_any_rule_speaks() {
+        let hazards = LINTS.iter().filter(|l| l.group == Group::Hazard);
+        assert_eq!(hazards.clone().count(), 5);
+        for lint in hazards {
+            assert_eq!(lint.default_level(), Level::Forbid, "{}", lint.name);
+        }
     }
 
     #[test]
