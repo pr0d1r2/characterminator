@@ -78,3 +78,17 @@ jobs:
       # `--no-fail-fast` so one red step does not hide the others.
       - run: nix develop --command hk check --all --check --no-fail-fast
       - run: nix flake check
+
+  # THE ACTION, used the way a consumer uses it (V52): `uses: ./` builds
+  # ctrm from this checkout with the runner's own cargo -- no nix -- and
+  # runs it over this tree. The gate job above already runs `ctrm check`;
+  # this job proves the WRAPPER works, which nothing else exercises.
+  action:
+    name: action (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./

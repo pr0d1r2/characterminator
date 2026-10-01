@@ -38,6 +38,7 @@ self|.|-
 - cmd: `ctrm explain [<path>] [--as args|lines|prompt]` → effective set + winning rule + its config line; `--as` renders effective config as flags, data-file lines, or agent prompt (`src/cli:V32`).
 - cmd: `ctrm sets` → builtin sets & members.
 - cmd: `ctrm guard` → hook adapter: harness hook JSON stdin → decision JSON stdout; fuse on hazard (`src/cli:V35`).
+- adopt: `.pre-commit-hooks.yaml` (ids `ctrm-check`, `ctrm-fix`) · `action.yml` (composite; inputs `args`, `output`, `working-directory`). both run the SAME `ctrm` binary (V52).
 - flag: `--format human|json` ∀ verbs · `-C <dir>`.
 - file grammars live w/ their parser: `.ctrm` → `src/rules` §I · `.ctrm-map` → `src/fix` §I · `.ctrm-sets` & builtin presets → `src/charset` §I.
 - flag (file twins, repeatable, `src/rules:V18`): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (`src/rules:V29`) · `--strict` (`src/lint:V36`) · `--pedantic` (`src/lint:V37`).
@@ -63,6 +64,8 @@ V44: ∀ flake input pins a TAG, bumped in its OWN reviewed commit. FOLLOWING a 
 
 V46: line coverage GATED, ⊥ reported. FLOOR = hard min; `.coverage` = CEILING, the figure the badge CLAIMS. measured < floor → FAIL. measured < claim → FAIL ∵ badge OVERSTATES. measured − claim > 0.5 → FAIL ∵ badge stale. `cargo llvm-cov` needs llvm tools matching `rustc`s LLVM ∴ gate asserts the majors agree: a mismatch reads as a crash, ⊥ as a pin.
 
+V52: adoption surfaces (pre-commit hook, GitHub Action) WRAP the `ctrm` binary, built from the consumer-pinned rev; ⊥ own rule logic ∵ a wrapper that judged files itself drifts from the tool it is named after. action: inputs reach the shell via `env` ONLY, ⊥ `${{ }}` in `run:` ∵ template injection; exit status preserved when `output` redirects. CI runs the action via `uses: ./` ∵ a wrapper nothing exercises ? rot unseen.
+
 ## §T TASKS
 
 id|status|task|cites
@@ -80,6 +83,7 @@ T40|x|ARCHIVED to SPEC-ARCHIVE.md|`src:V38`,`src:V39`
 T45|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
 T48|x|gate step: ∀ flake input URL carries a TAG|V44
 T51|x|ARCHIVED to SPEC-ARCHIVE.md|V46
+T54|x|adoption: `.pre-commit-hooks.yaml` + composite `action.yml` + CI job running `uses: ./`|V52
 
 ## §B BUGS
 

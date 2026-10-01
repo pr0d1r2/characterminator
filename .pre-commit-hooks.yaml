@@ -1,0 +1,30 @@
+# The pre-commit framework's entry points (https://pre-commit.com).
+#
+# Both hooks run the same `ctrm` binary a person runs, built from this
+# repository at the rev a consumer pins (`language: rust` installs it with
+# cargo). Nothing here re-implements a rule: a hook that judged files by
+# logic of its own would drift from the tool it is named after (V52).
+#
+# pre-commit passes the staged files by name, and a named file is checked
+# whether git tracks it or not (`src/tokens:V9`), so the hook judges exactly
+# what is about to be committed. The `.ctrm` it reads is the one at the
+# repository root, where pre-commit runs.
+
+# Report characters outside each file's set. Writes nothing; exit 1 on a
+# violation, which is what blocks the commit.
+- id: ctrm-check
+  name: ctrm check
+  description: refuse characters outside the set .ctrm grants each file
+  entry: ctrm check
+  language: rust
+  types: [text]
+
+# Rewrite what the map can rewrite, then report what it could not. A file
+# it changed fails the hook the way every pre-commit fixer does, so the
+# rewrite is staged by a person rather than committed unseen.
+- id: ctrm-fix
+  name: ctrm fix
+  description: rewrite characters outside each file's set via the map
+  entry: ctrm fix
+  language: rust
+  types: [text]

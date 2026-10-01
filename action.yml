@@ -1,0 +1,56 @@
+# A composite GitHub Action that runs `ctrm` over the caller's checkout.
+#
+# It builds the binary from THIS action's own source, at whatever ref the
+# caller pinned in `uses:`, so the rules a workflow enforces change when
+# that pin changes and at no other time -- the same reasoning V44 applies
+# to this repository's own flake inputs. It needs the runner's `cargo`,
+# which GitHub's hosted images ship.
+#
+# Inputs reach the shell through `env`, never through `${{ }}` inside a
+# `run:` block: an expression expanded into a script is a template
+# injection, and a path or argument is caller-controlled text (V52).
+
+name: ctrm
+description: find characters outside the set each file is granted
+author: Marcin Nowicki
+branding:
+  icon: type
+  color: purple
+
+inputs:
+  args:
+    description: >-
+      Arguments to ctrm, split on whitespace. Default `check` judges every
+      file git tracks. `check --format sarif` produces SARIF for GitHub
+      code scanning. Paths containing spaces are not supported here.
+    default: check
+  output:
+    description: >-
+      File to write ctrm's standard output to, for example `ctrm.sarif`.
+      Empty prints to the log. The exit status is kept either way.
+    default: ""
+  working-directory:
+    description: Directory to run in; its `.ctrm` is the one that applies.
+    default: "."
+
+runs:
+  using: composite
+  steps:
+    - name: Build ctrm from the pinned action source
+      shell: bash
+      env:
+        SOURCE: ${{ github.action_path }}
+      run: cargo install --locked --quiet --path "$SOURCE" --root "$RUNNER_TEMP/ctrm"
+    - name: Run ctrm
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CTRM_ARGS: ${{ inputs.args }}
+        CTRM_OUTPUT: ${{ inputs.output }}
+      run: |
+        read -ra words <<< "$CTRM_ARGS"
+        if test -n "$CTRM_OUTPUT"; then
+          "$RUNNER_TEMP/ctrm/bin/ctrm" "${words[@]}" > "$CTRM_OUTPUT"
+        else
+          "$RUNNER_TEMP/ctrm/bin/ctrm" "${words[@]}"
+        fi
