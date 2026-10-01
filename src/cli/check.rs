@@ -6,23 +6,17 @@
 //! said (`src/lint`), and how the report reads (`src/render`). V7 makes
 //! this one of the two verbs that GATE.
 
-use crate::charset::{self, CharSet, SetCatalog, SetDefinition, builtin};
+use super::config::Config;
+use crate::charset::{CharSet, SetCatalog};
 use crate::lint::{
     CRLF, Finding, Group, Hazards, LINE_LINTS, Level, Levels, Lint, Target,
     exit_code, line_hits, unicode_space,
 };
 use crate::render::{self, Format, Skipped, Violation};
-use crate::rules::{self, Resolution, Rule, Sources};
+use crate::rules::{self, Resolution, Rule};
 use crate::scan::{Hit, Unreadable, decode, scan_str};
 use crate::tokens;
 use std::path::Path;
-
-/// The rules file discovered at the repo root: the dotfile tier of the
-/// precedence chain (`src/rules:V19`).
-const CONFIG: &str = ".ctrm";
-
-/// The sets file discovered beside it (`src/rules:V45`).
-const SETS: &str = ".ctrm-sets";
 
 /// The lint a character outside its set is reported under. Named for what
 /// is true of the character, not for its group (`src/lint` registry).
@@ -66,6 +60,8 @@ pub struct Checker {
     /// never from `catalog`: nothing a run configures can reach them.
     hazards: Hazards,
     outside: Lint,
+    /// `--strict`: warn counts as deny (`src/lint:V36`).
+    strict: bool,
 }
 
 /// What one file's characters are judged against: its set, and the
@@ -105,31 +101,25 @@ impl Judge<'_> {
 }
 
 impl Checker {
-    /// Read `.ctrm` if it is there.
+    /// The checker for a configuration built from argv (`src/cli:T55`).
     ///
-    /// Its ABSENCE is not an error: V1 gives an unmatched path `ascii`, so
-    /// a repo that has never been configured is still checkable, and the
-    /// answer it gets is the strict one.
-    ///
-    /// `.ctrm-sets` is read the same way, so a repo may declare a set of
-    /// its own and a rule may name it (`src/rules:V45`).
+    /// A configuration with no rule at all is not an error: V1 gives an
+    /// unmatched path `ascii`, so a repo that has never been configured
+    /// is still checkable, and the answer it gets is the strict one.
     ///
     /// # Errors
     ///
-    /// A discovered file that cannot be parsed, or a compiled-in preset
-    /// that cannot be -- the second is a defect in this crate rather than
-    /// in the tree being checked, and it says so.
-    pub fn load(root: &Path) -> Result<Self, String> {
-        let rules = match std::fs::read_to_string(root.join(CONFIG)) {
-            Ok(text) => parse(text)?,
-            Err(_) => Vec::new(),
-        };
+    /// A line that cannot be parsed, named at its origin, or a compiled-in
+    /// preset that cannot be -- the second is a defect in this crate
+    /// rather than in the tree being checked, and it says so.
+    pub fn configured(config: &Config) -> Result<Self, String> {
         Ok(Self {
-            rules,
-            catalog: catalog(root)?,
+            rules: config.rules()?,
+            catalog: config.catalog()?,
             hazards: Hazards::builtin()?,
             outside: Lint::named(OUTSIDE)
                 .ok_or_else(|| String::from("no `outside-set` lint"))?,
+            strict: config.strict,
         })
     }
 
@@ -146,7 +136,9 @@ impl Checker {
     /// is reported.
     fn law(&self, shown: &str) -> Result<(CharSet, Levels), String> {
         let found = rules::resolve(shown, &self.rules, &rules::matches);
-        Ok((self.granted(&found)?, levels_for(&found)?))
+        let mut levels = levels_for(&found)?;
+        levels.set_strict(self.strict);
+        Ok((self.granted(&found)?, levels))
     }
 
     /// One file's findings, judged exactly as `check` judges it, so the
@@ -209,50 +201,6 @@ impl Checker {
         self.catalog
             .resolve_union(&found.sets.join("+"), &found.sets, &found.family)
             .map_err(|bad| bad.to_string())
-    }
-}
-
-fn parse(text: String) -> Result<Vec<Rule>, String> {
-    Sources::new()
-        .dotfile(CONFIG, text)
-        .rules()
-        .map_err(|e| e.to_string())
-}
-
-/// The sets a run resolves against: the compiled-in presets, then what
-/// `.ctrm-sets` declares over them (`src/rules:V19`, `src/rules:V45`).
-///
-/// A repo whose files hold characters no preset covers declares a set of
-/// its own rather than reaching for `any`, which is the difference
-/// between a grant somebody wrote down and a check switched off.
-fn catalog(root: &Path) -> Result<SetCatalog, String> {
-    let mut sources = Sources::new().builtin(builtin::SETS);
-    if let Ok(text) = std::fs::read_to_string(root.join(SETS)) {
-        sources = sources.dotfile(SETS, text);
-    }
-    let declared = sources.assemble(set_line).map_err(|e| e.to_string())?;
-    let mut catalog = builtin::intrinsic_catalog();
-    for definition in declared {
-        catalog.insert(definition);
-    }
-    Ok(catalog)
-}
-
-/// One `.ctrm-sets` line, at the origin the chain gave it.
-///
-/// The grammar's parser belongs to `src/charset` and the precedence chain
-/// to `src/rules`, and neither calls the other: the parser travels as an
-/// argument, so this adapter is the one place their two error types meet.
-fn set_line(
-    line: &str,
-    origin: rules::Origin,
-) -> Result<SetDefinition, rules::ParseError> {
-    match charset::parse_line(line) {
-        Ok(Some(declared)) => Ok(declared),
-        // The chain skips blank and comment lines before calling this, so
-        // a line declaring nothing cannot arrive here.
-        Ok(None) => Err(rules::error(origin, "declares no set")),
-        Err(bad) => Err(rules::error(origin, bad.to_string())),
     }
 }
 
@@ -435,12 +383,12 @@ fn judged_against(finding: &Finding, set: &CharSet) -> String {
 /// `paths` empty means the git-tracked fileset; naming paths reaches
 /// untracked files too (`src/tokens:V9`).
 pub fn run(
-    root: &Path,
+    config: &Config,
     paths: &[String],
     format: Format,
 ) -> Result<Report, String> {
-    let checker = Checker::load(root)?;
-    let found = gather(&checker, root, paths)?;
+    let checker = Checker::configured(config)?;
+    let found = gather(&checker, &config.root, paths)?;
     let violations: Vec<Violation<'_>> = found.rows.iter().map(row).collect();
     let skipped: Vec<Skipped<'_>> = found.skips.iter().map(skip).collect();
     let findings: Vec<Finding> =
@@ -469,7 +417,8 @@ fn skip(source: &Skip) -> Skipped<'_> {
 #[cfg(test)]
 mod tests {
     use super::{
-        Checker, Judge, Looked, OUTSIDE, inspect, levels_for, run, shown_path,
+        Checker, Config, Judge, Looked, OUTSIDE, inspect, levels_for, run,
+        shown_path,
     };
     use crate::charset::{CharSet, builtin};
     use crate::lint::{Finding, Group, Hazards, Level, Levels, Lint, Target};
@@ -623,7 +572,9 @@ mod tests {
 
     /// The set one path is judged against, in a tree of our own.
     fn granted(root: &Path, shown: &str) -> Result<CharSet, String> {
-        Checker::load(root)?.law(shown).map(|(set, _)| set)
+        Checker::configured(&Config::discovered(root))?
+            .law(shown)
+            .map(|(set, _)| set)
     }
 
     /// A rule may name a preset that ships as DATA, not only the
@@ -692,7 +643,9 @@ mod tests {
         let Some(root) = fixture("ctrm-badset-fixture", &files) else {
             return;
         };
-        let why = Checker::load(&root).err().unwrap_or_default();
+        let why = Checker::configured(&Config::discovered(&root))
+            .err()
+            .unwrap_or_default();
         assert!(why.contains(".ctrm-sets:3"), "{why}");
         assert!(why.contains("U+ZZZZ"), "{why}");
     }
@@ -782,7 +735,7 @@ mod tests {
             return;
         };
         let paths = [String::from("smuggled.txt")];
-        let report = run(&root, &paths, Format::Json);
+        let report = run(&Config::discovered(&root), &paths, Format::Json);
         let report = report.unwrap_or_else(|why| unreachable!("{why}"));
         assert_eq!(report.code, 1, "{}", report.text);
         assert!(report.text.contains("\"invisible\""), "{}", report.text);
@@ -799,7 +752,7 @@ mod tests {
             return;
         };
         let paths = [String::from("trojan.rs")];
-        let report = run(&root, &paths, Format::Human);
+        let report = run(&Config::discovered(&root), &paths, Format::Human);
         let text = report.map(|r| r.text).unwrap_or_else(|why| why);
         assert_eq!(text, "trojan.rs:1:2 U+202E hazard");
         assert_eq!(Group::Hazard.name(), "hazard");
@@ -873,7 +826,7 @@ mod tests {
             .filter(|(path, _)| !path.starts_with('.'))
             .map(|(path, _)| String::from(*path))
             .collect();
-        let found = run(&root, &paths, Format::Human);
+        let found = run(&Config::discovered(&root), &paths, Format::Human);
         found.map(|r| r.text).unwrap_or_else(|why| why)
     }
 
@@ -961,7 +914,7 @@ mod tests {
             return;
         };
         let paths = [String::from("n.txt")];
-        let report = run(&root, &paths, Format::Json);
+        let report = run(&Config::discovered(&root), &paths, Format::Json);
         let report = report.unwrap_or_else(|why| unreachable!("{why}"));
         let expected = concat!(
             r#"{"verb":"check","violations":[{"path":"n.txt","line":1,"#,
@@ -981,7 +934,7 @@ mod tests {
             return;
         };
         let paths = [String::from("n.txt")];
-        let found = run(&root, &paths, Format::Sarif);
+        let found = run(&Config::discovered(&root), &paths, Format::Sarif);
         let log = found.map(|r| r.text).unwrap_or_else(|why| why);
         let result = concat!(
             r#"{"ruleId":"final-newline","level":"warning","#,

@@ -11,7 +11,7 @@ mod property;
 mod resolve;
 mod rule_line;
 
-pub use config::Sources;
+pub use config::{Place, Sources};
 pub use glob::matches;
 pub use line::{
     ParseError, describe, error, parse_builtin, parse_file, parse_flag,

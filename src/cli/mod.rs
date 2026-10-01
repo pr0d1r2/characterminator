@@ -3,8 +3,15 @@
 //! See `src/cli/SPEC.md`. `main.rs` is a shim over `run` (`src:V38`), so
 //! dispatch, usage and exit codes are testable rather than reachable only
 //! by launching a process.
+//!
+//! Every verb goes the same way: argv is read ONCE (`args`), the
+//! configuration is built ONCE from it and the root (`config`), and the
+//! verb gets both. A verb never looks at argv itself, which is what kept
+//! a flag's value from being taken for a path in one verb and not another.
 
+mod args;
 mod check;
+mod config;
 mod explain;
 mod fix;
 mod guard;
@@ -13,8 +20,11 @@ mod json;
 mod out;
 mod stats;
 
+pub use config::{Config, from_argv};
+
 use crate::render::Format;
 use crate::rules::TEXT;
+use args::Args;
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -59,20 +69,25 @@ impl Outcome {
     }
 }
 
+/// One verb's whole input: the flags as read, the configuration built
+/// from them, and the output form.
+struct Run<'a> {
+    args: &'a Args,
+    config: &'a Config,
+    format: Format,
+}
+
 /// Parse argv and dispatch. The binary itself holds nothing.
 #[must_use]
 pub fn run(args: &[String]) -> ExitCode {
     match verb_of(args) {
         Some("--version" | "-V") => version(),
-        // Before the flag checks: a hook must never exit 2 (V53), even
-        // when its command line carries a flag another verb would refuse.
+        // Before argv is parsed: a hook must never exit 2 (V53), even when
+        // its command line carries a flag the parser would refuse.
         Some("guard") => guarded().code(),
-        Some(verb) if sarif_misused(verb, args) => sarif_refused(verb).code(),
-        Some("check") => checked(args).code(),
-        Some("explain") => explained(args).code(),
-        Some("sets") => listed(args).code(),
-        Some("fix") => fixed(args).code(),
-        Some("stats") => counted(args).code(),
+        Some(verb @ ("check" | "explain" | "sets" | "fix" | "stats")) => {
+            invoked(verb, args).code()
+        }
         _ => usage().code(),
     }
 }
@@ -81,75 +96,91 @@ fn verb_of(args: &[String]) -> Option<&str> {
     args.first().map(String::as_str)
 }
 
+/// Read argv, build the configuration, run the verb.
+fn invoked(verb: &str, argv: &[String]) -> Outcome {
+    match prepared(verb, argv) {
+        Ok((args, config, format)) => {
+            let run = Run {
+                args: &args,
+                config: &config,
+                format,
+            };
+            dispatched(verb, &run)
+        }
+        Err(message) => failed(&message),
+    }
+}
+
+/// Everything a verb is handed. Anything wrong here is a usage error,
+/// named, before any file is looked at.
+fn prepared(
+    verb: &str,
+    argv: &[String],
+) -> Result<(Args, Config, Format), String> {
+    let parsed = args::parse(argv)?;
+    let format = format_of(&parsed)?;
+    if sarif_misused(verb, format) {
+        return Err(sarif_refused(verb));
+    }
+    let config = config::load(&cwd(), &parsed)?;
+    Ok((parsed, config, format))
+}
+
+fn dispatched(verb: &str, run: &Run<'_>) -> Outcome {
+    match verb {
+        "check" => checked(run),
+        "explain" => explained(run),
+        "sets" => listed(run),
+        "fix" => fixed(run),
+        _ => counted(run),
+    }
+}
+
 /// `--format json` picks the stable contract and `--format sarif` the
-/// code-scanning log (`src/render:V50`); anything else is the human form,
-/// which `src/render:V11` allows to change.
+/// code-scanning log (`src/render:V50`); no flag is the human form, which
+/// `src/render:V11` allows to change.
 ///
-/// The VALUE is read positionally, as the word after the flag. Sniffing
-/// argv for a bare `json` would make `ctrm check json` silently switch
-/// contracts, and would read a path named `json` as a format.
-fn format_of(args: &[String]) -> Format {
-    match value_of(args, "--format") {
-        Some("json") => Format::Json,
-        Some("sarif") => Format::Sarif,
-        _ => Format::Human,
+/// Any other value is REFUSED. `--format jsn` falling back to the human
+/// form would hand a script a report it cannot parse, from a run that
+/// said nothing was wrong with how it was asked.
+fn format_of(args: &Args) -> Result<Format, String> {
+    match args.value("--format") {
+        None | Some("human") => Ok(Format::Human),
+        Some("json") => Ok(Format::Json),
+        Some("sarif") => Ok(Format::Sarif),
+        Some(other) => Err(format!("unknown format `{other}`")),
     }
 }
 
 /// SARIF carries findings, and `check` is the only verb with any. Asked of
 /// another verb it is REFUSED rather than answered with an empty log: a
 /// log with no results reads as a clean run, and none was performed.
-fn sarif_misused(verb: &str, args: &[String]) -> bool {
-    verb != "check" && format_of(args) == Format::Sarif
+fn sarif_misused(verb: &str, format: Format) -> bool {
+    verb != "check" && format == Format::Sarif
 }
 
-fn sarif_refused(verb: &str) -> Outcome {
-    eprintln!(
-        "ctrm: --format sarif reports findings, and only `check` has them; \
+fn sarif_refused(verb: &str) -> String {
+    format!(
+        "--format sarif reports findings, and only `check` has them; \
          `{verb}` takes --format human or json"
-    );
+    )
+}
+
+/// A usage or configuration error, named. Exit 2 either way: the run
+/// never reached a verdict about any file.
+fn failed(message: &str) -> Outcome {
+    eprintln!("ctrm: {message}");
     Outcome::Usage
 }
 
-/// The paths a caller named, which reach untracked files
-/// (`src/tokens:V9`). A flag and its value are not paths.
-fn paths_of(args: &[String]) -> Vec<String> {
-    let mut paths = Vec::new();
-    let mut words = args.iter().skip(1);
-    while let Some(word) = words.next() {
-        if word == "--format" || word == "--fidelity" {
-            words.next();
-        } else if !word.starts_with('-') {
-            paths.push(word.clone());
-        }
-    }
-    paths
-}
-
-/// The word after a named flag, read positionally for the reason
-/// `format_of` states: sniffing argv for a bare value would read a path
-/// as a flag's argument.
-fn value_of<'a>(args: &'a [String], flag: &str) -> Option<&'a str> {
-    let mut words = args.iter();
-    while let Some(word) = words.next() {
-        if word == flag {
-            return words.next().map(String::as_str);
-        }
-    }
-    None
-}
-
-fn root() -> PathBuf {
+fn cwd() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
-fn checked(args: &[String]) -> Outcome {
-    match check::run(&root(), &paths_of(args), format_of(args)) {
+fn checked(run: &Run<'_>) -> Outcome {
+    match check::run(run.config, &run.args.paths, run.format) {
         Ok(report) => report_of(&report),
-        Err(message) => {
-            eprintln!("ctrm: {message}");
-            Outcome::Usage
-        }
+        Err(message) => failed(&message),
     }
 }
 
@@ -159,34 +190,28 @@ fn checked(args: &[String]) -> Outcome {
 fn said(answer: Result<String, String>) -> Outcome {
     match answer {
         Ok(text) => out::shown(&text, Outcome::Ok),
-        Err(message) => {
-            eprintln!("ctrm: {message}");
-            Outcome::Usage
-        }
+        Err(message) => failed(&message),
     }
 }
 
-fn explained(args: &[String]) -> Outcome {
-    said(explain::run(&root(), &paths_of(args), format_of(args)))
+fn explained(run: &Run<'_>) -> Outcome {
+    said(explain::run(run.config, &run.args.paths, run.format))
 }
 
 /// The fidelity a listing is resolved at (`src/charset:V41`), which
 /// `--fidelity` names and `src/rules:V29` defaults to `text`.
-fn listed(args: &[String]) -> Outcome {
-    let family = value_of(args, "--fidelity").unwrap_or(TEXT);
-    said(explain::sets(&root(), family, format_of(args)))
+fn listed(run: &Run<'_>) -> Outcome {
+    let family = run.args.value("--fidelity").unwrap_or(TEXT);
+    said(explain::sets(run.config, family, run.format))
 }
 
 /// `fix` WRITES unless `--check` is given, which is V7's split: the verb
 /// that rewrites files is the one a caller names deliberately.
-fn fixed(args: &[String]) -> Outcome {
-    let write = !args.iter().any(|word| word == "--check");
-    match fix::run(&root(), &paths_of(args), format_of(args), write) {
+fn fixed(run: &Run<'_>) -> Outcome {
+    let write = !run.args.has("--check");
+    match fix::run(run.config, &run.args.paths, run.format, write) {
         Ok(report) => fix_report_of(&report),
-        Err(message) => {
-            eprintln!("ctrm: {message}");
-            Outcome::Usage
-        }
+        Err(message) => failed(&message),
     }
 }
 
@@ -196,9 +221,9 @@ fn fix_report_of(report: &fix::Report) -> Outcome {
 
 /// `--bpe` asks for the real tokenizer. The default is the estimate,
 /// which the figure itself declares (`src/tokens:V10`).
-fn counted(args: &[String]) -> Outcome {
-    let bpe = args.iter().any(|word| word == "--bpe");
-    said(stats::run(&root(), &paths_of(args), format_of(args), bpe))
+fn counted(run: &Run<'_>) -> Outcome {
+    let bpe = run.args.has("--bpe");
+    said(stats::run(run.config, &run.args.paths, run.format, bpe))
 }
 
 /// `guard`: hook JSON on stdin, decision JSON on stdout (V35). Arguments
@@ -208,7 +233,7 @@ fn guarded() -> Outcome {
     let mut stdin = String::new();
     let read = std::io::stdin().read_to_string(&mut stdin);
     adapted(match read {
-        Ok(_) => guard::run(&stdin, &root()),
+        Ok(_) => guard::run(&stdin, &cwd()),
         Err(e) => Err(format!("stdin: {e}")),
     })
 }
@@ -260,29 +285,44 @@ fn version() -> ExitCode {
 
 /// Exit 2 names the surface rather than pretending to offer it.
 fn usage() -> Outcome {
-    eprintln!(
-        "ctrm -- eliminate characters outside an allowed set\n\n  \
-         ctrm check [<path>...]       report characters outside the set\n  \
-         ctrm explain [<path>]        the set in force, and the rule behind it\n  \
-         ctrm sets [--fidelity <f>]   every declared set and what it holds\n  \
-         ctrm fix [--check] [<path>...] rewrite them, or report the drift\n  \
-         ctrm stats [--bpe] [<path>...] what they cost now, and after a fix\n  \
-         ctrm guard                   agent hook: hook JSON in, decision out\n\n\
-         any verb but guard takes --format json; check also takes \
-         --format sarif"
-    );
+    eprintln!("{USAGE}");
     Outcome::Usage
 }
+
+/// The surface, in one place so a test can hold it to the flag table.
+const USAGE: &str = "ctrm -- eliminate characters outside an allowed set
+
+  ctrm check [<path>...]         report characters outside the set
+  ctrm explain [<path>]          the set in force, and the rule behind it
+  ctrm sets [--fidelity <f>]     every declared set and what it holds
+  ctrm fix [--check] [<path>...] rewrite them, or report the drift
+  ctrm stats [--bpe] [<path>...] what they cost now, and after a fix
+  ctrm guard                     agent hook: hook JSON in, decision out
+
+configuration, any verb, repeatable, later wins:
+  --rule <line>     one .ctrm line       --rules-file <f>
+  --map <line>      one .ctrm-map line   --map-file <f>
+  --set <line>      one .ctrm-sets line  --sets-file <f>
+  --no-files  --no-builtin-map  --no-builtin-sets
+  --fidelity <family>  --strict  --pedantic  -C <dir>
+
+any verb but guard takes --format json; check also takes --format sarif;
+an unknown flag is refused; `--` ends the flags; guard reads no flags";
 
 #[cfg(test)]
 mod tests {
     use super::{
-        Format, Outcome, adapted, format_of, paths_of, sarif_misused,
-        sarif_refused, verb_of,
+        Config, Format, Outcome, adapted, args, format_of, prepared,
+        sarif_misused, sarif_refused, verb_of,
     };
 
     fn argv(words: &[&str]) -> Vec<String> {
         words.iter().map(|w| (*w).to_owned()).collect()
+    }
+
+    /// The format argv asks for, or the refusal, as text.
+    fn format(words: &[&str]) -> Result<Format, String> {
+        format_of(&args::parse(&argv(words))?)
     }
 
     #[test]
@@ -313,30 +353,43 @@ mod tests {
 
     #[test]
     fn json_is_asked_for_by_name() {
-        assert_eq!(format_of(&argv(&["check"])), Format::Human);
-        assert_eq!(
-            format_of(&argv(&["check", "--format", "json"])),
-            Format::Json
-        );
+        assert_eq!(format(&["check"]), Ok(Format::Human));
+        assert_eq!(format(&["check", "--format", "json"]), Ok(Format::Json));
     }
 
     #[test]
     fn sarif_is_asked_for_by_name() {
-        let asked = argv(&["check", "--format", "sarif"]);
-        assert_eq!(format_of(&asked), Format::Sarif);
-        assert_eq!(paths_of(&asked), Vec::<String>::new());
+        let asked = format(&["check", "--format", "sarif"]);
+        assert_eq!(asked, Ok(Format::Sarif));
+    }
+
+    /// `--format jsn` falling back to the human form would hand a script
+    /// text it cannot parse from a run that said nothing was wrong.
+    #[test]
+    fn an_unknown_format_is_refused() {
+        let refused = format(&["check", "--format", "jsn"]);
+        assert!(refused.is_err_and(|why| why.contains("jsn")));
     }
 
     #[test]
     fn sarif_is_refused_for_every_verb_but_check() {
-        let check = argv(&["check", "--format", "sarif"]);
-        assert!(!sarif_misused("check", &check));
+        assert!(!sarif_misused("check", Format::Sarif));
         for verb in ["fix", "stats", "explain", "sets"] {
+            assert!(sarif_misused(verb, Format::Sarif), "{verb}");
+            assert!(!sarif_misused(verb, Format::Human), "{verb}");
             let asked = argv(&[verb, "--format", "sarif"]);
-            assert!(sarif_misused(verb, &asked), "{verb}");
-            assert!(!sarif_misused(verb, &argv(&[verb])), "{verb}");
+            let why = prepared(verb, &asked).err().unwrap_or_default();
+            assert_eq!(why, sarif_refused(verb));
         }
-        assert_eq!(sarif_refused("fix"), Outcome::Usage);
+    }
+
+    /// A typo'd flag is a usage error before any file is read, not a run
+    /// that quietly ignored it and reported a clean tree.
+    #[test]
+    fn an_unknown_flag_stops_the_run() {
+        let asked = argv(&["check", "--stirct"]);
+        let why = prepared("check", &asked).err().unwrap_or_default();
+        assert!(why.contains("--stirct"), "{why}");
     }
 
     /// The whole path, on a tree of its own: a SARIF run reports the
@@ -353,8 +406,8 @@ mod tests {
             return;
         }
         let asked = [String::from("a.md")];
-        let report = super::check::run(&root, &asked, Format::Sarif);
-        assert!(report.is_ok());
+        let config = Config::discovered(&root);
+        let report = super::check::run(&config, &asked, Format::Sarif);
         let report = report.unwrap_or_else(|why| unreachable!("{why}"));
         assert_eq!(report.code, 1);
         let at = r#""uri":"a.md"},"region":{"startLine":1,"startColumn":2"#;
@@ -366,16 +419,16 @@ mod tests {
         // The first version sniffed argv for `json` anywhere, so this
         // silently switched contracts -- and the test above passed
         // regardless, which is what let it through.
-        assert_eq!(format_of(&argv(&["check", "json"])), Format::Human);
-        assert_eq!(paths_of(&argv(&["check", "json"])), vec!["json"]);
+        assert_eq!(format(&["check", "json"]), Ok(Format::Human));
+        let read = args::parse(&argv(&["check", "json"]));
+        assert_eq!(read.map(|a| a.paths), Ok(vec![String::from("json")]));
     }
 
     #[test]
     fn paths_are_the_words_that_are_not_flags_or_their_values() {
-        assert_eq!(paths_of(&argv(&["check"])), Vec::<String>::new());
-        assert_eq!(
-            paths_of(&argv(&["check", "src", "--format", "json", "docs"])),
-            vec!["src", "docs"]
-        );
+        let words = ["check", "src", "--format", "json", "docs"];
+        let read = args::parse(&argv(&words)).map(|a| a.paths);
+        let both = vec![String::from("src"), String::from("docs")];
+        assert_eq!(read, Ok(both));
     }
 }

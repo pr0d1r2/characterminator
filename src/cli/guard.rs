@@ -18,6 +18,7 @@
 //! leaves every hazard judged; only the note about it changes.
 
 use super::check::{Checker, shown_path};
+use super::config::Config;
 use super::hook::{self, Call, Event, Verdict};
 use crate::lint::{Finding, Group, Hazards};
 use crate::render::codepoint;
@@ -82,7 +83,9 @@ fn read(cwd: &Path, path: &str, hazards: &Hazards) -> Verdict {
         return Verdict::Pass;
     };
     let shown = shown_path(cwd, &full);
-    let judged = Checker::load(cwd).and_then(|c| c.findings(&shown, &bytes));
+    let config = Config::discovered(cwd);
+    let checker = Checker::configured(&config);
+    let judged = checker.and_then(|c| c.findings(&shown, &bytes));
     match judged {
         Ok(Some(found)) => judged_file(&shown, &found),
         Ok(None) => Verdict::Pass,

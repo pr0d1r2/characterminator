@@ -11,7 +11,7 @@
 //! rewriting is `src/fix`'s. This node asks both and prints the pair.
 
 use super::check::Checker;
-use super::fix as fixer;
+use super::config::Config;
 use crate::fix::{self as engine, Map};
 use crate::render::{self, FileStats, Format};
 use crate::tokens::{self, Count, Method};
@@ -40,13 +40,14 @@ struct Row {
 /// zero: zero is the honest count of an empty file, and reusing it for
 /// "unknown" understates a total while looking like a measurement.
 pub fn run(
-    root: &Path,
+    config: &Config,
     paths: &[String],
     format: Format,
     bpe: bool,
 ) -> Result<String, String> {
-    let checker = Checker::load(root)?;
-    let map = fixer::map_of(root)?;
+    let root = &config.root;
+    let checker = Checker::configured(config)?;
+    let map = config.map()?;
     let method = if bpe { Method::Bpe } else { Method::Estimate };
     let files = tokens::select(root, paths)
         .map_err(|bad| format!("{}: {}", bad.path.display(), bad.reason))?;
@@ -128,7 +129,7 @@ fn stat(row: &Row) -> FileStats<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::run;
+    use super::{Config, run};
     use crate::render::Format;
     use std::path::{Path, PathBuf};
 
@@ -145,7 +146,8 @@ mod tests {
 
     fn ran(root: &Path, bpe: bool) -> String {
         let asked = ["notes.md".to_owned()];
-        run(root, &asked, Format::Human, bpe).unwrap_or_else(|why| why)
+        run(&Config::discovered(root), &asked, Format::Human, bpe)
+            .unwrap_or_else(|why| why)
     }
 
     /// The row carries both figures, which is the point of the verb: what

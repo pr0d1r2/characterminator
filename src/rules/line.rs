@@ -59,7 +59,7 @@ pub fn error(origin: Origin, message: impl Into<String>) -> ParseError {
 /// of the line. Later in a line it stays literal, so a path may contain
 /// one and a map entry may mention one; a map line whose subject IS the
 /// number sign writes it in the `U+0023` form the map grammar already has.
-fn is_skippable(line: &str) -> bool {
+pub(crate) fn is_skippable(line: &str) -> bool {
     let trimmed = line.trim();
     trimmed.is_empty() || trimmed.starts_with('#')
 }

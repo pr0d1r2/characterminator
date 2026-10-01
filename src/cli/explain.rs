@@ -11,10 +11,10 @@
 //! what those names hold.
 
 use super::check::Checker;
+use super::config::Config;
 use crate::charset::CharSet;
 use crate::render::{Explanation, Format};
 use crate::render::{explain as render_explain, sets as render_sets};
-use std::path::Path;
 
 /// `explain [<path>]`: the effective set for a path, and the rule behind
 /// it.
@@ -27,13 +27,13 @@ use std::path::Path;
 ///
 /// # Errors
 ///
-/// As [`Checker::load`], plus a rule naming a set nothing declares.
+/// As [`Checker::configured`], plus a rule naming a set nothing declares.
 pub fn run(
-    root: &Path,
+    config: &Config,
     paths: &[String],
     format: Format,
 ) -> Result<String, String> {
-    let checker = Checker::load(root)?;
+    let checker = Checker::configured(config)?;
     let asked = paths.first().map(String::as_str);
     let (set, winner) = checker.effective(asked.unwrap_or(""))?;
     Ok(render_explain(
@@ -55,21 +55,21 @@ pub fn run(
 ///
 /// # Errors
 ///
-/// As [`Checker::load`], plus a declared set that cannot be resolved --
+/// As [`Checker::configured`], plus a declared set that cannot be resolved --
 /// a cycle, or a member naming a set nothing declares.
 pub fn sets(
-    root: &Path,
+    config: &Config,
     family: &str,
     format: Format,
 ) -> Result<String, String> {
-    let checker = Checker::load(root)?;
+    let checker = Checker::configured(config)?;
     let listed: Vec<CharSet> = checker.declared(family)?;
     Ok(render_sets(format, &listed))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{run, sets};
+    use super::{Config, run, sets};
     use crate::render::Format;
     use std::path::{Path, PathBuf};
 
@@ -87,7 +87,8 @@ mod tests {
     }
 
     fn explained(root: &Path, path: &[String]) -> String {
-        run(root, path, Format::Human).unwrap_or_else(|why| why)
+        run(&Config::discovered(root), path, Format::Human)
+            .unwrap_or_else(|why| why)
     }
 
     #[test]
@@ -124,7 +125,8 @@ mod tests {
         let Some(root) = fixture("ctrm-sets-fixture", &[]) else {
             return;
         };
-        let listed = sets(&root, "text", Format::Human).unwrap_or_default();
+        let listed = sets(&Config::discovered(&root), "text", Format::Human)
+            .unwrap_or_default();
         assert!(listed.contains("caveman"), "{listed}");
         assert!(listed.contains("U+2192"), "{listed}");
     }
@@ -137,7 +139,8 @@ mod tests {
         let Some(root) = fixture("ctrm-sets-declared-fixture", &files) else {
             return;
         };
-        let listed = sets(&root, "text", Format::Human).unwrap_or_default();
+        let listed = sets(&Config::discovered(&root), "text", Format::Human)
+            .unwrap_or_default();
         assert!(listed.contains("house U+2261"), "{listed}");
     }
 
@@ -148,8 +151,10 @@ mod tests {
         let Some(root) = fixture("ctrm-sets-fidelity-fixture", &[]) else {
             return;
         };
-        let text = sets(&root, "text", Format::Human).unwrap_or_default();
-        let emoji = sets(&root, "emoji", Format::Human).unwrap_or_default();
+        let text = sets(&Config::discovered(&root), "text", Format::Human)
+            .unwrap_or_default();
+        let emoji = sets(&Config::discovered(&root), "emoji", Format::Human)
+            .unwrap_or_default();
         assert!(text.contains("U+2713"), "{text}");
         assert!(emoji.contains("U+2705"), "{emoji}");
         assert_ne!(text, emoji);

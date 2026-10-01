@@ -36,7 +36,7 @@ T34|.|`explain --as` renderers (args, lines, prompt) + round-trip property test|
 T37|x|`guard` hook adapter: pre-read block, post-output taint decision, harness JSON fixtures|V35,V53,`src/lint:V34`
 T44|x|ARCHIVED to SPEC-ARCHIVE.md|V7,`src/tokens:V43`
 T50|x|ARCHIVED to SPEC-ARCHIVE.md|V7,`src/fix:V4`,`src/rules:V45`
-T55|.|wire the flag twins (`.:I.flag`) into every verb: `--rule` `--map` `--set` `--*-file` `--no-files` `--no-builtin-map` `--no-builtin-sets` `--strict` `--pedantic`; same parser & origin as the dotfiles|`src/rules:V18`,`src/rules:V19`,`src/lint:V36`
+T55|x|wire the flag twins (`.:I.flag`) into every verb: `--rule` `--map` `--set` `--*-file` `--no-files` `--no-builtin-map` `--no-builtin-sets` `--strict` `--pedantic`; same parser & origin as the dotfiles|`src/rules:V18`,`src/rules:V19`,`src/lint:V36`
 
 ## §B BUGS
 

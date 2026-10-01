@@ -11,10 +11,43 @@
 //! from where, is an open question in the node spec, so a discovered
 //! file arrives here as a path and its text, exactly like any other.
 
-use crate::rules::line::{ParseError, parse_builtin, parse_file, parse_flag};
+use crate::rules::line::{
+    ParseError, is_skippable, parse_builtin, parse_file, parse_flag,
+};
 use crate::rules::rule_line::parse_rule;
 use crate::rules::{Origin, Rule};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+/// Where one whole source sits in the chain, so a caller that reads a
+/// source as a WHOLE text still gives each line the origin the chain
+/// would. The map is that caller: a `family` line declares a tree a later
+/// line of the same source may use, so it layers texts rather than
+/// entries (`src/fix` `Map::layer`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Place<'a> {
+    /// The compiled-in data file.
+    Builtin,
+    /// A discovered dotfile or a `--*-file`.
+    File(&'a Path),
+    /// One inline flag, by its position in argv.
+    Argument(usize),
+}
+
+impl Place<'_> {
+    /// The origin of 1-based line `line` of a source sitting here. A flag
+    /// is one line, so its origin ignores the number.
+    #[must_use]
+    pub fn origin(self, line: usize) -> Origin {
+        match self {
+            Self::Builtin => Origin::Builtin { line },
+            Self::File(path) => Origin::File {
+                path: path.to_path_buf(),
+                line,
+            },
+            Self::Argument(index) => Origin::Argument { index },
+        }
+    }
+}
 
 /// The contributing sources of one data-file kind.
 ///
@@ -131,6 +164,48 @@ impl Sources {
     /// The rules kind, the one whose parser lives in this node.
     pub fn rules(&self) -> Result<Vec<Rule>, ParseError> {
         self.assemble(parse_rule)
+    }
+
+    /// Whether the compiled-in source is part of this chain, which is
+    /// what a `--no-builtin-*` flag removes and what an export of the
+    /// chain has to say back (`src/cli:V32`).
+    #[must_use]
+    pub fn has_builtin(&self) -> bool {
+        self.builtin.is_some()
+    }
+
+    /// Every source, whole, in precedence order and with its place.
+    ///
+    /// A flag value arrives here UNCHECKED: the one-line rule is
+    /// `parse_flag`'s, and a caller layering texts runs each flag value
+    /// through it first rather than restating it.
+    #[must_use]
+    pub fn layers(&self) -> Vec<(Place<'_>, &str)> {
+        let builtin = self.builtin.iter().map(|t| (Place::Builtin, t.as_str()));
+        let files = self.dotfiles.iter().chain(&self.files);
+        let files = files.map(|(path, t)| (Place::File(path), t.as_str()));
+        let flags = self.flags.iter();
+        let flags = flags.map(|(at, t)| (Place::Argument(*at), t.as_str()));
+        builtin.chain(files).chain(flags).collect()
+    }
+
+    /// Every entry-bearing line a RUN contributed -- dotfiles, named
+    /// files, flags -- trimmed, in precedence order. It is the chain with
+    /// its sources forgotten, which is exactly what V18 says a run may
+    /// trade a file for.
+    ///
+    /// The builtin is left out. It is the binary's, every run that keeps
+    /// it gets it back without being told, and whether it was kept is
+    /// [`Sources::has_builtin`]'s answer rather than a hundred lines.
+    #[must_use]
+    pub fn lines(&self) -> Vec<String> {
+        let layers = self.layers().into_iter();
+        let added = layers.filter(|(place, _)| *place != Place::Builtin);
+        added
+            .flat_map(|(_, text)| text.lines())
+            .filter(|line| !is_skippable(line))
+            .map(|line| line.trim().to_owned())
+            .collect()
     }
 }
 

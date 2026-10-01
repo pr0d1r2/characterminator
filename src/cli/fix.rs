@@ -10,15 +10,12 @@
 //! over it (`src/rules:V45`).
 
 use super::check::Checker;
+use super::config::Config;
 use crate::fix::{self as engine, Map};
 use crate::render::{self, Change, Format, Skipped};
-use crate::rules::Origin;
 use crate::scan::Unreadable;
 use crate::tokens;
 use std::path::Path;
-
-/// The map file discovered at the run root (`src/rules:V45`).
-const MAP: &str = ".ctrm-map";
 
 /// What a run of `fix` produced.
 pub struct Report {
@@ -61,14 +58,15 @@ struct Found {
 /// A configuration that cannot be read, a file that cannot be written,
 /// or a rewrite the engine refused to trust (`src/fix:V5`, `src/fix:V6`).
 pub fn run(
-    root: &Path,
+    config: &Config,
     paths: &[String],
     format: Format,
     write: bool,
 ) -> Result<Report, String> {
+    let root = &config.root;
     let pass = Pass {
-        checker: Checker::load(root)?,
-        map: map_of(root)?,
+        checker: Checker::configured(config)?,
+        map: config.map()?,
         write,
     };
     let files = tokens::select(root, paths)
@@ -79,21 +77,6 @@ pub fn run(
         pass.visit(full, shown, &mut found)?;
     }
     Ok(report_of(&found, format))
-}
-
-/// The map in force: the builtin (`src/fix:V26`), then `.ctrm-map` over
-/// it (`src/rules:V19`, `src/rules:V45`).
-pub(super) fn map_of(root: &Path) -> Result<Map, String> {
-    let map = Map::parse(engine::BUILTIN, &|line| Origin::Builtin { line })
-        .map_err(|bad| bad.to_string())?;
-    let Ok(text) = std::fs::read_to_string(root.join(MAP)) else {
-        return Ok(map);
-    };
-    map.layer(&text, &|line| Origin::File {
-        path: MAP.into(),
-        line,
-    })
-    .map_err(|bad| bad.to_string())
 }
 
 /// What one run holds for every file it visits, so a per-file call takes
@@ -196,7 +179,7 @@ fn skip(held: &Skip) -> Skipped<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::run;
+    use super::{Config, run};
     use crate::render::Format;
     use std::path::{Path, PathBuf};
 
@@ -216,7 +199,7 @@ mod tests {
 
     fn ran(root: &Path, write: bool) -> (String, u8) {
         let asked = ["notes.md".to_owned()];
-        match run(root, &asked, Format::Human, write) {
+        match run(&Config::discovered(root), &asked, Format::Human, write) {
             Ok(report) => (report.text, report.code),
             Err(why) => (why, 9),
         }

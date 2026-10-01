@@ -42,6 +42,7 @@ self|.|-
 - flag: `--format human|json` ∀ verbs; `sarif` `check` only (`src/render:V50`) · `-C <dir>`.
 - file grammars live w/ their parser: `.ctrm` → `src/rules` §I · `.ctrm-map` → `src/fix` §I · `.ctrm-sets` & builtin presets → `src/charset` §I.
 - flag (file twins, repeatable, `src/rules:V18`): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (`src/rules:V29`) · `--strict` (`src/lint:V36`) · `--pedantic` (`src/lint:V37`).
+- flag: unknown | another verb's (`check --bpe`) → exit 2 ∵ a typo'd flag silently ignored reads as one that worked. `--` ends flags.
 - lib: `characterminator::{scan, fix, resolve}` — pure fn over `&str`.
 - exit: 0 ok · 1 violation | drift · 2 usage.
 
