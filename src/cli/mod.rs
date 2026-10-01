@@ -7,11 +7,15 @@
 mod check;
 mod explain;
 mod fix;
+mod guard;
+mod hook;
+mod json;
 mod out;
 mod stats;
 
 use crate::render::Format;
 use crate::rules::TEXT;
+use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -36,6 +40,11 @@ pub enum Outcome {
     Violation,
     /// The caller asked for something that is not a usage.
     Usage,
+    /// A hook adapter that could not do its job: exit 1, which a harness
+    /// reads as a NON-BLOCKING error it shows the user. Never 2, which
+    /// Claude Code reads as "block the tool": a broken adapter answering 2
+    /// would deny every read for the rest of the session (V53).
+    Broken,
 }
 
 impl Outcome {
@@ -44,7 +53,7 @@ impl Outcome {
     pub fn code(self) -> ExitCode {
         match self {
             Self::Ok => ExitCode::SUCCESS,
-            Self::Violation => ExitCode::from(1),
+            Self::Violation | Self::Broken => ExitCode::from(1),
             Self::Usage => ExitCode::from(2),
         }
     }
@@ -55,6 +64,9 @@ impl Outcome {
 pub fn run(args: &[String]) -> ExitCode {
     match verb_of(args) {
         Some("--version" | "-V") => version(),
+        // Before the flag checks: a hook must never exit 2 (V53), even
+        // when its command line carries a flag another verb would refuse.
+        Some("guard") => guarded().code(),
         Some(verb) if sarif_misused(verb, args) => sarif_refused(verb).code(),
         Some("check") => checked(args).code(),
         Some("explain") => explained(args).code(),
@@ -189,6 +201,36 @@ fn counted(args: &[String]) -> Outcome {
     said(stats::run(&root(), &paths_of(args), format_of(args), bpe))
 }
 
+/// `guard`: hook JSON on stdin, decision JSON on stdout (V35). Arguments
+/// are ignored, so a flag added by mistake cannot turn a hook into an
+/// exit 2.
+fn guarded() -> Outcome {
+    let mut stdin = String::new();
+    let read = std::io::stdin().read_to_string(&mut stdin);
+    adapted(match read {
+        Ok(_) => guard::run(&stdin, &root()),
+        Err(e) => Err(format!("stdin: {e}")),
+    })
+}
+
+/// The decision travels in the JSON; the exit code only says whether the
+/// adapter worked (V53). A failure is NAMED on stderr and exits 1, which
+/// lets the tool call through rather than bricking the session, and even
+/// a write that failed is mapped off 2 for the same reason.
+fn adapted(answer: Result<String, String>) -> Outcome {
+    match answer {
+        Ok(text) if text.is_empty() => Outcome::Ok,
+        Ok(text) => match out::shown(&text, Outcome::Ok) {
+            Outcome::Usage => Outcome::Broken,
+            kept => kept,
+        },
+        Err(message) => {
+            eprintln!("ctrm guard: {message}");
+            Outcome::Broken
+        }
+    }
+}
+
 fn report_of(report: &check::Report) -> Outcome {
     reported(&report.text, report.code)
 }
@@ -224,9 +266,10 @@ fn usage() -> Outcome {
          ctrm explain [<path>]        the set in force, and the rule behind it\n  \
          ctrm sets [--fidelity <f>]   every declared set and what it holds\n  \
          ctrm fix [--check] [<path>...] rewrite them, or report the drift\n  \
-         ctrm stats [--bpe] [<path>...] what they cost now, and after a fix\n\n\
-         any verb takes --format json; check also takes --format sarif; \
-         planned: guard"
+         ctrm stats [--bpe] [<path>...] what they cost now, and after a fix\n  \
+         ctrm guard                   agent hook: hook JSON in, decision out\n\n\
+         any verb but guard takes --format json; check also takes \
+         --format sarif"
     );
     Outcome::Usage
 }
@@ -234,8 +277,8 @@ fn usage() -> Outcome {
 #[cfg(test)]
 mod tests {
     use super::{
-        Format, Outcome, format_of, paths_of, sarif_misused, sarif_refused,
-        verb_of,
+        Format, Outcome, adapted, format_of, paths_of, sarif_misused,
+        sarif_refused, verb_of,
     };
 
     fn argv(words: &[&str]) -> Vec<String> {
@@ -250,6 +293,16 @@ mod tests {
         assert_ne!(Outcome::Ok, Outcome::Violation);
         assert_ne!(Outcome::Violation, Outcome::Usage);
         assert_ne!(Outcome::Ok, Outcome::Usage);
+    }
+
+    /// V53: a failed adapter exits 1, which Claude Code reads as a
+    /// non-blocking error, and never 2, which it reads as a block.
+    #[test]
+    fn a_failed_guard_is_broken_and_never_usage() {
+        let failed = adapted(Err(String::from("hook input is not JSON")));
+        assert_eq!(failed, Outcome::Broken);
+        assert_eq!(adapted(Ok(String::new())), Outcome::Ok);
+        assert_ne!(Outcome::Broken, Outcome::Usage);
     }
 
     #[test]

@@ -141,6 +141,25 @@ impl Checker {
         Ok((self.granted(&found)?, levels_for(&found)?))
     }
 
+    /// One file's findings, judged exactly as `check` judges it, so the
+    /// guard and the gate cannot disagree about the same bytes (V35).
+    /// `None` is a file that is not text: `check` names it as a skip.
+    ///
+    /// # Errors
+    ///
+    /// A rule naming a set nothing declares, or a lint nothing registers.
+    pub(super) fn findings(
+        &self,
+        shown: &str,
+        bytes: &[u8],
+    ) -> Result<Option<Vec<Finding>>, String> {
+        let (set, levels) = self.law(shown)?;
+        match inspect(bytes, &self.judge(&set), &levels) {
+            Looked::Findings(found) => Ok(Some(found)),
+            Looked::Unread(_) => Ok(None),
+        }
+    }
+
     /// What one path may contain, and the rule that decided it -- which
     /// is `explain`'s whole question (`src/rules:V2`).
     ///
