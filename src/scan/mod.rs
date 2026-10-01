@@ -10,9 +10,9 @@ mod bytes;
 mod order;
 mod text;
 
-pub use bytes::{looks_binary, scan_bytes};
+pub use bytes::{decode, looks_binary, scan_bytes};
 pub use order::sort_hits;
-pub use text::scan_str;
+pub use text::{located, scan_str};
 
 /// Where a character sits, in the three units a reader or a tool needs.
 ///

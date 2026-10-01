@@ -51,6 +51,27 @@ impl Cursor {
     }
 }
 
+/// Every character of a text, each with its position, in byte order.
+///
+/// This is THE walk: `scan_str` filters it, and a caller whose question
+/// is about a character's NEIGHBOURS rather than the character alone --
+/// a carriage return before a line feed, whitespace before a line end
+/// (`src/lint:V55`) -- reads it whole. Exposing the walk rather than a
+/// second cursor keeps one definition of where a line ends and what a
+/// column counts, so a line-shaped finding and a character finding at
+/// the same place always agree on its position.
+pub fn located(text: &str) -> impl Iterator<Item = Hit> + '_ {
+    text.char_indices()
+        .scan(Cursor::start(), |cursor, (byte, character)| {
+            let position = cursor.position(byte);
+            cursor.advance(character);
+            Some(Hit {
+                position,
+                character,
+            })
+        })
+}
+
 /// Locate every character the caller's test rejects.
 ///
 /// `allowed` is the caller's rule and the only opinion in the call: a
@@ -61,23 +82,14 @@ pub fn scan_str<F>(text: &str, allowed: F) -> Vec<Hit>
 where
     F: Fn(char) -> bool,
 {
-    let mut cursor = Cursor::start();
-    let mut hits = Vec::new();
-    for (byte, character) in text.char_indices() {
-        if !allowed(character) {
-            hits.push(Hit {
-                position: cursor.position(byte),
-                character,
-            });
-        }
-        cursor.advance(character);
-    }
-    hits
+    located(text)
+        .filter(|hit| !allowed(hit.character))
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::scan_str;
+    use super::{located, scan_str};
     use crate::scan::{Hit, Position};
 
     /// Zero width space: invisible, two tokens wide, and the reason this
@@ -122,6 +134,20 @@ mod tests {
         let hits = scan_str("\u{200b}a\u{00a0}", ascii_only);
 
         assert_eq!(hits, vec![hit(1, 1, 0, ZWSP), hit(1, 3, 4, '\u{00a0}')]);
+    }
+
+    #[test]
+    fn the_walk_yields_every_character_with_its_position() {
+        let walked: Vec<Hit> = located("a\r\n\u{e9}").collect();
+        let expected = vec![
+            hit(1, 1, 0, 'a'),
+            hit(1, 2, 1, '\r'),
+            hit(1, 3, 2, '\n'),
+            hit(2, 1, 3, '\u{e9}'),
+        ];
+
+        assert_eq!(walked, expected);
+        assert_eq!(located("").count(), 0);
     }
 
     #[test]

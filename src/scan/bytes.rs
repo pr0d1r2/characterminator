@@ -36,20 +36,30 @@ pub fn scan_bytes<F>(bytes: &[u8], allowed: F) -> Result<Vec<Hit>, Unreadable>
 where
     F: Fn(char) -> bool,
 {
+    decode(bytes).map(|text| scan_str(text, allowed))
+}
+
+/// The text in raw bytes, or the NAMED reason there is none: the refusal
+/// half of [`scan_bytes`], for a caller that asks more than one question
+/// of the same text (`src/lint:V55` walks it a second time for line
+/// endings) and should neither decode it twice nor refuse it two ways.
+///
+/// # Errors
+///
+/// [`Unreadable::Binary`] first, then [`Unreadable::NotUtf8`], in the
+/// order and for the reasons [`scan_bytes`] gives.
+pub fn decode(bytes: &[u8]) -> Result<&str, Unreadable> {
     if looks_binary(bytes) {
         return Err(Unreadable::Binary);
     }
-    match core::str::from_utf8(bytes) {
-        Ok(text) => Ok(scan_str(text, allowed)),
-        Err(error) => Err(Unreadable::NotUtf8 {
-            byte: error.valid_up_to(),
-        }),
-    }
+    core::str::from_utf8(bytes).map_err(|error| Unreadable::NotUtf8 {
+        byte: error.valid_up_to(),
+    })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{looks_binary, scan_bytes};
+    use super::{decode, looks_binary, scan_bytes};
     use crate::scan::{Hit, Position, Unreadable};
 
     fn ascii_only(character: char) -> bool {
@@ -95,6 +105,13 @@ mod tests {
                 character: '\u{200b}'
             }])
         );
+    }
+
+    #[test]
+    fn decoding_refuses_the_way_scanning_does() {
+        assert_eq!(decode(b"ab\x00\xff"), Err(Unreadable::Binary));
+        assert_eq!(decode(b"ab\xff"), Err(Unreadable::NotUtf8 { byte: 2 }));
+        assert_eq!(decode("a\u{e9}".as_bytes()), Ok("a\u{e9}"));
     }
 
     #[test]
