@@ -18,8 +18,8 @@
 
 Read [LLM-DISCLAIMER](docs/LLM-DISCLAIMER.md) first.
 
-**Status: prototype.** Every verb below runs and is tested, the tool gates
-its own tree, and nothing is published yet. See
+**Status: pre-release, 0.1.0.** Every verb below runs and is tested, the
+tool gates its own tree, and nothing is published yet. See
 [what is not done](#what-is-not-done).
 
 Find and eliminate characters outside an allowed set, per file type and per
@@ -63,12 +63,52 @@ than what would sell the tool.
 
 ## Install
 
-Not published yet. From a clone:
+Not on crates.io yet. From a clone:
 
 ```bash
 cargo install --path .        # or
 nix develop                   # the dev shell, with the gate's tooling
 ```
+
+### As a pre-commit hook
+
+Both hooks build `ctrm` from the revision you pin, so the rules a commit
+is held to change when the pin changes and at no other time.
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/pr0d1r2/characterminator
+    rev: <tag or commit>
+    hooks:
+      - id: ctrm-check    # refuse; writes nothing
+      # - id: ctrm-fix    # rewrite what the map can, then refuse the rest
+```
+
+### In GitHub Actions
+
+The action builds `ctrm` with the runner's own cargo from the ref in
+`uses:`, then runs it. With `--format sarif`, violations appear in the
+pull request as code scanning alerts:
+
+```yaml
+permissions:
+  contents: read
+  security-events: write
+steps:
+  - uses: actions/checkout@v7
+  - uses: pr0d1r2/characterminator@<tag or commit>
+    with:
+      args: check --format sarif
+      output: ctrm.sarif
+    continue-on-error: true      # let the upload run; the alerts carry it
+  - uses: github/codeql-action/upload-sarif@v4
+    with:
+      sarif_file: ctrm.sarif
+```
+
+Without `args` it runs `ctrm check` and fails the job on a violation.
+Pin both actions to a commit SHA in real use.
 
 ## The verbs
 
@@ -424,7 +464,16 @@ list goes stale and that one does not.
   emoji sequence compression, so until then every joiner is reported.
 - **Locale letter presets** from CLDR, and **emoji sequence compression**,
   both need data vendored first.
-- **No CI**, no release, nothing published. The gate is git hooks today.
+- **Prose that needs ZWNJ or ZWJ outside emoji** (Persian, Hindi) has no
+  way through yet: a hazard fires at `forbid`, which no rule lowers, and a
+  scoped exemption has to be specified before one ships.
+- **Four pedantic lints need data**: `not-nfc`, `nfkc-compat`,
+  `mixed-script` and `confusable` are registered and fire nothing until
+  Unicode normalization and UTS #39 data are vendored; `locale-literal` is
+  not built.
+- **Nothing published**: no crates.io release, no tag. CI
+  (`.github/workflows/ci.yml`) runs the gate on three platforms and the
+  action on one, and has not yet run on GitHub.
 
 ## License
 
