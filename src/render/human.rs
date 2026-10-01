@@ -130,6 +130,7 @@ fn rule_lines(rule: &Rule) -> Vec<String> {
         format!("sets {}", words(&rule.sets)),
         format!("family {}", rule.family.as_deref().unwrap_or("none")),
         format!("levels {}", levels(&rule.levels)),
+        format!("level {}", rule.default_level.map_or("none", level_name)),
         format!("origin {}", origin(&rule.origin)),
     ]
 }
@@ -350,7 +351,7 @@ mod tests {
     fn explain_labels_every_line_rather_than_writing_config_syntax() {
         let expected = concat!(
             "path (whole repo)\nset ascii\npattern docs/**\nsets ascii\n",
-            "family none\nlevels none\norigin builtin:3"
+            "family none\nlevels none\nlevel none\norigin builtin:3"
         );
         assert_eq!(explained(), expected);
     }

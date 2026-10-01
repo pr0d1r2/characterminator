@@ -171,14 +171,22 @@ fn null() -> String {
     String::from("null")
 }
 
+/// `default_level` is the bare `!<level>` a rule line wrote, or `null` when
+/// it wrote none (T43). It sits beside `levels` rather than inside it as a
+/// choice with a magic target, for the reason the `Rule` field does: the
+/// bare form names no target. `null` rather than the group default a run
+/// falls back to, because the document reports what the RULE says, and a
+/// synthesised level would put words in a line that never wrote them.
 fn rule(item: &Rule) -> String {
     let sets: Vec<String> = item.sets.iter().map(|set| string(set)).collect();
     let levels: Vec<String> = item.levels.iter().map(level_choice).collect();
+    let bare = item.default_level;
     object(&[
         field("pattern", &string(&item.pattern)),
         field("sets", &array(&sets)),
         field("family", &optional(item.family.as_deref())),
         field("levels", &array(&levels)),
+        field("default_level", &optional(bare.map(level_name))),
         field("origin", &origin(&item.origin)),
     ])
 }
@@ -311,15 +319,18 @@ mod tests {
     }
 
     fn explained(path: Option<&str>) -> String {
+        explained_by(path, &file_rule())
+    }
+
+    fn explained_by(path: Option<&str>, rule: &Rule) -> String {
         let set = CharSet {
             name: String::from("ascii"),
             ranges: vec![],
         };
-        let rule = file_rule();
         explain(&Explanation {
             path,
             set: &set,
-            rule: Some(&rule),
+            rule: Some(rule),
         })
     }
 
@@ -415,10 +426,28 @@ mod tests {
             r#"{"verb":"explain","path":"a.rs","set":{"name":"ascii","#,
             r#""ranges":[]},"rule":{"pattern":"docs/**","#,
             r#""sets":["ascii"],"family":"dash","levels":["#,
-            r#"{"target":"pedantic","level":"warn"}],"origin":{"#,
+            r#"{"target":"pedantic","level":"warn"}],"#,
+            r#""default_level":null,"origin":{"#,
             r#""kind":"file","path":".ctrm","line":4}}}"#
         );
         assert_eq!(explained(Some("a.rs")), expected);
+    }
+
+    #[test]
+    fn a_bare_level_is_carried_as_the_rules_default_level() {
+        let rule = Rule {
+            default_level: Some(Level::Warn),
+            ..file_rule()
+        };
+        let expected = concat!(
+            r#"{"verb":"explain","path":null,"set":{"name":"ascii","#,
+            r#""ranges":[]},"rule":{"pattern":"docs/**","#,
+            r#""sets":["ascii"],"family":"dash","levels":["#,
+            r#"{"target":"pedantic","level":"warn"}],"#,
+            r#""default_level":"warn","origin":{"#,
+            r#""kind":"file","path":".ctrm","line":4}}}"#
+        );
+        assert_eq!(explained_by(None, &rule), expected);
     }
 
     #[test]
