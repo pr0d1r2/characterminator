@@ -1,0 +1,54 @@
+# THE `words` MAP (V51): compressed notation back to the plain words it
+# abbreviates. OPT-IN -- nothing reads this file until a map line says
+# `use words`, in a `.ctrm-map` or a `--map` flag.
+#
+# WHY OPT-IN, when the builtin map beside it is on by default: that map
+# rewrites what a writer never chose (an editor's curly quote), so taking
+# it away costs nothing. These symbols were typed ON PURPOSE and carry
+# meaning, so rewriting them is a decision a project makes, never one this
+# crate makes for it (V26 stays as it is).
+#
+# WHY IT EXISTS AT ALL, measured rather than assumed (`.:R9`, `.:R11`):
+# o200k spends two or three tokens on each of the first few symbols below
+# and one on the word, which makes this the one rewrite in the crate that
+# buys tokens. Only o200k was measured; the Claude tokenizer was not.
+#
+# HOW AN ENTRY GOT IN: it costs no MORE tokens than the symbol, measured
+# on 112 caveman `SPEC*.md` files (`.:R11`). Saved over that corpus, and
+# the number of uses it was saved over, are on each line's comment.
+#
+# A `word` line keeps its word apart from a neighbouring letter or digit
+# (V51), so `U+22A5owns` becomes `not owns` rather than `notowns`. The
+# plain lines at the bottom need no such care: their replacements open
+# and close with punctuation, which never fuses with a word.
+
+# UP TACK, as in "does not own". 4817 saved over 2447 uses: ~2 each, the
+# largest single saving the crate measures.
+word U+22A5 not
+
+# THEREFORE. 1366 over 1366 uses.
+word U+2234 so
+
+# BECAUSE. 359 over 359.
+word U+2235 because
+
+# FOR ALL. 332 over 354: a few uses sit where the word costs what the
+# symbol did, and none where it costs more.
+word U+2200 all
+
+# ELEMENT OF. 36 over 36.
+word U+2208 in
+
+# THERE EXISTS. 21 over 21.
+word U+2203 exists
+
+# NOT EQUAL TO. 28 over 28.
+U+2260 !=
+
+# RIGHTWARDS ARROW and RIGHTWARDS DOUBLE ARROW, at PARITY: 0 saved over
+# 1167 and 75 uses. Kept because they cost nothing and finish the job --
+# a file that opted into this map wants its notation in ASCII, and an
+# arrow left behind would fail the same check. A project that wants its
+# arrows grants them, and `fix` never touches a granted character (V6).
+U+2192 ->
+U+21D2 =>

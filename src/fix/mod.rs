@@ -46,10 +46,15 @@ pub struct Class {
 
 /// A plain transliteration entry. An empty `to` is an explicit delete,
 /// which is the only way a character is ever removed.
+///
+/// `word` marks an entry a `word` line declared (V51): its replacement is
+/// a word, so where it would land against a letter or a digit `fix` puts
+/// a space between the two rather than fusing them into one (`notowns`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MapEntry {
     pub from: String,
     pub to: String,
+    pub word: bool,
     pub origin: Origin,
 }
 
@@ -74,6 +79,8 @@ pub enum Error {
     MapCycle,
     /// A family was named that nothing declares.
     UnknownFamily { name: String },
+    /// A `use` line named a map this crate does not ship (V51).
+    UnknownMap { name: String },
     /// A parent chain comes back to a family it already visited (V27).
     FamilyCycle { name: String },
     /// A family has no parent, so its chain never reaches `ascii` (V27).
@@ -95,6 +102,7 @@ impl Error {
             Self::UnknownFamily { name }
             | Self::FamilyCycle { name }
             | Self::UnrootedFamily { name } => format!("family '{name}'"),
+            Self::UnknownMap { name } => format!("map '{name}'"),
             Self::MapCycle
             | Self::RootReparented
             | Self::TouchedAllowedBytes
@@ -120,6 +128,7 @@ impl Error {
             Self::Syntax { .. } => "is not a declared form",
             Self::MapCycle => "rewrites in a cycle and never settles",
             Self::UnknownFamily { .. } => "is not declared",
+            Self::UnknownMap { .. } => "is not a builtin map (V51)",
             Self::FamilyCycle { .. } => "is its own ancestor (V27)",
             Self::UnrootedFamily { .. } => "never reaches `ascii` (V27)",
             Self::RootReparented => "takes no parent: `ascii` is the root",

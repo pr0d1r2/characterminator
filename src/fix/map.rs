@@ -9,6 +9,12 @@
 //!
 //! Sources are held longest first, because a declared sequence must win over
 //! a declared prefix of it (V31).
+//!
+//! Two more line kinds serve V51. `word <from> <to>` is an entry whose
+//! replacement is a WORD, which `apply` keeps apart from a neighbouring
+//! letter. `use <name>` reads a named builtin map at that line, so an
+//! opt-in map is one line of the grammar every source already speaks --
+//! a `.ctrm-map` line or a `--map` flag alike (`src/rules:V18`).
 
 use crate::fix::class;
 use crate::fix::codepoint::decode;
@@ -25,18 +31,38 @@ use std::cmp::Reverse;
 /// one parser, and an entry a user overrides by declaring it again.
 pub const BUILTIN: &str = include_str!("map.ctrm-map");
 
-/// A declared source matched at the current position.
+/// The opt-in `words` map (V51): notation to the English it abbreviates.
+///
+/// NOT layered by default, which is the whole of V26's promise: the
+/// builtin rewrites only what a writer never chose, and these symbols
+/// carry meaning somebody typed on purpose. A `use words` line asks.
+const WORDS: &str = include_str!("words.ctrm-map");
+
+/// Every map a `use` line may name. A table rather than a match, so the
+/// test that each one parses walks the same list the parser reads.
+const NAMED: &[(&str, &str)] = &[("words", WORDS)];
+
+/// A declared source matched at the current position. `word` says the
+/// replacement is a word, which `apply` keeps off a neighbouring letter.
 pub(crate) struct Match {
     pub(crate) len: usize,
     pub(crate) to: String,
+    pub(crate) word: bool,
 }
 
 /// What a matched source rewrites to: a literal replacement from a map
-/// entry, or a class whose answer depends on the fidelity family (V28).
+/// entry (a word or not), or a class whose answer depends on the fidelity
+/// family (V28).
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Target {
-    To(String),
+    To { to: String, word: bool },
     Class(usize),
+}
+
+impl Target {
+    const fn word(&self) -> bool {
+        matches!(self, Self::To { word: true, .. })
+    }
 }
 
 /// One rewritable source, ready for longest-first matching.
@@ -147,6 +173,7 @@ impl Map {
             return Ok(Some(Match {
                 len: candidate.source.len(),
                 to,
+                word: candidate.target.word(),
             }));
         }
         Ok(None)
@@ -179,7 +206,7 @@ impl Map {
         allowed: &dyn Fn(char) -> bool,
     ) -> Result<Option<String>, Error> {
         match target {
-            Target::To(to) => Ok(Some(to.clone())),
+            Target::To { to, .. } => Ok(Some(to.clone())),
             Target::Class(index) => match self.classes.get(*index) {
                 Some(class) => {
                     class::resolve(class, &self.tree, self.fidelity(), allowed)
@@ -189,7 +216,11 @@ impl Map {
         }
     }
 
-    /// One line, dispatched by its shape.
+    /// One line, dispatched by its first word.
+    ///
+    /// The keywords cost no source anyone could map: a `<from>` is only
+    /// ever rewritten where it is DISALLOWED (V6), and `family`, `use` and
+    /// `word` are ASCII, which every set holds.
     fn read(
         &mut self,
         line: &str,
@@ -200,13 +231,37 @@ impl Map {
         if body.is_empty() || body.starts_with('#') {
             return Ok(());
         }
-        if let Some(rest) = body.strip_prefix("family ") {
-            return self.declare(rest, number);
+        match body.split_once(' ') {
+            Some(("family", rest)) => self.declare(rest, number),
+            Some(("=", rest)) => self.classify(rest, number),
+            Some(("use", rest)) => self.pull(rest.trim(), &origin(number)),
+            Some(("word", rest)) => {
+                self.add(word(rest, origin(number)), number)
+            }
+            _ => self.add(entry(body, origin(number), false), number),
         }
-        if let Some(rest) = body.strip_prefix("= ") {
-            return self.classify(rest, number);
+    }
+
+    /// `use <name>`: read a named builtin map AT this line, so it sits in
+    /// the precedence chain exactly where it was asked for and a later
+    /// line still overrides one of its entries (`src/rules:V19`).
+    ///
+    /// Every entry it brings carries the ORIGIN of the `use` line rather
+    /// than a line of the named file: the answer to "why was this
+    /// rewritten" is the line somebody wrote to opt in (`src/rules:V20`),
+    /// and it needs no new kind of origin to say so.
+    fn pull(&mut self, name: &str, origin: &Origin) -> Result<(), Error> {
+        let text = NAMED
+            .iter()
+            .find(|(held, _)| *held == name)
+            .map(|(_, text)| *text)
+            .ok_or_else(|| Error::UnknownMap {
+                name: name.to_owned(),
+            })?;
+        for (index, line) in text.lines().enumerate() {
+            self.read(line, index.saturating_add(1), &|_| origin.clone())?;
         }
-        self.add(body, number, origin)
+        Ok(())
     }
 
     fn declare(&mut self, rest: &str, number: usize) -> Result<(), Error> {
@@ -228,12 +283,10 @@ impl Map {
     /// the precedence the config chain expects (`src/rules:V19`).
     fn add(
         &mut self,
-        body: &str,
+        entry: Option<MapEntry>,
         number: usize,
-        origin: &dyn Fn(usize) -> Origin,
     ) -> Result<(), Error> {
-        let entry = entry(body, origin(number))
-            .ok_or(Error::Syntax { line: number })?;
+        let entry = entry.ok_or(Error::Syntax { line: number })?;
         self.entries.retain(|held| held.from != entry.from);
         self.entries.push(entry);
         Ok(())
@@ -259,7 +312,10 @@ impl Map {
         for entry in &self.entries {
             self.candidates.push(Candidate {
                 source: entry.from.clone(),
-                target: Target::To(entry.to.clone()),
+                target: Target::To {
+                    to: entry.to.clone(),
+                    word: entry.word,
+                },
             });
         }
         self.index_classes();
@@ -310,7 +366,7 @@ pub(crate) fn violates(text: &str, allowed: &dyn Fn(char) -> bool) -> bool {
 
 /// One `<from> <to>` line. An empty source is rejected: it would match at
 /// every position and rewrite nothing.
-fn entry(body: &str, origin: Origin) -> Option<MapEntry> {
+fn entry(body: &str, origin: Origin, word: bool) -> Option<MapEntry> {
     let mut words = body.split_whitespace();
     let from = decode(words.next()?)?;
     let to = match words.next() {
@@ -320,7 +376,18 @@ fn entry(body: &str, origin: Origin) -> Option<MapEntry> {
     if from.is_empty() || words.next().is_some() {
         return None;
     }
-    Some(MapEntry { from, to, origin })
+    Some(MapEntry {
+        from,
+        to,
+        word,
+        origin,
+    })
+}
+
+/// One `word <from> <to>` line (V51). The replacement is required: a
+/// word that deletes is a delete, and the plain line already says that.
+fn word(rest: &str, origin: Origin) -> Option<MapEntry> {
+    entry(rest, origin, true).filter(|held| !held.to.is_empty())
 }
 
 #[cfg(test)]
@@ -535,6 +602,136 @@ mod tests {
     fn every_builtin_replacement_is_ascii() {
         for entry in parsed(super::BUILTIN).entries() {
             assert!(entry.to.is_ascii(), "{} -> {}", entry.from, entry.to);
+        }
+    }
+
+    fn found(map: &Map, from: char) -> Option<super::MapEntry> {
+        let from = from.to_string();
+        map.entries()
+            .iter()
+            .find(|entry| entry.from == from)
+            .cloned()
+    }
+
+    #[test]
+    fn a_word_line_declares_a_word_and_a_plain_line_does_not() {
+        let map = parsed("word U+22A5 not\nU+2014 --\n");
+        assert_eq!(found(&map, '\u{22A5}').map(|e| e.word), Some(true));
+        assert_eq!(found(&map, '\u{2014}').map(|e| e.word), Some(false));
+    }
+
+    /// A word that deletes is a delete, which the plain line already says;
+    /// a `word` line without a word is a typo, not a second spelling.
+    #[test]
+    fn a_word_line_needs_a_word() {
+        assert_eq!(parse("word U+22A5\n"), Err(Error::Syntax { line: 1 }));
+        assert_eq!(parse("word a b c\n"), Err(Error::Syntax { line: 1 }));
+    }
+
+    /// V51: `use words` reads the named map at that line, and each entry
+    /// it brings answers "why" with the line that opted in (V20).
+    #[test]
+    fn a_use_line_pulls_in_a_named_map_under_its_own_origin() {
+        let map = parsed("# opt in\nuse words\n");
+        let up_tack = found(&map, '\u{22A5}');
+        assert_eq!(up_tack.clone().map(|e| e.to), Some(String::from("not")));
+        let origin = up_tack.map(|e| e.origin);
+        assert_eq!(origin, Some(Origin::Builtin { line: 2 }));
+    }
+
+    #[test]
+    fn a_use_line_naming_no_builtin_map_is_refused() {
+        let name = String::from("klingon");
+        assert_eq!(parse("use klingon\n"), Err(Error::UnknownMap { name }));
+    }
+
+    /// Precedence is POSITIONAL (`src/rules:V19`): a line after `use`
+    /// overrides what it pulled in, and `use` overrides a line before it.
+    #[test]
+    fn a_use_line_sits_in_the_chain_where_it_was_written() {
+        let after = parsed("use words\nword U+22A5 never\n");
+        let before = parsed("word U+22A5 never\nuse words\n");
+        let to = |map: &Map| found(map, '\u{22A5}').map(|e| e.to);
+        assert_eq!(to(&after), Some(String::from("never")));
+        assert_eq!(to(&before), Some(String::from("not")));
+    }
+
+    /// V18 for the two new line kinds: every line of a map, layered one
+    /// at a time the way a `--map` flag arrives, is the same map as the
+    /// file -- origins aside, which differ by design (V20).
+    #[test]
+    fn a_map_read_line_by_line_as_flags_is_the_same_map() {
+        let text = "use words\nword U+2234 thus\nU+2014 --\n= t ascii:x\n";
+        let flags = as_flags(text);
+        assert_eq!(flags.clone().map(forget), parse(text).map(forget));
+        let classes = flags.map(|map| map.classes().len());
+        assert_eq!(classes, Ok(1));
+    }
+
+    /// Each line layered alone, labelled as the argv slot it would hold.
+    fn as_flags(text: &str) -> Result<Map, Error> {
+        text.lines().enumerate().try_fold(
+            Map::default(),
+            |map, (index, line)| {
+                map.layer(line, &|_| Origin::Argument { index })
+            },
+        )
+    }
+
+    /// The entries with their origins dropped.
+    fn forget(map: Map) -> Vec<(String, String, bool)> {
+        let entries = map.entries().iter();
+        entries
+            .map(|e| (e.from.clone(), e.to.clone(), e.word))
+            .collect()
+    }
+
+    /// Every named map parses, is pure ASCII, offers only ASCII, and
+    /// pulls in no other map: a `use` inside one would be read again on
+    /// every `use` of it, and a map naming itself would never finish.
+    #[test]
+    fn every_named_map_is_well_formed_data() {
+        for (name, text) in super::NAMED {
+            assert!(text.is_ascii(), "{name}");
+            let use_lines = text.lines().filter(|l| l.starts_with("use "));
+            assert_eq!(use_lines.count(), 0, "{name}");
+            let map = parse(text);
+            assert!(map.is_ok(), "{name}");
+            for entry in map.unwrap_or_default().entries() {
+                assert!(entry.to.is_ascii(), "{name}: {}", entry.from);
+            }
+        }
+    }
+
+    /// V51 names what the `words` map targets. Written out, for the
+    /// reason `the_builtin_map_targets_what_v26_names` states.
+    #[test]
+    fn the_words_map_targets_what_v51_names() {
+        let map = parsed(super::WORDS);
+        let word = |from, to: &str| {
+            let held = found(&map, from).map(|e| (e.to, e.word));
+            assert_eq!(held, Some((to.to_owned(), true)), "{from:?}");
+        };
+        word('\u{22A5}', "not");
+        word('\u{2234}', "so");
+        word('\u{2235}', "because");
+        word('\u{2200}', "all");
+        word('\u{2208}', "in");
+        word('\u{2203}', "exists");
+        rewrites(&map, '\u{2260}', "!=");
+        rewrites(&map, '\u{2192}', "->");
+        rewrites(&map, '\u{21D2}', "=>");
+        assert_eq!(map.entries().len(), 9);
+    }
+
+    /// V26 holds: the DEFAULT map rewrites none of the notation `words`
+    /// covers. Opting in is the only way those symbols are touched.
+    #[test]
+    fn the_builtin_map_leaves_the_notation_alone() {
+        let builtin = parsed(super::BUILTIN);
+        for entry in parsed(super::WORDS).entries() {
+            let from = entry.from.chars().next().unwrap_or_default();
+            assert_eq!(found(&builtin, from), None, "{from:?}");
         }
     }
 }

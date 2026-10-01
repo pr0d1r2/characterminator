@@ -298,4 +298,23 @@ mod tests {
         let (text, _) = ran(&root, true);
         assert_eq!(read(&root), "a - b\n", "{text}");
     }
+
+    /// `src/fix:V51` through the verb: the notation is left alone until a
+    /// `.ctrm-map` line opts in, and then it becomes words that do not
+    /// fuse with the letter beside them.
+    #[test]
+    fn the_words_map_rewrites_only_once_asked_for() {
+        let before = "x \u{22A5}owns y\n";
+        let files = [("notes.md", before)];
+        let Some(root) = fixture("ctrm-fix-words-fixture", &files) else {
+            return;
+        };
+        let _ = std::fs::remove_file(root.join(".ctrm-map"));
+        let (text, _) = ran(&root, true);
+        assert_eq!(read(&root), before, "{text}");
+        let opted = std::fs::write(root.join(".ctrm-map"), "use words\n");
+        assert!(opted.is_ok());
+        let (text, _) = ran(&root, true);
+        assert_eq!(read(&root), "x not owns y\n", "{text}");
+    }
 }
