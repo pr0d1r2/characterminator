@@ -80,7 +80,12 @@ src/lint/SPEC.md     1420
 # the whole point of the section. Compaction ran first and bought one
 # token, because the rows it could fold were already short. 860 is ~12%
 # over the new measured 766.
-src/cli/SPEC.md       860
+#
+# 860 -> 1070: T55 is open work the root spec has promised all along -- the
+# flag twins in `.:I.flag` were parsed (T18) and never reached a verb, and
+# a promise with no task row is invisible to `mth tasks`. The row is long
+# because it names every flag it owes. 1070 is ~12% over the measured 954.
+src/cli/SPEC.md       1070
 src/scan/SPEC.md      400
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
 # every other node already had, recording work that had invariants but no
