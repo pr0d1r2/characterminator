@@ -879,9 +879,9 @@ mod tests {
 
     /// V37 fixture, `crlf`: a Windows batch file, which `cmd.exe` reads
     /// with CR LF endings, in a tree that grants `cr`. The lint cannot
-    /// know that; a later rule naming the path allows the lint there, and
-    /// the sets are restated because the later matching line wins them
-    /// too (`src/rules:V2`).
+    /// know that; a later rule naming the path allows the lint there. The
+    /// line names no set, so it moves the level and leaves the grant alone
+    /// (`src/rules:V56`) -- before B5 it narrowed `.bat` back to `ascii`.
     #[test]
     fn a_batch_file_needs_crlf_and_says_so_per_path() {
         let files = [("build.bat", "@echo off\r\n"), ("notes.txt", "hi\r\n")];
@@ -889,7 +889,7 @@ mod tests {
         let on = report("ctrm-crlf-on", base, &files);
         let both = "build.bat:1:10 U+000D crlf\nnotes.txt:1:3 U+000D crlf";
         assert_eq!(on, both);
-        let ctrm = format!("{base}*.bat ascii+cr !crlf=allow\n");
+        let ctrm = format!("{base}*.bat !crlf=allow\n");
         let off = report("ctrm-crlf-off", &ctrm, &files);
         assert_eq!(off, "notes.txt:1:3 U+000D crlf");
     }

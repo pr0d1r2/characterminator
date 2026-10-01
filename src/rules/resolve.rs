@@ -42,7 +42,10 @@ pub struct Resolution<'a> {
     pub default_level: Option<Level>,
     /// The fidelity family, as a NAME. Never empty: `text` by default.
     pub family: String,
-    /// The last matching rule, or none when nothing matched.
+    /// The last matching rule that NAMED a set, or none. A rule that only
+    /// moves levels (`docs/** !warn`) does not compete for the grant: it
+    /// says how loud, not what is allowed, and letting it win would
+    /// quietly narrow the path back to `ascii` (B5, V56).
     pub winner: Option<&'a Rule>,
     /// The last matching rule that NAMED a family, which is not always
     /// the winner: a rule may grant sets without expressing a
@@ -85,9 +88,13 @@ struct Found<'a> {
 
 impl<'a> Found<'a> {
     /// Take in one matching rule. Every field is overwritten rather than
-    /// merged, which IS the last-match-wins rule (V2).
+    /// merged, which IS the last-match-wins rule (V2) -- per field: the
+    /// grant goes to the last rule that named a set, exactly as fidelity
+    /// goes to the last rule that named a family (V56).
     fn absorb(&mut self, rule: &'a Rule) {
-        self.winner = Some(rule);
+        if !rule.sets.is_empty() {
+            self.winner = Some(rule);
+        }
         self.default_level = rule.default_level.or(self.default_level);
         self.fidelity = rule.family.as_ref().map(|_| rule).or(self.fidelity);
         merge_levels(&mut self.levels, &rule.levels);
@@ -223,6 +230,19 @@ mod tests {
         assert_eq!(winner, Some("SPEC.md"));
         let origin = resolution.winner.map(|rule| rule.origin.clone());
         assert_eq!(origin, Some(Origin::Argument { index: 1 }));
+    }
+
+    /// B5: `*.bat !crlf=allow` after `* ascii+cr` narrowed `.bat` files
+    /// back to `ascii`, so the exemption line itself made CR a violation.
+    #[test]
+    fn a_level_only_line_leaves_the_grant_alone() {
+        let rules = rules(&["* caveman", "docs/* !warn"]);
+        let resolution = resolved("docs/a.md", &rules);
+        let want = vec!["ascii".to_string(), "caveman".to_string()];
+        assert_eq!(resolution.sets, want);
+        assert_eq!(resolution.default_level, Some(Level::Warn));
+        let winner = resolution.winner.map(|rule| rule.pattern.as_str());
+        assert_eq!(winner, Some("*"));
     }
 
     #[test]
