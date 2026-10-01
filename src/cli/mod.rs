@@ -312,10 +312,11 @@ configuration, any verb, repeatable, later wins:
   --map <line>      one .ctrm-map line   --map-file <f>
   --set <line>      one .ctrm-sets line  --sets-file <f>
   --no-files  --no-builtin-map  --no-builtin-sets
-  --fidelity <family>  --strict  --pedantic  -C <dir>
+  --fidelity <family>  --strict  --pedantic  --no-color  -C <dir>
 
 any verb but guard takes --format json; check also takes --format sarif;
-an unknown flag is refused; `--` ends the flags; guard reads no flags";
+an unknown flag is refused; `--` ends the flags; guard reads no flags;
+ctrm never prints colour: --no-color and NO_COLOR are accepted, no-ops";
 
 #[cfg(test)]
 mod tests {

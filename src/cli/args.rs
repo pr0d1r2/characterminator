@@ -34,6 +34,12 @@ const SWITCHES: &[&str] = &[
     "--no-builtin-sets",
     "--strict",
     "--pedantic",
+    // Accepted on every verb and changes nothing: ctrm never prints colour,
+    // so there is none to turn off. It is in the table because unknown
+    // flags are REFUSED, and a wrapper that passes `--no-color` to every
+    // tool it runs should not get exit 2 for asking politely. `NO_COLOR`
+    // needs no code for the same reason.
+    "--no-color",
 ];
 
 /// The flags only one verb means anything to. Accepted elsewhere they
@@ -218,6 +224,15 @@ mod tests {
     fn the_usage_names_every_flag() {
         for flag in super::VALUED.iter().chain(super::SWITCHES) {
             assert!(crate::cli::USAGE.contains(flag), "{flag}");
+        }
+    }
+
+    /// A no-op, but an ACCEPTED one on every verb: refusing it would fail
+    /// wrappers that pass it to every tool they run.
+    #[test]
+    fn no_color_is_accepted_by_every_verb() {
+        for verb in ["check", "fix", "stats", "explain", "sets"] {
+            assert!(parsed(&[verb, "--no-color"]).has("--no-color"), "{verb}");
         }
     }
 
