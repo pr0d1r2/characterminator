@@ -47,7 +47,16 @@ src/SPEC.md           420
 # The rest is content, so the number moves rather than the words. 2240 is
 # ~12% over the new measured 1994.
 src/charset/SPEC.md  2240
-src/fix/SPEC.md      1240
+# RAISED 1240 -> 1600, reviewed. The node gains V51, the opt-in `words`
+# map: the one rewrite in the crate that measurably saves tokens (`.:R11`),
+# and a rule with three parts nothing else states -- how it is switched on,
+# what it targets, and how a word is kept off a neighbouring letter without
+# breaking V5 or V6. Compaction ran FIRST: `mth archive` moved the four
+# finished task rows (T10, T26, T29, T30) to SPEC-ARCHIVE.md, which bought
+# 35 tokens against the ~290 the rule costs. The invariant was also cut
+# from ~380 tokens to ~270 before this number moved. 1600 is ~12% over the
+# new measured 1426.
+src/fix/SPEC.md      1600
 src/rules/SPEC.md    1160
 # RAISED 1100 -> 1420, reviewed. T36 built the hazard set, and the node
 # gained V49: which lint each hazard class reports under, that the classes
