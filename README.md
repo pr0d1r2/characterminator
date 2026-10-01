@@ -78,6 +78,7 @@ nix develop                   # the dev shell, with the gate's tooling
 | `ctrm fix [--check] [<path>...]` | rewrite them. `--check` reports and writes nothing |
 | `ctrm stats [--bpe] [<path>...]` | what the files cost now, and after a fix |
 | `ctrm explain [<path>]` | the set in force, and the config line that decided it |
+| `ctrm explain [<path>] --as args\|lines\|prompt` | the whole configuration as flags, as data files, or as an agent prompt |
 | `ctrm sets [--fidelity <f>]` | every declared set and what it holds |
 | `ctrm guard` | agent hook: hook JSON in, decision JSON out. See [guarding an agent](#guarding-an-agent) |
 
@@ -175,6 +176,29 @@ A flag the tool does not know is refused with exit 2, and so is a flag that
 belongs to another verb (`check --bpe`). A typo that was quietly ignored
 would read exactly like a flag that worked. `--` ends the flags, for a path
 that starts with a dash.
+
+### Exporting it
+
+`explain --as` writes the configuration back out. `args` is every line
+the run contributed as flags, quoted for a shell, after `--no-files`;
+handed back to any verb it is the same configuration, which is
+property-tested. `lines` is the same content as the three data files.
+Given a path, both keep only the rules that match it.
+
+`prompt` is an instruction for an agent drafting text up front: the sets
+in force and their members as code points, the fidelity, every
+replacement `fix` would make, and the hazard characters no grant
+reaches. It is built from the configuration alone, so the same run gives
+the same bytes, and it is plain ASCII.
+
+```text
+$ ctrm explain notes.md --as prompt
+Write text that `ctrm check` accepts in `notes.md`. ...
+U+2014 -> "--"
+...
+Never write these, whatever a set allows; they always fail:
+hazard-bidi U+061C U+200E-U+200F U+202A-U+202E U+2066-U+2069
+```
 
 ## The sets
 
