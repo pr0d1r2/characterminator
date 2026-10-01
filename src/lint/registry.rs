@@ -10,7 +10,7 @@
 //! points it reads are the charset node's generated data file -- no table
 //! of code points is shipped from this node.
 
-use crate::lint::{Group, Level};
+use crate::lint::{Group, Level, pedantic};
 
 /// A named check. The name is what a rule line and the json output carry,
 /// so it is the stable identifier rather than the message text.
@@ -27,11 +27,16 @@ pub struct Lint {
 /// takes one token for both, so a collision would make a rule ambiguous.
 /// The tests below enforce that.
 ///
-/// The pedantic rows ship their NAMES now although their detection lands
-/// with T39. V37 requires the group to stay `allow`, so a registered
+/// The pedantic rows ship their NAMES whether or not their detection has
+/// landed. V37 requires the group to stay `allow`, so a registered
 /// pedantic lint reports nothing until a run asks for it; registering the
 /// names up front is what lets `--pedantic` and `!not-nfc=warn` be parsed,
 /// explained and rejected-on-typo before any of them can fire.
+///
+/// T39 built four (V55), and their rows are the constants `pedantic.rs`
+/// detects under, so the name is spelled once. `not-nfc`, `nfkc-compat`,
+/// `mixed-script` and `confusable` need Unicode data this crate does not
+/// vendor yet: asking for them is legal and reports nothing.
 pub const LINTS: &[Lint] = &[
     // V34's classes, one lint each, in the order `hazard.rs` tries them.
     // One lint per class rather than one `hazard` lint: the json names
@@ -49,12 +54,12 @@ pub const LINTS: &[Lint] = &[
     // V37's candidates, in the order that spec lists them.
     Lint::new("not-nfc", Group::Pedantic),
     Lint::new("nfkc-compat", Group::Pedantic),
-    Lint::new("unicode-space", Group::Pedantic),
+    pedantic::UNICODE_SPACE,
     Lint::new("mixed-script", Group::Pedantic),
     Lint::new("confusable", Group::Pedantic),
-    Lint::new("crlf", Group::Pedantic),
-    Lint::new("trailing-whitespace", Group::Pedantic),
-    Lint::new("final-newline", Group::Pedantic),
+    pedantic::CRLF,
+    pedantic::TRAILING_WHITESPACE,
+    pedantic::FINAL_NEWLINE,
 ];
 
 impl Lint {

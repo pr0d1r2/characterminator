@@ -8,11 +8,12 @@
 
 use crate::charset::{self, CharSet, SetCatalog, SetDefinition, builtin};
 use crate::lint::{
-    Finding, Group, Hazards, Level, Levels, Lint, Target, exit_code,
+    CRLF, Finding, Group, Hazards, LINE_LINTS, Level, Levels, Lint, Target,
+    exit_code, line_hits, unicode_space,
 };
 use crate::render::{self, Format, Skipped, Violation};
 use crate::rules::{self, Resolution, Rule, Sources};
-use crate::scan::{Hit, Unreadable, scan_bytes};
+use crate::scan::{Hit, Unreadable, decode, scan_str};
 use crate::tokens;
 use std::path::Path;
 
@@ -81,18 +82,25 @@ impl Judge<'_> {
     /// A HAZARD STOPS IT EVEN WHEN THE SET GRANTS IT. That is V34's whole
     /// point: `any` grants every code point, and the exclusion lives in
     /// the level, so the set alone cannot be what decides.
+    ///
+    /// A pedantic space stops it too, whatever its level: whether that
+    /// lint speaks is the level's question, asked once in `loudest`.
     fn passes(&self, character: char) -> bool {
-        self.set.contains(character) && !self.hazards.contains(character)
+        self.set.contains(character)
+            && !self.hazards.contains(character)
+            && unicode_space(character).is_none()
     }
 
-    /// The lint one hit fires, if any. A hazard wins over `outside-set`,
-    /// so a character that is both is reported ONCE, at the louder level.
-    /// `None` is the byte order mark at byte 0 in a file whose set grants
-    /// it: no hazard (V34), and not outside the set either.
-    fn lint_for(&self, hit: Hit) -> Option<Lint> {
-        self.hazards.lint_for(hit).or_else(|| {
-            (!self.set.contains(hit.character)).then_some(self.outside)
-        })
+    /// The lints one hit could fire, the strongest claim first: a hazard,
+    /// then `outside-set`, then `unicode-space` (`src/lint:V55`). Empty
+    /// is the byte order mark at byte 0 in a file whose set grants it: no
+    /// hazard (V34), and not outside the set either.
+    fn lints_for(&self, hit: Hit) -> Vec<Lint> {
+        let hazard = self.hazards.lint_for(hit);
+        let outside =
+            (!self.set.contains(hit.character)).then_some(self.outside);
+        let space = unicode_space(hit.character);
+        [hazard, outside, space].into_iter().flatten().collect()
     }
 }
 
@@ -273,10 +281,20 @@ fn unknown(target: &str) -> String {
 /// Pure, so every rule it encodes is testable without a filesystem: the
 /// I/O lives in the caller and this decides what the bytes MEAN.
 fn inspect(bytes: &[u8], judge: &Judge<'_>, levels: &Levels) -> Looked {
-    match scan_bytes(bytes, |c| judge.passes(c)) {
+    match decode(bytes) {
         Err(reason) => Looked::Unread(reason),
-        Ok(hits) => Looked::Findings(reportable(hits, judge, levels)),
+        Ok(text) => Looked::Findings(findings_in(text, judge, levels)),
     }
+}
+
+/// The character findings, then the line-shaped ones. Two lists rather
+/// than one merged walk; the report's order is `src/render`'s to impose
+/// (by path, then byte), so nothing here has to interleave them.
+fn findings_in(text: &str, judge: &Judge<'_>, levels: &Levels) -> Vec<Finding> {
+    let hits = scan_str(text, |c| judge.passes(c));
+    let mut found = reportable(hits, judge, levels);
+    found.extend(line_findings(text, judge, levels));
+    found
 }
 
 /// A finding at `allow` is not reported: the level system decides what is
@@ -288,9 +306,60 @@ fn reportable(
     levels: &Levels,
 ) -> Vec<Finding> {
     hits.into_iter()
-        .filter_map(|hit| judge.lint_for(hit).map(|l| levels.finding(hit, l)))
+        .filter_map(|hit| loudest(hit, judge, levels))
+        .collect()
+}
+
+/// ONE finding per character at most: the first lint that claims it and
+/// is not at `allow`. So a no-break space outside `ascii` is reported as
+/// `outside-set` and not twice, and still reported as `unicode-space` in
+/// a file whose rule allowed the charset finding but asked for pedantic.
+fn loudest(hit: Hit, judge: &Judge<'_>, levels: &Levels) -> Option<Finding> {
+    judge
+        .lints_for(hit)
+        .into_iter()
+        .map(|lint| levels.finding(hit, lint))
+        .find(|finding| finding.level != Level::Allow)
+}
+
+/// The line-shaped pedantic findings (`src/lint:V55`), or none without a
+/// second walk when every one of those lints is at `allow` -- which is
+/// every run that did not ask for pedantic.
+fn line_findings(
+    text: &str,
+    judge: &Judge<'_>,
+    levels: &Levels,
+) -> Vec<Finding> {
+    if LINE_LINTS
+        .iter()
+        .all(|l| levels.level_of(*l) == Level::Allow)
+    {
+        return Vec::new();
+    }
+    line_hits(text)
+        .into_iter()
+        .filter(|(lint, hit)| !said_already(*lint, *hit, judge, levels))
+        .map(|(lint, hit)| levels.finding(hit, lint))
         .filter(|finding| finding.level != Level::Allow)
         .collect()
+}
+
+/// Whether the character pass already reported this hit's news.
+///
+/// Only `crlf` can collide. `ascii` does not grant the carriage return
+/// (`src/charset` keeps it in the separate `cr` set), so under the
+/// default a CR LF is ALREADY `outside-set`, and a second finding on the
+/// same character would say one thing twice. `crlf` therefore speaks
+/// where the set grants `cr`, which is where nothing else would. The
+/// other two point at a character for a reason that is not the
+/// character's: a line that trails, a file left open.
+fn said_already(
+    lint: Lint,
+    hit: Hit,
+    judge: &Judge<'_>,
+    levels: &Levels,
+) -> bool {
+    lint == CRLF && loudest(hit, judge, levels).is_some()
 }
 
 /// The path as a reader typed it: relative to the root, so it matches the
@@ -403,7 +472,7 @@ mod tests {
         Checker, Judge, Looked, OUTSIDE, inspect, levels_for, run, shown_path,
     };
     use crate::charset::{CharSet, builtin};
-    use crate::lint::{Finding, Group, Hazards, Level, Levels, Lint};
+    use crate::lint::{Finding, Group, Hazards, Level, Levels, Lint, Target};
     use crate::render::Format;
     use crate::rules::{self, Rule};
     use std::path::{Path, PathBuf};
@@ -734,5 +803,191 @@ mod tests {
         let text = report.map(|r| r.text).unwrap_or_else(|why| why);
         assert_eq!(text, "trojan.rs:1:2 U+202E hazard");
         assert_eq!(Group::Hazard.name(), "hazard");
+    }
+
+    /// One finding as `(lint name, level, byte)`.
+    type Fired = (&'static str, Level, usize);
+
+    /// What `check` finds in `text` under `set`, with pedantic at `warn`
+    /// and the charset findings at `charset`, sorted by byte.
+    fn pedantic(text: &str, set: &CharSet, charset: Level) -> Vec<Fired> {
+        let mut levels = Levels::new();
+        levels.set(Target::Group(Group::Pedantic), Level::Warn);
+        levels.set_charset(charset);
+        let hazards = hazards();
+        let judge = Judge {
+            set,
+            hazards: &hazards,
+            outside: lint(),
+        };
+        let mut all = match inspect(text.as_bytes(), &judge, &levels) {
+            Looked::Findings(all) => all.iter().map(summary).collect(),
+            Looked::Unread(_) => Vec::new(),
+        };
+        all.sort_by_key(|(_, _, byte)| *byte);
+        all
+    }
+
+    /// V37: the group is `allow`, so a text with every pedantic shape in
+    /// it says nothing until a run asks.
+    #[test]
+    fn pedantic_lints_are_silent_until_asked() {
+        assert_eq!(findings("a \r\nb\u{a0}c", &any()), vec![]);
+    }
+
+    /// Asked, each of the four fires at the character it points at.
+    #[test]
+    fn asked_for_every_pedantic_shape_fires_once() {
+        let fired = pedantic("a \r\nb\u{a0}c", &any(), Level::Deny);
+        let warn = Level::Warn;
+        let expected = vec![
+            ("trailing-whitespace", warn, 1),
+            ("crlf", warn, 2),
+            ("unicode-space", warn, 5),
+            ("final-newline", warn, 7),
+        ];
+        assert_eq!(fired, expected);
+    }
+
+    /// A no-break space the set does not grant is ONE finding: the set's,
+    /// which is the stronger claim. Allow that one, and pedantic speaks.
+    #[test]
+    fn a_space_outside_the_set_is_reported_once() {
+        let ascii = builtin::ascii();
+        let denied = pedantic("a\u{a0}b\n", &ascii, Level::Deny);
+        assert_eq!(denied, vec![("outside-set", Level::Deny, 1)]);
+        let allowed = pedantic("a\u{a0}b\n", &ascii, Level::Allow);
+        assert_eq!(allowed, vec![("unicode-space", Level::Warn, 1)]);
+    }
+
+    /// The human report for `files` under `ctrm`, with every file that is
+    /// not a dotfile named on the command line.
+    fn report(name: &str, ctrm: &str, files: &[(&str, &str)]) -> String {
+        let mut tree = vec![(".ctrm", ctrm)];
+        tree.extend_from_slice(files);
+        let Some(root) = fixture(name, &tree) else {
+            return String::from("(fixture not written)");
+        };
+        let paths: Vec<String> = files
+            .iter()
+            .filter(|(path, _)| !path.starts_with('.'))
+            .map(|(path, _)| String::from(*path))
+            .collect();
+        let found = run(&root, &paths, Format::Human);
+        found.map(|r| r.text).unwrap_or_else(|why| why)
+    }
+
+    /// V37 fixture, `crlf`: a Windows batch file, which `cmd.exe` reads
+    /// with CR LF endings, in a tree that grants `cr`. The lint cannot
+    /// know that; a later rule naming the path allows the lint there, and
+    /// the sets are restated because the later matching line wins them
+    /// too (`src/rules:V2`).
+    #[test]
+    fn a_batch_file_needs_crlf_and_says_so_per_path() {
+        let files = [("build.bat", "@echo off\r\n"), ("notes.txt", "hi\r\n")];
+        let base = "* ascii+cr !pedantic=warn\n";
+        let on = report("ctrm-crlf-on", base, &files);
+        let both = "build.bat:1:10 U+000D crlf\nnotes.txt:1:3 U+000D crlf";
+        assert_eq!(on, both);
+        let ctrm = format!("{base}*.bat ascii+cr !crlf=allow\n");
+        let off = report("ctrm-crlf-off", &ctrm, &files);
+        assert_eq!(off, "notes.txt:1:3 U+000D crlf");
+    }
+
+    /// Under plain `ascii` the CR is not granted, so a CR LF is already
+    /// `outside-set`; asking for pedantic does not say it twice.
+    #[test]
+    fn a_cr_the_set_refuses_is_one_finding() {
+        let fired = pedantic("hi\r\n", &builtin::ascii(), Level::Deny);
+        assert_eq!(fired, vec![("outside-set", Level::Deny, 2)]);
+        let quiet = pedantic("hi\r\n", &builtin::ascii(), Level::Allow);
+        assert_eq!(quiet, vec![("crlf", Level::Warn, 2)]);
+    }
+
+    /// V37 fixture, `trailing-whitespace`: two trailing spaces are a
+    /// Markdown HARD LINE BREAK, which is content, not noise.
+    #[test]
+    fn a_markdown_hard_break_is_trailing_whitespace_on_purpose() {
+        let files = [("a.md", "one  \ntwo\n"), ("a.rs", "fn f() {} \n")];
+        let base = "* ascii !pedantic=warn\n";
+        let on = report("ctrm-trailing-on", base, &files);
+        let rs = "a.rs:1:10 U+0020 trailing-whitespace";
+        assert_eq!(on, format!("a.md:1:4 U+0020 trailing-whitespace\n{rs}"));
+        let ctrm = format!("{base}*.md ascii !trailing-whitespace=allow\n");
+        assert_eq!(report("ctrm-trailing-off", &ctrm, &files), rs);
+    }
+
+    /// V37 fixture, `final-newline`: a golden file holding this tool's
+    /// own human output, which ends with NO newline, byte for byte. An
+    /// empty file is not a finding at all.
+    #[test]
+    fn a_byte_exact_golden_file_ends_without_a_newline() {
+        let golden = ("want.out", "a.rs:1:1 U+2014 ascii");
+        let files = [golden, ("lib.rs", "fn f() {}"), ("empty.txt", "")];
+        let base = "* ascii !pedantic=warn\n";
+        let on = report("ctrm-final-on", base, &files);
+        let rs = "lib.rs:1:9 U+007D final-newline";
+        assert_eq!(on, format!("{rs}\nwant.out:1:21 U+0069 final-newline"));
+        let ctrm = format!("{base}*.out ascii !final-newline=allow\n");
+        assert_eq!(report("ctrm-final-off", &ctrm, &files), rs);
+    }
+
+    /// V37 fixture, `unicode-space`: French typography puts a no-break
+    /// space before `:` and a narrow one before `!`. A project grants them
+    /// in a set, and allows the lint where the language wants them.
+    #[test]
+    fn french_spacing_is_a_unicode_space_on_purpose() {
+        let fr = ("fr.md", "Prix\u{a0}: 5\nOui\u{202f}!\n");
+        let sets = (".ctrm-sets", "french U+00A0 U+202F\n");
+        let files = [sets, fr, ("a.md", "a\u{a0}b\n")];
+        let base = "* ascii+french !pedantic=warn\n";
+        let one = "a.md:1:2 U+00A0 unicode-space";
+        let on = report("ctrm-space-on", base, &files);
+        assert!(
+            on.starts_with(one) && on.contains("fr.md:2:4 U+202F"),
+            "{on}"
+        );
+        let ctrm = format!("{base}fr.md ascii+french !unicode-space=allow\n");
+        assert_eq!(report("ctrm-space-off", &ctrm, &files), one);
+    }
+
+    /// The json contract is unchanged by a pedantic finding: the same keys,
+    /// `set` the set in force, `lint` saying which, asserted whole (V11).
+    #[test]
+    fn a_pedantic_finding_keeps_the_json_contract() {
+        let ctrm = "* ascii+cr !crlf=deny\n";
+        let files = [(".ctrm", ctrm), ("n.txt", "hi\r\n")];
+        let Some(root) = fixture("ctrm-crlf-json", &files) else {
+            return;
+        };
+        let paths = [String::from("n.txt")];
+        let report = run(&root, &paths, Format::Json);
+        let report = report.unwrap_or_else(|why| unreachable!("{why}"));
+        let expected = concat!(
+            r#"{"verb":"check","violations":[{"path":"n.txt","line":1,"#,
+            r#""column":3,"byte":2,"codepoint":"U+000D","character":"\r","#,
+            r#""set":"ascii+cr","lint":"crlf","level":"deny"}],"skipped":[]}"#
+        );
+        assert_eq!((report.text.as_str(), report.code), (expected, 1));
+    }
+
+    /// SARIF: the lint is the `ruleId`, and the region is the one
+    /// character the finding points at.
+    #[test]
+    fn a_pedantic_finding_is_a_sarif_result_on_one_character() {
+        let ctrm = "* ascii !final-newline=warn\n";
+        let files = [(".ctrm", ctrm), ("n.txt", "ab")];
+        let Some(root) = fixture("ctrm-final-sarif", &files) else {
+            return;
+        };
+        let paths = [String::from("n.txt")];
+        let found = run(&root, &paths, Format::Sarif);
+        let log = found.map(|r| r.text).unwrap_or_else(|why| why);
+        let result = concat!(
+            r#"{"ruleId":"final-newline","level":"warning","#,
+            r#""message":{"text":"U+0062 (set in force: ascii)"},"#
+        );
+        let region = r#""startLine":1,"startColumn":2,"endColumn":3}"#;
+        assert!(log.contains(result) && log.contains(region), "{log}");
     }
 }

@@ -1,0 +1,255 @@
+//! Pedantic detection (V37, V55): the four lints that need no vendored
+//! data.
+//!
+//! WHAT A FINDING POINTS AT. Every finding here is a character that is
+//! really in the file, so the scan node's `Hit` carries it unchanged and
+//! the json and SARIF shapes stay what they were:
+//!
+//! - `unicode-space`: the space itself.
+//! - `crlf`: the CARRIAGE RETURN of each CR LF pair.
+//! - `trailing-whitespace`: the FIRST character of the run of whitespace
+//!   a line ends on, one finding per line however long the run.
+//! - `final-newline`: the LAST character of a file that does not end in a
+//!   line feed -- where an editor shows "no newline at end of file".
+//!
+//! A position past the end of the file was the alternative for the last
+//! one, and it was rejected: it would need a character that is not there,
+//! and `Hit` would have to grow an "absent" case every renderer and the
+//! `fix` node then had to handle.
+//!
+//! WHAT IS NOT DONE, stated rather than approximated: `not-nfc`,
+//! `nfkc-compat`, `mixed-script` and `confusable` need Unicode data this
+//! crate does not vendor (decompositions, Script, UTS #39), so they stay
+//! registered and fire nothing. A guess at any of them would be a second
+//! private definition of a published table.
+
+use crate::lint::{Group, Lint};
+use crate::scan::{Hit, located};
+
+/// A space that is not U+0020.
+pub const UNICODE_SPACE: Lint = Lint::new("unicode-space", Group::Pedantic);
+
+/// A line ended by CR LF rather than LF.
+pub const CRLF: Lint = Lint::new("crlf", Group::Pedantic);
+
+/// Whitespace between a line's last visible character and its end.
+pub const TRAILING_WHITESPACE: Lint =
+    Lint::new("trailing-whitespace", Group::Pedantic);
+
+/// A non-empty file whose last character is not a line feed.
+pub const FINAL_NEWLINE: Lint = Lint::new("final-newline", Group::Pedantic);
+
+/// The lints [`line_hits`] can fire, so a caller can ask whether any of
+/// them is switched on before paying for a second walk of the text.
+pub const LINE_LINTS: [Lint; 3] = [CRLF, TRAILING_WHITESPACE, FINAL_NEWLINE];
+
+/// What `unicode-space` fires on: General_Category `Zs` minus U+0020.
+///
+/// V37 names NBSP and U+2000-U+200A. The rest of `Zs` is the same kind
+/// of character -- a space a reader cannot tell from U+0020 -- and the
+/// French NARROW NO-BREAK SPACE (U+202F) is the commonest of them in
+/// real prose, so leaving it out would miss the case the lint exists for.
+///
+/// NOT here: U+2028 and U+2029 (`Zl`, `Zp`) are separators rather than
+/// spaces; U+200B and U+180E are default-ignorable and therefore a
+/// HAZARD, which forbids, so a pedantic name for them would never speak.
+/// The test below holds this list against the standard library's
+/// White_Space table, which contains every `Zs`.
+const SPACES: [char; 16] = [
+    '\u{00A0}', '\u{1680}', '\u{2000}', '\u{2001}', '\u{2002}', '\u{2003}',
+    '\u{2004}', '\u{2005}', '\u{2006}', '\u{2007}', '\u{2008}', '\u{2009}',
+    '\u{200A}', '\u{202F}', '\u{205F}', '\u{3000}',
+];
+
+/// The pedantic lint one character fires on its own, wherever it sits.
+pub fn unicode_space(character: char) -> Option<Lint> {
+    SPACES.contains(&character).then_some(UNICODE_SPACE)
+}
+
+/// Every line-shaped finding in a text, as the lint and the character it
+/// points at, in byte order within each kind.
+pub fn line_hits(text: &str) -> Vec<(Lint, Hit)> {
+    let mut walk = Walk::default();
+    for hit in located(text) {
+        walk.step(hit);
+    }
+    walk.finish()
+}
+
+/// The state a line walk carries: the start of the whitespace run the
+/// line currently ends on, and the character just seen.
+#[derive(Default)]
+struct Walk {
+    run: Option<Hit>,
+    last: Option<Hit>,
+    found: Vec<(Lint, Hit)>,
+}
+
+impl Walk {
+    /// A line ends at LF and nothing else, as the scan node counts lines,
+    /// so a LONE carriage return is an ordinary character here: it is not
+    /// `crlf`, and at a line's end it is whitespace like any other.
+    fn step(&mut self, hit: Hit) {
+        if hit.character == '\n' {
+            self.end_line();
+        } else if hit.character.is_whitespace() {
+            self.run = self.run.or(Some(hit));
+        } else {
+            self.run = None;
+        }
+        self.last = Some(hit);
+    }
+
+    /// The CR of a CR LF is the TERMINATOR, so it is reported as `crlf`
+    /// and is not counted as trailing whitespace too: `abc\r\n` is one
+    /// finding, `abc \r\n` is two.
+    fn end_line(&mut self) {
+        let cr = self.last.filter(|hit| hit.character == '\r');
+        let run = self.run.take();
+        let trailing = run.filter(|start| cr != Some(*start));
+        if let Some(start) = trailing {
+            self.found.push((TRAILING_WHITESPACE, start));
+        }
+        if let Some(cr) = cr {
+            self.found.push((CRLF, cr));
+        }
+    }
+
+    /// An EMPTY file has no last character, so it is no finding: there
+    /// is no line in it left unterminated. A file that ends mid-line also
+    /// ends that line, so its trailing run is reported as any other.
+    fn finish(mut self) -> Vec<(Lint, Hit)> {
+        if let Some(last) = self.last.filter(|hit| hit.character != '\n') {
+            if let Some(start) = self.run.take() {
+                self.found.push((TRAILING_WHITESPACE, start));
+            }
+            self.found.push((FINAL_NEWLINE, last));
+        }
+        self.found
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        CRLF, FINAL_NEWLINE, LINE_LINTS, SPACES, TRAILING_WHITESPACE,
+        UNICODE_SPACE, line_hits, unicode_space,
+    };
+    use crate::lint::{Group, Lint};
+
+    /// One finding as `(lint, line, column, character)`.
+    type Fired = (&'static str, usize, usize, char);
+
+    /// What fired, in that shape.
+    fn fired(text: &str) -> Vec<Fired> {
+        line_hits(text)
+            .into_iter()
+            .map(|(lint, hit)| {
+                let at = hit.position;
+                (lint.name, at.line, at.column, hit.character)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_lints_here_are_the_registered_ones() {
+        for lint in [UNICODE_SPACE, CRLF, TRAILING_WHITESPACE, FINAL_NEWLINE] {
+            assert_eq!(Lint::named(lint.name), Some(lint), "{}", lint.name);
+            assert_eq!(lint.group, Group::Pedantic, "{}", lint.name);
+        }
+        assert!(!LINE_LINTS.contains(&UNICODE_SPACE));
+    }
+
+    #[test]
+    fn a_clean_text_fires_nothing() {
+        assert_eq!(fired("one\ntwo\n"), vec![]);
+        assert_eq!(fired("\n\n"), vec![]);
+    }
+
+    #[test]
+    fn an_empty_file_is_not_missing_a_newline() {
+        assert_eq!(fired(""), vec![]);
+    }
+
+    #[test]
+    fn crlf_points_at_each_carriage_return() {
+        let expected = vec![("crlf", 1, 2, '\r'), ("crlf", 2, 3, '\r')];
+        assert_eq!(fired("a\r\nbc\r\n"), expected);
+    }
+
+    #[test]
+    fn a_lone_carriage_return_is_not_crlf() {
+        assert_eq!(fired("a\rb\n"), vec![]);
+    }
+
+    #[test]
+    fn trailing_whitespace_points_at_the_start_of_the_run_once() {
+        let expected = vec![("trailing-whitespace", 1, 4, ' ')];
+        assert_eq!(fired("abc \t \ndef\n"), expected);
+    }
+
+    #[test]
+    fn a_whitespace_only_line_trails_from_its_first_column() {
+        assert_eq!(fired("a\n  \n"), vec![("trailing-whitespace", 2, 1, ' ')]);
+    }
+
+    #[test]
+    fn whitespace_inside_a_line_is_not_trailing() {
+        assert_eq!(fired("a  b\n"), vec![]);
+    }
+
+    /// The CR of a CR LF is the terminator, not trailing whitespace.
+    #[test]
+    fn a_crlf_line_trails_only_when_whitespace_precedes_the_cr() {
+        assert_eq!(fired("abc\r\n"), vec![("crlf", 1, 4, '\r')]);
+        let both =
+            vec![("trailing-whitespace", 1, 4, ' '), ("crlf", 1, 5, '\r')];
+        assert_eq!(fired("abc \r\n"), both);
+    }
+
+    #[test]
+    fn final_newline_points_at_the_last_character() {
+        assert_eq!(fired("a\nbc"), vec![("final-newline", 2, 2, 'c')]);
+    }
+
+    #[test]
+    fn an_unterminated_last_line_can_trail_too() {
+        let expected = vec![
+            ("trailing-whitespace", 1, 2, ' '),
+            ("final-newline", 1, 3, ' '),
+        ];
+        assert_eq!(fired("a  "), expected);
+    }
+
+    /// A NO-BREAK SPACE trails like any other whitespace: White_Space
+    /// holds it, and the line still ends in something a reader cannot see.
+    #[test]
+    fn a_trailing_no_break_space_is_trailing_whitespace() {
+        let expected = vec![("trailing-whitespace", 1, 2, '\u{a0}')];
+        assert_eq!(fired("a\u{a0}\n"), expected);
+    }
+
+    #[test]
+    fn unicode_space_fires_on_the_listed_spaces_and_nothing_else() {
+        for point in ['\u{00A0}', '\u{2000}', '\u{200A}', '\u{202F}'] {
+            assert_eq!(unicode_space(point), Some(UNICODE_SPACE), "{point:?}");
+        }
+        for point in [' ', '\t', '\u{200B}', '\u{2028}', 'a'] {
+            assert_eq!(unicode_space(point), None, "{point:?}");
+        }
+    }
+
+    /// The list is `Zs` minus U+0020, checked against std's White_Space
+    /// table (a superset of `Zs`): every non-ASCII whitespace character is
+    /// either listed or one of the three that are whitespace but not
+    /// `Zs` -- NEXT LINE (a control), and the line and paragraph
+    /// separators.
+    #[test]
+    fn the_list_is_every_non_ascii_space_separator() {
+        let not_zs = ['\u{0085}', '\u{2028}', '\u{2029}'];
+        let whitespace: Vec<char> = (char::from(0x80_u8)..=char::MAX)
+            .filter(|c| c.is_whitespace() && !not_zs.contains(c))
+            .collect();
+        assert_eq!(whitespace, SPACES.to_vec());
+    }
+}
