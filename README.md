@@ -82,7 +82,8 @@ nix develop                   # the dev shell, with the gate's tooling
 
 Every verb takes `--format json`, which is a stable contract: its keys and
 their meanings do not change under a caller, and the documents are asserted
-whole in tests.
+whole in tests. `check` also takes `--format sarif`, a SARIF 2.1.0 log that
+GitHub code scanning can upload, with the same exit code.
 
 Naming no path checks what git tracks. Naming a directory expands to the
 tracked files under it. Naming a file reaches it whether git tracks it or

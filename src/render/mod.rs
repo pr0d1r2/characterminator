@@ -22,6 +22,11 @@
 //! as the empty string: the caller owns its line endings and decides whether
 //! silence is worth printing.
 //!
+//! A third form, SARIF, exists for `check` alone, so code scanning can read
+//! its findings (V50). It is built from the same json primitives, and its
+//! `rules` array is the one place this node READS a sibling's table: the
+//! lint registry, as data, so a newly registered lint needs no edit here.
+//!
 //! `guard` is absent on purpose. Its decision document is a HARNESS protocol
 //! rather than a report of this tool's findings, and `src/cli:V35` gives it
 //! to the cli node along with an open question about what non-hazard
@@ -32,6 +37,7 @@ mod human;
 mod json;
 mod name;
 mod order;
+mod sarif;
 mod value;
 
 use crate::charset::CharSet;
@@ -47,6 +53,12 @@ use crate::tokens::Count;
 pub enum Format {
     Human,
     Json,
+    /// A SARIF 2.1.0 log (V50). SARIF carries RESULTS, and only `check`
+    /// has findings to put in it, so only `check` has a SARIF shape: the
+    /// cli refuses the pairing for every other verb, and a library caller
+    /// that asks anyway gets that verb's json contract rather than a log
+    /// claiming a clean run nobody performed.
+    Sarif,
 }
 
 /// One violation as it is REPORTED: the finding, the file it sits in, and
@@ -120,6 +132,7 @@ pub fn check(
     match format {
         Format::Human => human::check(violations, skipped),
         Format::Json => json::check(violations, skipped),
+        Format::Sarif => sarif::check(violations, skipped),
     }
 }
 
@@ -132,7 +145,7 @@ pub fn fix(
 ) -> String {
     match format {
         Format::Human => human::fix(changes, skipped),
-        Format::Json => json::fix(changes, skipped),
+        Format::Json | Format::Sarif => json::fix(changes, skipped),
     }
 }
 
@@ -140,7 +153,7 @@ pub fn fix(
 pub fn stats(format: Format, files: &[FileStats<'_>]) -> String {
     match format {
         Format::Human => human::stats(files),
-        Format::Json => json::stats(files),
+        Format::Json | Format::Sarif => json::stats(files),
     }
 }
 
@@ -148,7 +161,7 @@ pub fn stats(format: Format, files: &[FileStats<'_>]) -> String {
 pub fn explain(format: Format, explanation: &Explanation<'_>) -> String {
     match format {
         Format::Human => human::explain(explanation),
-        Format::Json => json::explain(explanation),
+        Format::Json | Format::Sarif => json::explain(explanation),
     }
 }
 
@@ -156,7 +169,7 @@ pub fn explain(format: Format, explanation: &Explanation<'_>) -> String {
 pub fn sets(format: Format, sets: &[CharSet]) -> String {
     match format {
         Format::Human => human::sets(sets),
-        Format::Json => json::sets(sets),
+        Format::Json | Format::Sarif => json::sets(sets),
     }
 }
 
@@ -180,5 +193,14 @@ mod tests {
         let one = std::slice::from_ref(&ascii);
         assert_eq!(sets(Format::Human, one), "ascii none");
         assert!(sets(Format::Json, one).starts_with("{\"verb\""));
+    }
+
+    /// SARIF carries results, so only `check` has a log; every other verb
+    /// answers with its json contract rather than an empty, clean log.
+    #[test]
+    fn only_check_has_a_sarif_shape() {
+        let log = check(Format::Sarif, &[], &[]);
+        assert!(log.contains("\"version\":\"2.1.0\""), "{log}");
+        assert_eq!(sets(Format::Sarif, &[]), sets(Format::Json, &[]));
     }
 }

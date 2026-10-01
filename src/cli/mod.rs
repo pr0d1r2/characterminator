@@ -55,6 +55,7 @@ impl Outcome {
 pub fn run(args: &[String]) -> ExitCode {
     match verb_of(args) {
         Some("--version" | "-V") => version(),
+        Some(verb) if sarif_misused(verb, args) => sarif_refused(verb).code(),
         Some("check") => checked(args).code(),
         Some("explain") => explained(args).code(),
         Some("sets") => listed(args).code(),
@@ -68,22 +69,34 @@ fn verb_of(args: &[String]) -> Option<&str> {
     args.first().map(String::as_str)
 }
 
-/// `--format json` picks the stable contract; anything else is the human
-/// form, which `src/render:V11` allows to change.
+/// `--format json` picks the stable contract and `--format sarif` the
+/// code-scanning log (`src/render:V50`); anything else is the human form,
+/// which `src/render:V11` allows to change.
 ///
 /// The VALUE is read positionally, as the word after the flag. Sniffing
 /// argv for a bare `json` would make `ctrm check json` silently switch
 /// contracts, and would read a path named `json` as a format.
 fn format_of(args: &[String]) -> Format {
-    let mut words = args.iter();
-    while let Some(word) = words.next() {
-        if word == "--format"
-            && words.next().map(String::as_str) == Some("json")
-        {
-            return Format::Json;
-        }
+    match value_of(args, "--format") {
+        Some("json") => Format::Json,
+        Some("sarif") => Format::Sarif,
+        _ => Format::Human,
     }
-    Format::Human
+}
+
+/// SARIF carries findings, and `check` is the only verb with any. Asked of
+/// another verb it is REFUSED rather than answered with an empty log: a
+/// log with no results reads as a clean run, and none was performed.
+fn sarif_misused(verb: &str, args: &[String]) -> bool {
+    verb != "check" && format_of(args) == Format::Sarif
+}
+
+fn sarif_refused(verb: &str) -> Outcome {
+    eprintln!(
+        "ctrm: --format sarif reports findings, and only `check` has them; \
+         `{verb}` takes --format human or json"
+    );
+    Outcome::Usage
 }
 
 /// The paths a caller named, which reach untracked files
@@ -212,14 +225,18 @@ fn usage() -> Outcome {
          ctrm sets [--fidelity <f>]   every declared set and what it holds\n  \
          ctrm fix [--check] [<path>...] rewrite them, or report the drift\n  \
          ctrm stats [--bpe] [<path>...] what they cost now, and after a fix\n\n\
-         any verb takes --format json; planned: guard"
+         any verb takes --format json; check also takes --format sarif; \
+         planned: guard"
     );
     Outcome::Usage
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Format, Outcome, format_of, paths_of, verb_of};
+    use super::{
+        Format, Outcome, format_of, paths_of, sarif_misused, sarif_refused,
+        verb_of,
+    };
 
     fn argv(words: &[&str]) -> Vec<String> {
         words.iter().map(|w| (*w).to_owned()).collect()
@@ -248,6 +265,47 @@ mod tests {
             format_of(&argv(&["check", "--format", "json"])),
             Format::Json
         );
+    }
+
+    #[test]
+    fn sarif_is_asked_for_by_name() {
+        let asked = argv(&["check", "--format", "sarif"]);
+        assert_eq!(format_of(&asked), Format::Sarif);
+        assert_eq!(paths_of(&asked), Vec::<String>::new());
+    }
+
+    #[test]
+    fn sarif_is_refused_for_every_verb_but_check() {
+        let check = argv(&["check", "--format", "sarif"]);
+        assert!(!sarif_misused("check", &check));
+        for verb in ["fix", "stats", "explain", "sets"] {
+            let asked = argv(&[verb, "--format", "sarif"]);
+            assert!(sarif_misused(verb, &asked), "{verb}");
+            assert!(!sarif_misused(verb, &argv(&[verb])), "{verb}");
+        }
+        assert_eq!(sarif_refused("fix"), Outcome::Usage);
+    }
+
+    /// The whole path, on a tree of its own: a SARIF run reports the
+    /// finding at its repo-relative uri and keeps `check`'s exit code.
+    #[test]
+    fn a_sarif_check_keeps_the_verdict_and_names_the_file() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("ctrm-sarif-fixture");
+        // EM DASH, outside the `ascii` an unconfigured tree is held to.
+        let written = std::fs::create_dir_all(&root)
+            .and_then(|()| std::fs::write(root.join("a.md"), "a\u{2014}b\n"));
+        if written.is_err() {
+            return;
+        }
+        let asked = [String::from("a.md")];
+        let report = super::check::run(&root, &asked, Format::Sarif);
+        assert!(report.is_ok());
+        let report = report.unwrap_or_else(|why| unreachable!("{why}"));
+        assert_eq!(report.code, 1);
+        let at = r#""uri":"a.md"},"region":{"startLine":1,"startColumn":2"#;
+        assert!(report.text.contains(at), "{}", report.text);
     }
 
     #[test]

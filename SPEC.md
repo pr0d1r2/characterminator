@@ -39,7 +39,7 @@ self|.|-
 - cmd: `ctrm sets` → builtin sets & members.
 - cmd: `ctrm guard` → hook adapter: harness hook JSON stdin → decision JSON stdout; fuse on hazard (`src/cli:V35`).
 - adopt: `.pre-commit-hooks.yaml` (ids `ctrm-check`, `ctrm-fix`) · `action.yml` (composite; inputs `args`, `output`, `working-directory`). both run the SAME `ctrm` binary (V52).
-- flag: `--format human|json` ∀ verbs · `-C <dir>`.
+- flag: `--format human|json` ∀ verbs; `sarif` `check` only (`src/render:V50`) · `-C <dir>`.
 - file grammars live w/ their parser: `.ctrm` → `src/rules` §I · `.ctrm-map` → `src/fix` §I · `.ctrm-sets` & builtin presets → `src/charset` §I.
 - flag (file twins, repeatable, `src/rules:V18`): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (`src/rules:V29`) · `--strict` (`src/lint:V36`) · `--pedantic` (`src/lint:V37`).
 - lib: `characterminator::{scan, fix, resolve}` — pure fn over `&str`.
