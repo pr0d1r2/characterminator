@@ -14,6 +14,7 @@
 //! the empty string, so the caller owns its own line endings.
 
 use crate::charset::{CharRange, CharSet};
+use crate::lint::Group;
 use crate::render::name::{codepoint, level_name};
 use crate::render::order;
 use crate::render::{Change, Explanation, FileStats, Skipped, Violation};
@@ -40,8 +41,25 @@ fn violation(item: &Violation<'_>) -> String {
         at.line,
         at.column,
         codepoint(item.finding.hit.character),
-        item.set
+        verdict(item)
     )
+}
+
+/// The last word of the line: the set the character was judged against,
+/// or, for a PEDANTIC finding, the lint that fired (`src/lint:V55`).
+///
+/// A charset or hazard finding is told apart by its code point plus the
+/// set column. A pedantic one is not: U+0020 is trailing whitespace on
+/// one line and the last character of an unterminated file on another,
+/// and the set in force -- which GRANTS it either way -- would read as
+/// though the space fell outside it. The lint name is the one word that
+/// says what is wrong. The json keeps `set` and `lint` apart, as before.
+fn verdict<'v>(item: &'v Violation<'_>) -> &'v str {
+    if item.finding.lint.group == Group::Pedantic {
+        item.finding.lint.name
+    } else {
+        item.set
+    }
 }
 
 fn unread_lines(items: &[Skipped<'_>]) -> Vec<String> {
@@ -283,6 +301,17 @@ mod tests {
     #[test]
     fn a_violation_is_path_line_column_codepoint_then_set() {
         assert_eq!(check(&[em_dash()], &[]), "src/a.rs:2:5 U+2014 ascii");
+    }
+
+    /// A pedantic finding names its LINT where the set would go: the set
+    /// in force granted the character, so naming it explains nothing.
+    #[test]
+    fn a_pedantic_finding_names_its_lint_in_the_last_column() {
+        let mut item = em_dash();
+        item.finding.lint = Lint::new("trailing-whitespace", Group::Pedantic);
+        item.finding.hit.character = ' ';
+        let expected = "src/a.rs:2:5 U+0020 trailing-whitespace";
+        assert_eq!(check(&[item], &[]), expected);
     }
 
     #[test]

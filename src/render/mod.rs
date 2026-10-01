@@ -67,7 +67,13 @@ pub enum Format {
 }
 
 /// One violation as it is REPORTED: the finding, the file it sits in, and
-/// the set that did not contain it.
+/// the set it was judged against -- the set that did not contain it, for
+/// the ordinary `outside-set` finding.
+///
+/// A PEDANTIC finding (`src/lint:V55`) fires inside the set, so `set`
+/// carries the set in force, which is still true of the file, and the
+/// lint name says what is wrong. The human line prints that lint name in
+/// the set's place; the json keeps both, unchanged in shape (V11).
 ///
 /// A `Finding` knows nothing of either, because the lint node reports what
 /// it found rather than where a report should say it came from.
