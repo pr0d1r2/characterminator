@@ -72,7 +72,18 @@ src/rules/SPEC.md    1160
 # That is a rule WITH its runner, which is the pairing this repo requires.
 # Compaction ran first: `mth archive` folded T36 out, worth 10 tokens against
 # the 168 needed. 1420 is ~12% over the new measured 1268.
-src/lint/SPEC.md     1420
+#
+# 1420 -> 1750: T39 built the four pedantic lints that need no vendored
+# data, and the node gains V55 -- the code points `unicode-space` covers,
+# which character each line-shaped finding points at (the first findings
+# that are not "a character outside a set"), the one-claim-per-character
+# order that keeps a CR LF under `ascii` from being reported twice, and
+# how a project exempts a path. The T39 row also names the four lints
+# still waiting on Unicode data, so `mth tasks` shows what is left. The
+# rule was cut from ~330 tokens to ~230 before this number moved, and
+# compaction ran first: `mth archive` folded T35, worth 40 tokens against
+# the ~180 needed. 1750 is ~12% over the measured 1563.
+src/lint/SPEC.md     1750
 # RAISED 740 -> 860, reviewed. The node gained a task row for the `fix`
 # verbs, which had NO row at all: the root spec's interface section named
 # `ctrm fix`, `src/fix` built the engine under T10, and nothing in any §T
