@@ -3,8 +3,10 @@
 //! Every preset but `ascii` ships as a data file written in the
 //! `.ctrm-sets` grammar and compiled in with `include_str!` (V22), so the
 //! contents a user reads and the contents the tool enforces are the same
-//! bytes. `sets.ctrm-sets` is that file. The locale letter presets (V30)
-//! are generated into a file of their own and are still to come with T32.
+//! bytes. `sets.ctrm-sets` holds the hand-written presets and
+//! `hazard.ctrm-sets` the ones GENERATED from Unicode data (`src/lint:V34`).
+//! The locale letter presets (V30) will be generated into a file of their
+//! own with T32.
 //!
 //! `ascii` is the exception on purpose. `src/rules:V21` requires a run with
 //! `--no-files --no-builtin-map --no-builtin-sets` to still resolve a
@@ -70,13 +72,47 @@ pub fn intrinsic_catalog() -> SetCatalog {
     catalog
 }
 
-/// The preset data file, in the `.ctrm-sets` grammar (V22).
+/// The preset data, in the `.ctrm-sets` grammar (V22): the hand-written
+/// presets, then the generated hazard file after them.
 ///
 /// Public as TEXT because that is what the precedence chain takes: the
 /// builtin is the lowest source in `src/rules:V19` and arrives there the
 /// same way a dotfile or a `--sets-file` does. One grammar, one parser,
 /// and a preset a user overrides by declaring the name again.
-pub const SETS: &str = include_str!("sets.ctrm-sets");
+///
+/// TWO FILES, ONE TEXT. The chain holds a single builtin source, and the
+/// hazard file is generated (`src/lint:V34`) so it cannot share a file
+/// with presets written by hand. Joining them at compile time keeps the
+/// chain's shape; the cost is that a builtin line number counts from the
+/// top of the joined text, which only a defect in this crate would ever
+/// show and which the parse test below keeps from shipping.
+pub const SETS: &str = concat!(
+    include_str!("sets.ctrm-sets"),
+    include_str!("hazard.ctrm-sets")
+);
+
+/// The generated hazard file alone (`src/lint:V34`).
+///
+/// Kept apart from [`SETS`] because the lint node reads it DIRECTLY: a
+/// hazard fires from these compiled-in bytes, never from the catalog a run
+/// assembled, so neither a `.ctrm-sets` redeclaring a hazard name nor a
+/// run without the builtin sets can empty the set that forbids.
+pub const HAZARD: &str = include_str!("hazard.ctrm-sets");
+
+/// The hazard file's sets, and nothing else.
+///
+/// # Errors
+///
+/// As [`definitions`]: only a defect in the compiled-in file.
+pub fn hazard_catalog() -> Result<SetCatalog, ParseError> {
+    let mut catalog = SetCatalog::new();
+    for line in HAZARD.lines() {
+        if let Some(definition) = parse_line(line)? {
+            catalog.insert(definition);
+        }
+    }
+    Ok(catalog)
+}
 
 /// The presets the data file declares, unresolved.
 ///
@@ -119,8 +155,9 @@ pub fn catalog() -> Result<SetCatalog, ParseError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ASCII, CharSet, SETS, SetDefinition, SetMember, ascii,
-        ascii_definition, catalog, definitions, intrinsic_catalog,
+        ASCII, CharSet, HAZARD, SETS, SetDefinition, SetMember, ascii,
+        ascii_definition, catalog, definitions, hazard_catalog,
+        intrinsic_catalog,
     };
 
     #[test]
@@ -183,7 +220,7 @@ mod tests {
     /// Written out rather than read back from the catalog: a test that
     /// asked the data file what it declares would pass just as happily
     /// after a preset was deleted from it.
-    const DECLARED: [&str; 13] = [
+    const DECLARED: [&str; 14] = [
         "any",
         "arabic",
         "box",
@@ -192,6 +229,7 @@ mod tests {
         "cyrillic",
         "emoji",
         "greek",
+        "hazard",
         "latin-ext",
         "latin1",
         "legal",
@@ -234,20 +272,31 @@ mod tests {
     /// V22: every member is `U+XXXX`, which is what keeps the file ASCII.
     /// A fidelity label is allowed in front of one (V41) and carries no
     /// character of its own, so it is followed rather than rejected.
-    fn is_code_point(member: &SetMember) -> bool {
+    ///
+    /// So is a member NAMING another builtin set (V25), which is how the
+    /// generated `hazard` is the union of its classes rather than a second
+    /// copy of their ranges. Only a name the builtin text itself declares:
+    /// one reaching outside it would make a preset depend on whatever a
+    /// user happened to declare.
+    fn is_code_point(member: &SetMember, builtin: &[String]) -> bool {
         match member {
             SetMember::Range(_) => true,
-            SetMember::Labelled { member, .. } => is_code_point(member),
-            SetMember::Literal(_) | SetMember::Named(_) => false,
+            SetMember::Labelled { member, .. } => {
+                is_code_point(member, builtin)
+            }
+            SetMember::Named(name) => builtin.contains(name),
+            SetMember::Literal(_) => false,
         }
     }
 
     #[test]
     fn every_member_is_written_as_a_code_point() {
+        let names: Vec<String> =
+            declared().into_iter().map(|d| d.name).collect();
         for definition in declared() {
             for member in &definition.members {
                 assert!(
-                    is_code_point(member),
+                    is_code_point(member, &names),
                     "{} holds a member that is not U+XXXX",
                     definition.name
                 );
@@ -407,5 +456,86 @@ mod tests {
         assert_eq!(set.ranges.len(), 1);
         assert!(!set.contains('\u{2713}'));
         assert!(!set.contains('\u{2705}'));
+    }
+
+    /// The classes the generated hazard file declares, in the order the
+    /// lint node reads them. Spelled out for the reason [`DECLARED`] is.
+    const HAZARD_CLASSES: [&str; 5] = [
+        "hazard-bidi",
+        "hazard-tag",
+        "hazard-bom",
+        "hazard-control",
+        "hazard-invisible",
+    ];
+
+    fn hazard_class(name: &str) -> CharSet {
+        let resolved = hazard_catalog()
+            .ok()
+            .and_then(|sets| sets.resolve(name, TEXT).ok());
+        assert!(resolved.is_some(), "{name} must resolve on its own");
+        resolved.unwrap_or_else(|| CharSet::new(name.to_owned(), Vec::new()))
+    }
+
+    /// How many code points a set holds, counted rather than computed so
+    /// no arithmetic is needed to say it.
+    fn size(set: &CharSet) -> usize {
+        set.ranges.iter().map(|r| (r.start..=r.end).count()).sum()
+    }
+
+    #[test]
+    fn the_hazard_file_is_ascii_and_reads_without_the_presets() {
+        assert!(HAZARD.is_ascii());
+        assert!(SETS.ends_with(HAZARD));
+        for name in HAZARD_CLASSES {
+            assert!(!hazard_class(name).is_empty(), "{name} is empty");
+        }
+        let listed = hazard_catalog().map(|c| c.names().count());
+        assert_eq!(listed, Ok(6));
+    }
+
+    /// The generated line is checked against the figure upstream prints
+    /// beneath it ("Total code points: 4174" in DerivedCoreProperties
+    /// 18.0.0), so a member lost or mistyped in a regeneration shows here.
+    #[test]
+    fn the_ignorable_class_holds_exactly_what_unicode_counts() {
+        assert_eq!(size(&hazard_class("hazard-invisible")), 4174);
+    }
+
+    /// V34's members, at least one per class it names: ZWSP, ZWJ, soft
+    /// hyphen, VS16, a Hangul filler, an invisible math operator; RLO and
+    /// LRI; TAG A; BEL, ESC, DELETE and a C1 control; the BOM.
+    const V34_MEMBERS: &str = "\u{200B}\u{200D}\u{00AD}\u{FE0F}\u{3164}\
+        \u{2061}\u{202E}\u{2066}\u{E0041}\u{0007}\u{001B}\u{007F}\
+        \u{009B}\u{FEFF}";
+
+    /// ... and the three controls it keeps.
+    #[test]
+    fn hazard_holds_every_class_v34_names_and_keeps_the_layout_controls() {
+        let set = preset("hazard");
+        for point in V34_MEMBERS.chars() {
+            assert!(set.contains(point), "U+{:04X}", u32::from(point));
+        }
+        for point in ['\t', '\n', '\r', ' ', 'A', '\u{00A0}', '\u{1F3FD}'] {
+            assert!(!set.contains(point), "U+{:04X}", u32::from(point));
+        }
+    }
+
+    /// The catalog's `hazard` and the one the lint node reads are the same
+    /// bytes, so `ctrm sets` lists what actually fires.
+    #[test]
+    fn the_catalog_hazard_is_the_hazard_the_lint_reads() {
+        assert_eq!(preset("hazard"), hazard_class("hazard"));
+    }
+
+    /// A bidi override is classed as bidi and not only as invisible: the
+    /// narrow classes are what name the lint, so each must hold its own.
+    #[test]
+    fn each_hazard_class_holds_its_own_members() {
+        assert!(hazard_class("hazard-bidi").contains('\u{202E}'));
+        assert!(hazard_class("hazard-bidi").contains('\u{200F}'));
+        assert!(!hazard_class("hazard-bidi").contains('\u{200B}'));
+        assert_eq!(size(&hazard_class("hazard-tag")), 128);
+        assert_eq!(size(&hazard_class("hazard-bom")), 1);
+        assert_eq!(size(&hazard_class("hazard-control")), 62);
     }
 }

@@ -1,0 +1,75 @@
+# THE HAZARD SET (`src/lint:V34`), GENERATED from the Unicode Character
+# Database and compiled in beside `sets.ctrm-sets` (V22). Do not edit a
+# member by hand: regenerate, and let the diff say what Unicode changed.
+#
+# SOURCE: Unicode 18.0.0, the UCD files below, fetched from
+# https://www.unicode.org/Public/18.0.0/ucd/ on 2026-10-01. Unicode
+# License v3; see `docs/THIRD-PARTY-NOTICES.md`.
+#
+#   DerivedCoreProperties.txt, dated 2026-08-07, sha256
+#     09c928886a178fcafd93c29e4bd59073a058e5a100b716d425cb563ab50f68c9
+#   PropList.txt, dated 2026-08-07, sha256
+#     f438f532e8737bb8a2702126cdf9c4af5e357c58c7acf9d9eb2fc7c1a1d955d6
+#   extracted/DerivedGeneralCategory.txt, dated 2026-06-29, sha256
+#     d6b151d2d40ee9b1876d26f417980f45ffae47b6055ccf7203cb31f07a030f94
+#
+# Each generated line is the property's ranges, one member per upstream
+# line and in upstream order, so a regeneration diffs line for line
+# against the file it came from. The member list was produced by:
+#
+#   awk -F';' -v p=<Property> '$0 !~ /^#/ && NF > 1 {
+#     split($2, v, "#"); gsub(/ /, "", v[1]); if (v[1] != p) next;
+#     r = $1; gsub(/ /, "", r); n = split(r, e, "[.][.]");
+#     printf " U+%s", e[1]; if (n == 2) printf "-U+%s", e[2] }' <file>
+#
+# ONE SET PER CLASS, then their union. The classes overlap -- every bidi
+# control, tag and the BOM is also default-ignorable -- and that is kept
+# rather than subtracted (V3 has no subtraction): the lint node reads them
+# in the order below and the FIRST class a character is in names the lint
+# that reports it, so a bidi override is reported as one and not as merely
+# invisible.
+#
+# Granting any of these names in `.ctrm` is legal and changes nothing that
+# matters: a hazard fires at `forbid` whatever the set grants, which is
+# the whole point of V34 putting the exclusion in the LEVEL. And the lint
+# reads THIS file, compiled in, never the catalog, so a `.ctrm-sets` that
+# redeclares one of these names, or `--no-builtin-sets`, cannot empty it.
+
+# Bidi_Control, from PropList.txt: ARABIC LETTER MARK, LEFT-TO-RIGHT and
+# RIGHT-TO-LEFT MARK, the embeddings and overrides U+202A-U+202E, and the
+# isolates U+2066-U+2069. The last two runs are the Trojan Source set
+# (CVE-2021-42574): text that displays in one order and compiles in
+# another. V34 names those two runs; the marks ride along because Unicode
+# puts them in the same property and they reorder text the same way.
+hazard-bidi U+061C U+200E-U+200F U+202A-U+202E U+2066-U+2069
+
+# The Tags block, U+E0000-U+E007F, as V34 states it. Tag letters mirror
+# ASCII one for one and render as nothing, which is how text is smuggled
+# past a reader into a model: U+E0041 is an invisible `A`.
+hazard-tag U+E0000-U+E007F
+
+# ZERO WIDTH NO-BREAK SPACE, the byte order mark. At byte 0 of a file it is
+# an encoding signature and NOT a hazard; anywhere else it is an invisible
+# character, typically left by concatenating two files. The lint node
+# makes that positional cut; a set cannot, so it is its own class.
+hazard-bom U+FEFF
+
+# General_Category=Cc, from DerivedGeneralCategory.txt, which lists it as
+# U+0000-U+001F and U+007F-U+009F: C0, DELETE and C1. CHARACTER
+# TABULATION, LINE FEED and CARRIAGE RETURN are cut out BY HAND, because
+# V34 keeps them -- they are how text is laid out, and a carriage return
+# has its own grant (`cr`) rather than a hazard. DELETE is kept in: it is
+# Cc, it renders as nothing, and V34's "C0/C1" reads as the category.
+hazard-control U+0000-U+0008 U+000B-U+000C U+000E-U+001F U+007F-U+009F
+
+# Default_Ignorable_Code_Point, from DerivedCoreProperties.txt: the soft
+# hyphen, the joiners, the variation selectors, the Hangul fillers, the
+# invisible math operators, and the reserved ranges Unicode promises will
+# stay invisible. It includes ZERO WIDTH JOINER, which V34 exempts inside
+# a declared emoji sequence -- an exemption that needs sequences, so it
+# arrives with `src/fix:T33` and is not approximated here.
+hazard-invisible U+00AD U+034F U+061C U+115F-U+1160 U+17B4-U+17B5 U+180B-U+180D U+180E U+180F U+200B-U+200F U+202A-U+202E U+2060-U+2064 U+2065 U+2066-U+206F U+3164 U+FE00-U+FE0F U+FEFF U+FFA0 U+FFF0-U+FFF8 U+1BCA0-U+1BCA3 U+1D173-U+1D17A U+E0000 U+E0001 U+E0002-U+E001F U+E0020-U+E007F U+E0080-U+E00FF U+E0100-U+E01EF U+E01F0-U+E0FFF
+
+# The union V34 names `hazard`. Listed in the sets table like any preset,
+# and contained in `any` like every code point is (`src/charset` INTERFACES).
+hazard hazard-bidi hazard-tag hazard-bom hazard-control hazard-invisible

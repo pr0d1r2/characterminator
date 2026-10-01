@@ -1,8 +1,9 @@
 # Third-party notices
 
-`characterminator` has **one direct dependency** and ships **one vendored
-file**. This document says what each is, why it is there, and what you owe
-whom if you distribute a binary.
+`characterminator` has **one direct dependency**, ships **one vendored
+file**, and compiles in **data generated from the Unicode Character
+Database**. This document says what each is, why it is there, and what you
+owe whom if you distribute a binary.
 
 Every figure below is the *runtime* closure -- `cargo tree -e normal`,
 measured rather than asserted. Dev-dependencies are excluded: they are not
@@ -96,6 +97,67 @@ reachable, which is a dependency nobody declared and nobody can audit.
 
 It is not forked, not generated and not edited. Any change to it is a
 re-sync from upstream. `hk` is MIT licensed.
+
+## Generated data: the Unicode Character Database
+
+Some of what the binary enforces is Unicode's data rather than ours, and it
+is compiled in, so it travels inside every copy of the binary.
+
+| file | generated from | Unicode version |
+|---|---|---|
+| [`src/charset/hazard.ctrm-sets`](../src/charset/hazard.ctrm-sets) | `DerivedCoreProperties.txt` (`Default_Ignorable_Code_Point`), `PropList.txt` (`Bidi_Control`), `extracted/DerivedGeneralCategory.txt` (`Cc`) | 18.0.0 |
+
+The file is the code point ranges of those properties, rewritten into this
+tool's own `U+XXXX` set grammar; its header names the upstream files, their
+dates and SHA-256 digests, and the command that produced each line. No
+upstream file is copied into the repository whole.
+
+The Unicode Character Database is distributed under the Unicode License
+v3, reproduced below as Unicode publishes it at
+<https://www.unicode.org/license.txt>, except that the copyright sign is
+written `(c)`: this file is held to plain ASCII by the tool's own check.
+
+```text
+UNICODE LICENSE V3
+
+COPYRIGHT AND PERMISSION NOTICE
+
+Copyright (c) 1991-2026 Unicode, Inc.
+
+NOTICE TO USER: Carefully read the following legal agreement. BY
+DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of data files and any associated documentation (the "Data Files") or
+software and any associated documentation (the "Software") to deal in the
+Data Files or Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, and/or sell
+copies of the Data Files or Software, and to permit persons to whom the
+Data Files or Software are furnished to do so, provided that either (a)
+this copyright and permission notice appear with all copies of the Data
+Files or Software, or (b) this copyright and permission notice appear in
+associated Documentation.
+
+THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+THIRD PARTY RIGHTS.
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+FILES OR SOFTWARE.
+
+Except as contained in this notice, the name of a copyright holder shall
+not be used in advertising or otherwise to promote the sale, use or other
+dealings in these Data Files or Software without prior written
+authorization of the copyright holder.
+```
 
 ## Not dependencies: the tools in the gate
 
