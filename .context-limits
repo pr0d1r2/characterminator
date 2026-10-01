@@ -85,7 +85,18 @@ src/lint/SPEC.md     1420
 # flag twins in `.:I.flag` were parsed (T18) and never reached a verb, and
 # a promise with no task row is invisible to `mth tasks`. The row is long
 # because it names every flag it owes. 1070 is ~12% over the measured 954.
-src/cli/SPEC.md       1070
+# RAISED 860 -> 1180, reviewed. The node gains V53, the exit-code rule for
+# `guard`, and it lands WITH its runner (T37's tests). It cannot fold into
+# V35: V35 says where the verdict travels, V53 says what a FAILED adapter
+# does, and that is the part a harness turns into a bricked session if it
+# is wrong -- Claude Code reads exit 2 as "block", so the rule has to name
+# the code it forbids, the one it uses instead, and why. Compaction was
+# tried first and buys nothing: every finished row but T37 is already an
+# archive stub, and T37 stays a row because it is the task being closed.
+# (1180 was ~12% over 1048 alone.) Merged with the T55 raise above,
+# built in parallel: both rows together set the band. 1290 is ~12% over
+# the measured 1142 with T55 and V53 in place.
+src/cli/SPEC.md      1290
 src/scan/SPEC.md      400
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
 # every other node already had, recording work that had invariants but no
