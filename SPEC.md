@@ -76,7 +76,7 @@ T2|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V15,V16
 T3|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
 T4|x|ARCHIVED to SPEC-ARCHIVE.md|V15,V14
 T13|x|ARCHIVED to SPEC-ARCHIVE.md|V13
-T14|.|`sherd check` + `sherd budget` + `sherd sync --check` in `hk.pkl`|V16
+T14|x|`sherd check` + `sherd budget` + `sherd sync --check` in `hk.pkl`|V16
 T16|x|ARCHIVED to SPEC-ARCHIVE.md|-
 T17|~|release: `release.toml` (`cargo-release`) + crates.io publish, ∵ T13 & T16 land|-
 T27|x|ARCHIVED to SPEC-ARCHIVE.md|`src/tokens:V10`,`src/cli:V7`

@@ -133,3 +133,27 @@ src/tokens/SPEC.md    660
 # its one-line origin, and T43, which lands in the same wave. 630 is ~12%
 # over the new measured 559.
 src/render/SPEC.md    630
+
+# CHAIN ceilings, read by `sherd budget` (T14, V16). These rows are keyed
+# by node DIRECTORY, not by file: sherd costs a node as its whole chain --
+# root + hub + node, what a session must load to work there -- and finds
+# its ceiling by longest matching prefix of the directory. The file rows
+# above cap ONE spec each; these cap what a worker actually holds.
+#
+# COUPLING, stated so nobody trips on it: `itok check` reads this same
+# file and cannot cost a directory, so it passes these rows without
+# measuring them (itok counts them as "within budget"). They are gated by
+# the `sherd-budget` step, not by `context-limits`. If itok starts
+# refusing directory rows, move these to a file of sherd's own.
+#
+# Set 2026-10-01, ~12% over each chain as measured with every release
+# topic integrated, the band every ceiling here uses.
+src                  2490
+src/charset          3780
+src/cli              3470
+src/fix              3900
+src/lint             4010
+src/render           2890
+src/rules            3650
+src/scan             2700
+src/tokens           2830

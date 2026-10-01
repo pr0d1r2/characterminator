@@ -112,6 +112,21 @@ local fast = new Mapping<String, Step> {
       sherd check || { echo 'hk: sherd check found a structural violation -- it names the file, line and rule.' >&2; exit 1; }
       """
   }
+  // THE CHAINS GET A RUNNER (T14, V16). `context-limits` caps each spec
+  // FILE; this caps each node's CHAIN -- root + hub + node, which is what a
+  // session working in that node actually loads. The ceilings are the
+  // directory rows in `.context-limits`, read by longest matching prefix.
+  //
+  // It fails HARD when sherd is absent, for the reason every step here
+  // does: a skip would read exactly like a pass.
+  ["sherd-budget"] {
+    glob = List("SPEC.md", "src/**/SPEC.md", ".context-limits")
+    depends = List("sherd-check")
+    check = """
+      command -v sherd >/dev/null 2>&1 || { echo 'hk: sherd is not on PATH, so the chain budgets were NOT checked -- re-enter the dev shell. Examined nothing; this is not a pass.' >&2; exit 1; }
+      sherd budget >/dev/null || { sherd budget >&2; echo 'hk: a node chain is over its ceiling in .context-limits (the directory rows). Compacting the chain is the fix -- `mth archive` the finished rows; raising a ceiling is a reviewed decision and belongs in its own commit.' >&2; exit 1; }
+      """
+  }
   // The NAV section is GENERATED from the FEDERATION section above it, and
   // a generated section that had
   // to change means the committed tree was stale, so this reports rather
