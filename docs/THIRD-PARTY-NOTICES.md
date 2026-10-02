@@ -1,6 +1,6 @@
 # Third-party notices
 
-`characterminator` has **one direct dependency**, ships **one vendored
+`characterminator` has **three direct dependencies**, ships **one vendored
 file**, and compiles in **data generated from the Unicode Character
 Database**. This document says what each is, why it is there, and what you
 owe whom if you distribute a binary.
@@ -9,7 +9,7 @@ Every figure below is the *runtime* closure -- `cargo tree -e normal`,
 measured rather than asserted. Dev-dependencies are excluded: they are not
 distributed in anything you run.
 
-## The one direct dependency: `itok`
+## Direct dependency: `itok`
 
 [`itok`](https://github.com/pr0d1r2/itok) counts tokens and lists the
 git-tracked files. MIT licensed.
@@ -36,10 +36,31 @@ first half only, so the Unicode obligation would hold however you took the
 rest. It is the only non-choice licence anywhere near this tree, and this
 build does not carry it.
 
-## The closure: 22 packages
+## Direct dependencies: `unicode-normalization` and `unicode-security`
 
-One direct, twenty-one transitive, nearly all of them beneath
-`tiktoken-rs`, which is what a real tokenizer costs.
+The four data-bound pedantic lints read published Unicode tables:
+normalization for `not-nfc` and `nfkc-compat`, UTS #39 for `mixed-script`
+(the resolved script set) and `confusable` (the skeleton). Both crates are
+from the `unicode-rs` project, MIT OR Apache-2.0, and `src/lint/ucd.rs` is
+their only call site.
+
+They are here because the alternative is a second private copy of a
+published table, which drifts from Unicode the day Unicode moves. Vendoring
+the UCD files and generating tables, as `hazard.ctrm-sets` does, was
+rejected for these four: decomposition and confusable data are far larger
+than a range list, and the composition algorithm is code, not data.
+
+Both are taken with `default-features = false` (`unicode-normalization`
+drops `std`). They add four packages: themselves, `unicode-script` (beneath
+`unicode-security`) and `tinyvec`. Their tables are generated from the
+Unicode Character Database -- version 17.0.0 for normalization and script,
+16.0.0 for the UTS #39 confusables -- so the Unicode License below applies
+to that data as well.
+
+## The closure: 26 packages
+
+Three direct, twenty-three transitive. Twenty sit beneath `tiktoken-rs`,
+which is what a real tokenizer costs; the Unicode tables cost four.
 
 | package | version | licence |
 |---|---|---|
@@ -65,18 +86,23 @@ One direct, twenty-one transitive, nearly all of them beneath
 | `scopeguard` | 1.2.0 | MIT OR Apache-2.0 |
 | `smallvec` | 1.16.1 | MIT OR Apache-2.0 |
 | `tiktoken-rs` | 0.6.0 | MIT |
+| `tinyvec` | 1.13.3 | Zlib OR Apache-2.0 OR MIT |
+| `unicode-normalization` | 0.1.25 | MIT OR Apache-2.0 |
+| `unicode-script` | 0.5.8 | MIT OR Apache-2.0 |
+| `unicode-security` | 0.1.2 | MIT/Apache-2.0 |
 
 The versions are what `Cargo.lock` resolves today. The lock file is tracked
 and is the authority; this table is a readable copy of it, regenerated
 rather than edited.
 
-Five licence expressions appear, all permissive:
+Six licence expressions appear, all permissive:
 
-- `MIT OR Apache-2.0` (14 packages)
+- `MIT OR Apache-2.0` (16 packages)
 - `MIT` (3)
 - `Unlicense OR MIT` (2)
-- `MIT/Apache-2.0` (2) -- older syntax, same meaning
+- `MIT/Apache-2.0` (3) -- older syntax, same meaning
 - `Apache-2.0/MIT` (1) -- likewise
+- `Zlib OR Apache-2.0 OR MIT` (1)
 
 Where an expression offers a choice, `characterminator` is distributed
 under MIT and takes the MIT option.

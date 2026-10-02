@@ -107,11 +107,14 @@ Never commit to `main`; a hook refuses it.
 as binaries. They are not linked into this crate and a consumer building
 from crates.io never sees them.
 
-One direct dependency: `itok`, for token counting. This crate deliberately
+Three direct dependencies, each behind one facade node (`src:C`) and
+justified in `docs/THIRD-PARTY-NOTICES.md`. `itok`, for token counting. This crate deliberately
 does not write a second counter -- a saving reported here has to be the same
 number `itok` reports elsewhere, and two counters drift the moment either
 changes. `src/tokens` is its only call site, so the blast radius is one
 module.
+`unicode-normalization` and `unicode-security` carry the Unicode tables the
+pedantic lints read; `src/lint/ucd.rs` is their only call site.
 
 Flake inputs pin **tags**, bumped in their own reviewed commit (V44).
 Following a branch is rejected: what the gate enforces would move with no

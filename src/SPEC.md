@@ -25,7 +25,7 @@ self|src|the tool: charset presets, rule resolution, scan, fix, lint levels, tok
 ## §C CONSTRAINTS
 
 - module = dir + `mod.rs`. `mod.rs` composes, ⊥ implements.
-- ∀ external dep ! ONE facade node: `itok` → `src/tokens`.
+- ∀ external dep ! ONE facade node: `itok` → `src/tokens` · `unicode-normalization` & `unicode-security` → `src/lint` (`ucd.rs` only).
 
 ## §V INVARIANTS
 
