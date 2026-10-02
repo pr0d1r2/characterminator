@@ -38,7 +38,7 @@ use crate::render::json_string;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Call {
     /// Before a `Read` of a file: judge the file first. ONLY `Read`
-    /// (`src/cli:V35`, "before file read"): an `Edit` or a `Write` names a
+    /// (`V35`, "before file read"): an `Edit` or a `Write` names a
     /// `file_path` too, and denying it as "Read blocked" would be wrong.
     Read { cwd: Option<String>, path: String },
     /// After a tool ran: every string in its output, each labelled with
@@ -53,7 +53,7 @@ pub(super) enum Call {
     /// Input that is not JSON at all, or not JSON this reader accepts --
     /// nested past its depth bound, say. Not a call, but its TEXT can
     /// still be judged, and an attacker shapes an MCP tool's output
-    /// (`src/cli:V67`). `why` is the refusal, kept for when it is clean.
+    /// (`V67`). `why` is the refusal, kept for when it is clean.
     Unparsed { text: String, why: String },
 }
 

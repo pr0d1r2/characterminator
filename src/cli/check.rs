@@ -200,7 +200,8 @@ impl Checker {
     }
 
     /// One file's findings, judged exactly as `check` judges it, so the
-    /// guard and the gate cannot disagree about the same bytes (V35).
+    /// guard and the gate cannot disagree about the same bytes
+    /// (`src/cli/guard:V35`).
     /// `None` is a file that is not text: `check` names it as a skip.
     ///
     /// # Errors

@@ -29,10 +29,11 @@
 //!
 //! `guard` has no renderer here, on purpose. Its decision document is a
 //! HARNESS protocol rather than a report of this tool's findings, so
-//! `src/cli:V35` gives it to the cli node. What it borrows from this one is
-//! the two spellings a report must not fork: a json string literal, pure
-//! ASCII, and a code point as `U+XXXX`. Both are re-exported below, so the
-//! harness document and the reports cannot disagree about either.
+//! `src/cli/guard:V35` gives it to the guard node. What it borrows from
+//! this one is the two spellings a report must not fork: a json string
+//! literal, pure ASCII, and a code point as `U+XXXX`. Both are re-exported
+//! below, so the harness document and the reports cannot disagree about
+//! either.
 
 mod escape;
 mod human;

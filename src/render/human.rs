@@ -47,7 +47,7 @@ fn violation(item: &Violation<'_>) -> String {
 }
 
 /// A path as a terminal may safely print it (V11): every character outside
-/// printable ASCII is spelled `<U+XXXX>`, as `src/cli:V53` spells a guard
+/// printable ASCII is spelled `<U+XXXX>`, as `src/cli/guard:V53` spells a guard
 /// reason. A tracked file can be named `e<ESC>[2Jx<U+202E>y.md`, and a
 /// report that echoed it raw would clear the screen or reverse the line
 /// it sits on (B31). The json form needs none of this: it escapes.

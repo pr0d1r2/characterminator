@@ -474,7 +474,7 @@ notation would make it unreadable.
 list goes stale and that one does not.
 
 - **`guard` speaks Claude Code only.** Another agent harness is a second
-  mapping in one file (`src/cli/hook.rs`), and none is written yet.
+  mapping in one file (`src/cli/guard/hook.rs`), and none is written yet.
 - **One pedantic lint is not built**: `locale-literal` needs a notion of
   which files are code and how each language spells a string literal.
 - **No per-locale typography yet.** `typography-<code>` -- a locale's own

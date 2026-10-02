@@ -117,7 +117,7 @@ pub(super) fn parse(text: &str) -> Result<Value, String> {
 
 /// `text` with every `\u` escape decoded -- a surrogate pair to its one
 /// character, a lone half to U+FFFD -- and everything else kept as it is
-/// written. For a payload [`parse`] refused (`src/cli:V67`): it is not a
+/// written. For a payload [`parse`] refused (`V67`): it is not a
 /// document, but an escaped hazard in it is still a hazard. An escaped
 /// backslash stays escaped, so a literal backslash-u is not decoded.
 pub(super) fn unescaped(text: &str) -> String {

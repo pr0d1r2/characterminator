@@ -132,7 +132,7 @@ impl Hazards {
     }
 
     /// [`Hazards::lint_at`] for text with NO file start: tool output
-    /// (`src/cli:V53`). Each string of it begins at byte 0 of its own,
+    /// (`src/cli/guard:V53`). Each string of it begins at byte 0 of its own,
     /// and none of them is a file an encoder signed, so a BOM there is a
     /// stray like any other.
     pub fn lint_unsigned(&self, hit: Hit, exempt: &[usize]) -> Option<Lint> {

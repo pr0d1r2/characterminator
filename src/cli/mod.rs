@@ -16,8 +16,6 @@ mod explain;
 mod export;
 mod fix;
 mod guard;
-mod hook;
-mod json;
 mod out;
 mod prompt;
 mod stats;
@@ -54,7 +52,8 @@ pub enum Outcome {
     /// A hook adapter that could not do its job: exit 1, which a harness
     /// reads as a NON-BLOCKING error it shows the user. Never 2, which
     /// Claude Code reads as "block the tool": a broken adapter answering 2
-    /// would deny every read for the rest of the session (V53).
+    /// would deny every read for the rest of the session
+    /// (`src/cli/guard:V53`).
     Broken,
 }
 
@@ -83,8 +82,9 @@ struct Run<'a> {
 pub fn run(args: &[String]) -> ExitCode {
     match verb_of(args) {
         Some("--version" | "-V") => version(),
-        // Before argv is parsed: a hook must never exit 2 (V53), even when
-        // its command line carries a flag the parser would refuse.
+        // Before argv is parsed: a hook must never exit 2
+        // (`src/cli/guard:V53`), even when its command line carries a flag
+        // the parser would refuse.
         Some("guard") => guarded().code(),
         Some(verb @ ("check" | "explain" | "sets" | "fix" | "stats")) => {
             invoked(verb, args).code()
@@ -251,9 +251,9 @@ fn counted(run: &Run<'_>) -> Outcome {
     said(stats::run(run.config, &run.args.paths, run.format, bpe))
 }
 
-/// `guard`: hook JSON on stdin, decision JSON on stdout (V35). Arguments
-/// are ignored, so a flag added by mistake cannot turn a hook into an
-/// exit 2.
+/// `guard`: hook JSON on stdin, decision JSON on stdout
+/// (`src/cli/guard:V35`). Arguments are ignored, so a flag added by
+/// mistake cannot turn a hook into an exit 2.
 fn guarded() -> Outcome {
     let mut stdin = String::new();
     let read = std::io::stdin().read_to_string(&mut stdin);
@@ -264,9 +264,10 @@ fn guarded() -> Outcome {
 }
 
 /// The decision travels in the JSON; the exit code only says whether the
-/// adapter worked (V53). A failure is NAMED on stderr and exits 1, which
-/// lets the tool call through rather than bricking the session, and even
-/// a write that failed is mapped off 2 for the same reason.
+/// adapter worked (`src/cli/guard:V53`). A failure is NAMED on stderr and
+/// exits 1, which lets the tool call through rather than bricking the
+/// session, and even a write that failed is mapped off 2 for the same
+/// reason.
 fn adapted(answer: Result<String, String>) -> Outcome {
     match answer {
         Ok(text) if text.is_empty() => Outcome::Ok,
@@ -362,8 +363,9 @@ mod tests {
         assert_ne!(Outcome::Ok, Outcome::Usage);
     }
 
-    /// V53: a failed adapter exits 1, which Claude Code reads as a
-    /// non-blocking error, and never 2, which it reads as a block.
+    /// `src/cli/guard:V53`: a failed adapter exits 1, which Claude Code
+    /// reads as a non-blocking error, and never 2, which it reads as a
+    /// block.
     #[test]
     fn a_failed_guard_is_broken_and_never_usage() {
         let failed = adapted(Err(String::from("hook input is not JSON")));

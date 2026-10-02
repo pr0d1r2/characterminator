@@ -17,9 +17,9 @@
 //! in (`src/lint:V49`), so a `.ctrm` that cannot be read or applied still
 //! leaves every hazard judged; only the note about it changes.
 
-use super::check::{Checker, shown_path};
-use super::config::Config;
 use super::hook::{self, Call, Event, Verdict};
+use crate::cli::check::{Checker, shown_path};
+use crate::cli::config::Config;
 use crate::lint::{Finding, Group, Hazards, Lint};
 use crate::render::codepoint;
 use crate::scan::{Hit, scan_bytes, scan_str};
