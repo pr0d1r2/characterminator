@@ -9,8 +9,8 @@
 use super::config::Config;
 use crate::charset::{CharSet, SetCatalog};
 use crate::lint::{
-    CHAR_LINTS, CRLF, Finding, Group, Hazards, LINE_LINTS, Level, Levels, Lint,
-    TEXT_LINTS, Target, char_lints, exit_code, line_hits, text_hits,
+    CHAR_LINTS, Finding, Group, Hazards, LINE_LINTS, Level, Levels, Lint,
+    TEXT_LINTS, Target, char_lints, exit_code, line_hits, one_claim, text_hits,
     unicode_space,
 };
 use crate::render::{self, Format, Skipped, Violation};
@@ -293,16 +293,17 @@ fn inspect(bytes: &[u8], judge: &Judge<'_>, levels: &Levels) -> Looked {
     }
 }
 
-/// The character findings, then the line-shaped ones. Two lists rather
-/// than one merged walk; the report's order is `src/render`'s to impose
-/// (by path, then byte), so nothing here has to interleave them.
+/// The character findings, then the line- and text-shaped ones, with ONE
+/// claim per character across all three (`src/lint:V55`): the walks each
+/// know only their own lints, so the lint node's claim order settles a
+/// byte two of them point at.
 fn findings_in(text: &str, judge: &Judge<'_>, levels: &Levels) -> Vec<Finding> {
     let judge = &judge.over(text);
     let deep = asked(&CHAR_LINTS, levels);
     let hits = scan_str(text, |c| judge.passes(c, deep));
     let mut found = reportable(hits, judge, levels);
-    found.extend(context_findings(text, judge, levels));
-    found
+    found.extend(context_findings(text, levels));
+    one_claim(found)
 }
 
 /// Whether a run asked for any of these lints: none at `allow` is the
@@ -339,58 +340,29 @@ fn loudest(hit: Hit, judge: &Judge<'_>, levels: &Levels) -> Option<Finding> {
 /// The pedantic findings one character cannot decide alone: line-shaped
 /// (`src/lint:V55`) and text-shaped (`src/lint:V58`). Neither walk runs
 /// when every lint it serves is at `allow` -- which is every run that did
-/// not ask for pedantic. Two text findings on one character are one: the
-/// first, `not-nfc`.
-fn context_findings(
-    text: &str,
-    judge: &Judge<'_>,
-    levels: &Levels,
-) -> Vec<Finding> {
+/// not ask for pedantic. A character one of them shares with another
+/// finding is settled by `one_claim` in the caller: `ascii` does not
+/// grant the carriage return (`src/charset` keeps it in the separate `cr`
+/// set), so under the default a CR LF is ALREADY `outside-set`, and
+/// `crlf` speaks only where the set grants `cr`; a trailing space that is
+/// also the file's last character is `trailing-whitespace` alone.
+fn context_findings(text: &str, levels: &Levels) -> Vec<Finding> {
     let mut found = Vec::new();
     if asked(&LINE_LINTS, levels) {
-        found.extend(heard(line_hits(text), judge, levels));
+        found.extend(heard(line_hits(text), levels));
     }
     if asked(&TEXT_LINTS, levels) {
-        let mut words = heard(text_hits(text), judge, levels);
-        words.dedup_by_key(|finding| finding.hit.position.byte);
-        found.extend(words);
+        found.extend(heard(text_hits(text), levels));
     }
     found
 }
 
-/// The context hits a run reports: not said already, not at `allow`.
-fn heard(
-    hits: Vec<(Lint, Hit)>,
-    judge: &Judge<'_>,
-    levels: &Levels,
-) -> Vec<Finding> {
+/// The context hits a run reports: not at `allow`.
+fn heard(hits: Vec<(Lint, Hit)>, levels: &Levels) -> Vec<Finding> {
     hits.into_iter()
-        .filter(|(lint, hit)| !said_already(*lint, *hit, judge, levels))
         .map(|(lint, hit)| levels.finding(hit, lint))
         .filter(|finding| finding.level != Level::Allow)
         .collect()
-}
-
-/// Whether the character pass already reported this hit's news.
-///
-/// `crlf`, `not-nfc` and `mixed-script` can collide; the text lints point
-/// at a character for what it IS among its neighbours, so a character
-/// the first pass already named keeps that one name (`src/lint:V58`).
-/// `ascii` does not grant the carriage return
-/// (`src/charset` keeps it in the separate `cr` set), so under the
-/// default a CR LF is ALREADY `outside-set`, and a second finding on the
-/// same character would say one thing twice. `crlf` therefore speaks
-/// where the set grants `cr`, which is where nothing else would. The
-/// other two point at a character for a reason that is not the
-/// character's: a line that trails, a file left open.
-fn said_already(
-    lint: Lint,
-    hit: Hit,
-    judge: &Judge<'_>,
-    levels: &Levels,
-) -> bool {
-    (lint == CRLF || TEXT_LINTS.contains(&lint))
-        && loudest(hit, judge, levels).is_some()
 }
 
 /// The path as a reader typed it: relative to the root, so it matches the
@@ -1028,6 +1000,20 @@ mod tests {
         assert_eq!(on, format!("{rs}\nwant.out:1:21 U+0069 final-newline"));
         let ctrm = format!("{base}*.out ascii !final-newline=allow\n");
         assert_eq!(report("ctrm-final-off", &ctrm, &files), rs);
+    }
+
+    /// B20: one claim per character across the walks (`src/lint:V55`). A
+    /// trailing space that is also the last character is one finding, and
+    /// so is a last character that also mixes scripts.
+    #[test]
+    fn a_character_two_walks_point_at_is_claimed_once() {
+        let trailing = [("f.txt", "a ")];
+        let got =
+            report("ctrm-claim-trail", "* ascii !pedantic=warn\n", &trailing);
+        assert_eq!(got, "f.txt:1:2 U+0020 trailing-whitespace");
+        let mixed = [("f.txt", "a\u{03BB}")];
+        let got = report("ctrm-claim-mixed", "* any !pedantic=warn\n", &mixed);
+        assert_eq!(got, "f.txt:1:2 U+03BB final-newline");
     }
 
     /// V37 fixture, `unicode-space`: French typography puts a no-break

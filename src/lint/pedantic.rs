@@ -67,6 +67,20 @@ pub const CHAR_LINTS: [Lint; 3] = [UNICODE_SPACE, NFKC_COMPAT, CONFUSABLE];
 /// them is switched on before paying for a second walk of the text.
 pub const LINE_LINTS: [Lint; 3] = [CRLF, TRAILING_WHITESPACE, FINAL_NEWLINE];
 
+/// Every pedantic lint in CLAIM order (V55, V58): when two point at one
+/// character, the earlier keeps it. The three walks each keep their own
+/// order; this is the one that holds across them.
+pub const CLAIM_ORDER: [Lint; 8] = [
+    UNICODE_SPACE,
+    CRLF,
+    TRAILING_WHITESPACE,
+    FINAL_NEWLINE,
+    NFKC_COMPAT,
+    CONFUSABLE,
+    NOT_NFC,
+    MIXED_SCRIPT,
+];
+
 /// What `unicode-space` fires on: General_Category `Zs` minus U+0020.
 ///
 /// V37 names NBSP and U+2000-U+200A. The rest of `Zs` is the same kind

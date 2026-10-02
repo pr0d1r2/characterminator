@@ -16,7 +16,7 @@ mod sequence;
 mod target;
 mod ucd;
 
-pub use finding::{Finding, exit_code};
+pub use finding::{Finding, exit_code, one_claim};
 pub use group::Group;
 pub use hazard::Hazards;
 pub use level::Level;

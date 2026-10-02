@@ -1,6 +1,7 @@
 //! One reportable finding, and the exit decision a run makes from them.
 
-use crate::lint::{Level, Lint};
+use crate::lint::pedantic::CLAIM_ORDER;
+use crate::lint::{Group, Level, Lint};
 use crate::scan::Hit;
 
 /// One reportable finding: what was found, which lint found it, and how
@@ -21,6 +22,31 @@ impl Finding {
     }
 }
 
+/// ONE claim per character (V55): of the findings on one byte, the
+/// strongest -- a hazard, then `outside-set`, then the pedantic lints in
+/// [`CLAIM_ORDER`] -- and none of the rest. Returned in byte order.
+///
+/// The three walks that find them each know only their own lints, so
+/// this is the one place that sees a trailing space ALSO being the last
+/// character of the file, or that last character ALSO mixing scripts.
+pub fn one_claim(mut found: Vec<Finding>) -> Vec<Finding> {
+    found.sort_by_key(|f| (f.hit.position.byte, claim_rank(f.lint)));
+    found.dedup_by_key(|f| f.hit.position.byte);
+    found
+}
+
+/// Where a lint stands in the claim order; lower claims first.
+fn claim_rank(lint: Lint) -> usize {
+    match lint.group {
+        Group::Hazard => 0,
+        Group::Charset => 1,
+        Group::Pedantic => {
+            let at = CLAIM_ORDER.iter().position(|l| *l == lint);
+            at.map_or(usize::MAX, |at| at.saturating_add(2))
+        }
+    }
+}
+
 /// The exit decision: a deny or forbid finding means the run failed.
 ///
 /// It answers 0 or 1 ONLY. Code 2 is usage, which is the cli node's to
@@ -34,7 +60,7 @@ pub fn exit_code(findings: &[Finding]) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{Finding, exit_code};
+    use super::{Finding, exit_code, one_claim};
     use crate::lint::{Group, Level, Lint};
     use crate::scan::{Hit, Position};
 
@@ -50,6 +76,25 @@ mod tests {
         };
         let lint = Lint::new("outside-set", Group::Charset);
         Finding { hit, lint, level }
+    }
+
+    /// V55: of the findings on one byte, the strongest claim alone stays,
+    /// whatever order the walks produced them in.
+    #[test]
+    fn one_claim_keeps_the_strongest_finding_per_byte() {
+        let on = |name, group| Finding {
+            lint: Lint::new(name, group),
+            ..finding(Level::Warn)
+        };
+        let mixed = on("mixed-script", Group::Pedantic);
+        let last = on("final-newline", Group::Pedantic);
+        let trailing = on("trailing-whitespace", Group::Pedantic);
+        let control = on("control-character", Group::Hazard);
+        let kept = one_claim(vec![mixed, last.clone()]);
+        assert_eq!(kept, vec![last.clone()]);
+        let kept = one_claim(vec![last, trailing.clone()]);
+        assert_eq!(kept, vec![trailing.clone()]);
+        assert_eq!(one_claim(vec![trailing, control.clone()]), vec![control]);
     }
 
     #[test]
