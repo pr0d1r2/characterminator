@@ -14,7 +14,7 @@
 use super::export::{self, Shape};
 use super::prompt;
 use crate::charset::CharSet;
-use crate::cli::check::Checker;
+use crate::cli::checker::Checker;
 use crate::cli::config::Config;
 use crate::render::{Explanation, Format, InForce};
 use crate::render::{explain as render_explain, sets as render_sets};

@@ -10,7 +10,7 @@
 //! reports has to be the same number `itok` reports elsewhere. The
 //! rewriting is `src/fix`'s. This node asks both and prints the pair.
 
-use super::check::Checker;
+use super::checker::Checker;
 use super::config::Config;
 use crate::fix::{self as engine, Map};
 use crate::render::{self, FileStats, Format, Skipped};

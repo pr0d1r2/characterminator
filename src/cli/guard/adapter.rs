@@ -18,7 +18,8 @@
 //! leaves every hazard judged; only the note about it changes.
 
 use super::hook::{self, Call, Event, Verdict};
-use crate::cli::check::{Checker, shown_path};
+use crate::cli::check::shown_path;
+use crate::cli::checker::Checker;
 use crate::cli::config::Config;
 use crate::lint::{Finding, Group, Hazards, Lint};
 use crate::render::codepoint;

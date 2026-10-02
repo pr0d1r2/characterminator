@@ -11,6 +11,7 @@
 
 mod args;
 mod check;
+mod checker;
 mod config;
 mod explain;
 mod fix;

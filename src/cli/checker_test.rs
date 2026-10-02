@@ -1,11 +1,9 @@
-//! The tests of `check.rs`, in a file of their own so the module
-//! reads as code (sherd V50). Still its child: `super` is `check`.
+//! The tests of `checker.rs`, in a file of their own so the module
+//! reads as code (sherd V50). Still its child: `super` is `checker`.
 
-use super::{
-    Checker, Config, Judge, Looked, OUTSIDE, inspect, levels_for, run,
-    shown_path,
-};
+use super::{Checker, Config, Judge, Looked, OUTSIDE, inspect, levels_for};
 use crate::charset::{CharSet, builtin};
+use crate::cli::check::{run, shown_path};
 use crate::lint::{Finding, Group, Hazards, Level, Levels, Lint, Target};
 use crate::render::Format;
 use crate::rules::{self, Rule};

@@ -9,7 +9,7 @@
 //! the map is data (`src/fix:V26`) plus whatever `.ctrm-map` declares
 //! over it (`src/rules:V45`).
 
-use super::check::Checker;
+use super::checker::Checker;
 use super::config::Config;
 use crate::fix::{self as engine, Map};
 use crate::lint::{Finding, Level, Lint};
