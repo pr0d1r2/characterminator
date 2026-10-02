@@ -141,6 +141,20 @@ impl Checker {
         })
     }
 
+    /// The checker `sets` lists from: every locale set in, not only the
+    /// ones the rules name (`src/charset:V61`).
+    ///
+    /// # Errors
+    ///
+    /// As [`Checker::configured`].
+    pub fn listing(config: &Config) -> Result<Self, String> {
+        let catalog = config.listing()?;
+        Ok(Self {
+            catalog,
+            ..Self::configured(config)?
+        })
+    }
+
     /// What one file's characters are judged against.
     fn judge<'a>(&'a self, set: &'a CharSet) -> Judge<'a> {
         Judge {

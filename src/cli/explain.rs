@@ -85,6 +85,10 @@ pub fn exported(
 ///
 /// # Errors
 ///
+/// Every CLDR locale set is listed, not only the ones the rules name.
+///
+/// # Errors
+///
 /// As [`Checker::configured`], plus a declared set that cannot be resolved --
 /// a cycle, or a member naming a set nothing declares.
 pub fn sets(
@@ -92,7 +96,7 @@ pub fn sets(
     family: &str,
     format: Format,
 ) -> Result<String, String> {
-    let checker = Checker::configured(config)?;
+    let checker = Checker::listing(config)?;
     let listed: Vec<CharSet> = checker.declared(family)?;
     Ok(render_sets(format, &listed))
 }
@@ -172,6 +176,23 @@ mod tests {
         let listed = sets(&Config::discovered(&root), "text", Format::Human)
             .unwrap_or_default();
         assert!(listed.contains("house U+2261"), "{listed}");
+    }
+
+    /// `src/charset:V61`: the listing carries every locale, while the
+    /// catalog a check reads holds only the locales its rules name.
+    #[test]
+    fn sets_lists_every_locale_but_a_check_reads_only_the_named() {
+        let files = [(".ctrm", "*.md ascii+pl\n")];
+        let Some(root) = fixture("ctrm-sets-locale-fixture", &files) else {
+            return;
+        };
+        let config = Config::discovered(&root);
+        let listed = sets(&config, "text", Format::Human).unwrap_or_default();
+        assert!(listed.contains("ja U+3005"), "{listed}");
+        assert!(listed.contains("pt-BR U+"), "{listed}");
+        let catalog = config.catalog().unwrap_or_default();
+        assert!(catalog.get("pl").is_some());
+        assert!(catalog.get("ja").is_none());
     }
 
     /// V41 is visible here: `marks` holds different characters at another

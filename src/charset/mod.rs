@@ -6,6 +6,7 @@
 
 pub mod builtin;
 pub mod compose;
+pub mod locale;
 pub mod parse;
 pub mod range;
 pub mod set;
