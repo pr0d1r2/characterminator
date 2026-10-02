@@ -64,11 +64,16 @@ local fast = new Mapping<String, Step> {
   //
   // It fails HARD when `mth` is absent rather than skipping: nothing else
   // checks SPEC.md structure, so a skip would read exactly like a pass.
+  //
+  // The specs are FOUND, not globbed one level deep: a node may have
+  // sub-nodes (`src/cli/guard`), and `src/*/SPEC.md` would leave theirs
+  // unchecked under a green gate. `find` also never hands the loop an
+  // unmatched pattern as a literal file name.
   ["mth"] {
     glob = List("SPEC.md", "src/**/SPEC.md")
     check = """
       command -v mth >/dev/null 2>&1 || { echo 'hk: mth is not on PATH and nothing else checks SPEC.md structure. Enter the dev shell (`nix develop`, or `direnv reload`), which provides it from a pinned flake input.' >&2; exit 1; }
-      for f in SPEC.md src/SPEC.md src/*/SPEC.md; do
+      for f in SPEC.md $(find src -name SPEC.md | sort); do
         mth fmt --check "$f" || { echo "hk: $f is not formatted -- one line per statement, no line over the cap. Run \\`mth fmt $f\\`; splitting an over-long statement is the fix, raising the cap is a reviewed decision." >&2; exit 1; }
       done
       """
@@ -81,7 +86,7 @@ local fast = new Mapping<String, Step> {
     depends = List("mth")
     check = """
       mth check --records .spec-records SPEC.md || { echo "hk: SPEC.md failed its structural rules, or a decision .spec-records requires has gone missing. Each line above names the rule, the line, why it matters, and a ranked fix." >&2; exit 1; }
-      for f in src/SPEC.md src/*/SPEC.md; do
+      for f in $(find src -name SPEC.md | sort); do
         mth check "$f" || { echo "hk: $f failed its structural rules. Each line above names the rule, the line, why it matters, and a ranked fix." >&2; exit 1; }
       done
       """
