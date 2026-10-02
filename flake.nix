@@ -38,7 +38,7 @@
     itok.inputs.nixpkgs-lock.follows = "nixpkgs-lock";
     itok.inputs.hk.follows = "nix-hk";
     # The federation checker for this repo's own spec tree.
-    sherd.url = "github:pr0d1r2/sherd/v0.5.0";
+    sherd.url = "github:pr0d1r2/sherd/v0.5.2";
     sherd.inputs.nixpkgs-lock.follows = "nixpkgs-lock";
     sherd.inputs.nix-hk.follows = "nix-hk";
   };
