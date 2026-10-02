@@ -13,7 +13,7 @@ use super::check::Checker;
 use super::config::Config;
 use crate::fix::{self as engine, Map};
 use crate::render::{self, Change, Format, Skipped};
-use crate::scan::Unreadable;
+use crate::scan::{Unreadable, decode};
 use crate::tokens;
 use std::path::Path;
 
@@ -112,9 +112,11 @@ impl Pass {
 
 /// A file's text, or `None` when it was skipped and named.
 ///
-/// Named rather than dropped, the way `check` names it (`src/scan:V8`):
-/// a file quietly missing from a rewrite run is a file nobody knows was
-/// not rewritten.
+/// Classified by `check`'s own decode (`src/scan:V8`): a NUL anywhere is
+/// binary, then UTF-8 is required. Named rather than dropped, the way
+/// `check` names it: a file quietly missing from a rewrite run is a file
+/// nobody knows was not rewritten, and a blob `check` skips but `fix`
+/// rewrites is a file corrupted by the verb meant to clean it (B21).
 fn text_of(
     full: &Path,
     shown: &str,
@@ -122,14 +124,12 @@ fn text_of(
 ) -> Result<Option<String>, String> {
     let bytes =
         std::fs::read(full).map_err(|e| format!("{}: {e}", full.display()))?;
-    match String::from_utf8(bytes) {
-        Ok(text) => Ok(Some(text)),
-        Err(bad) => {
+    match decode(&bytes) {
+        Ok(text) => Ok(Some(text.to_owned())),
+        Err(reason) => {
             found.skips.push(Skip {
                 path: shown.to_owned(),
-                reason: Unreadable::NotUtf8 {
-                    byte: bad.utf8_error().valid_up_to(),
-                },
+                reason,
             });
             Ok(None)
         }
@@ -267,6 +267,22 @@ mod tests {
         let (text, code) = ran(&root, true);
         assert_eq!(read(&root), "a \u{2261} b\n", "{text}");
         assert_eq!(code, 1, "{text}");
+    }
+
+    /// B21: a file `check` skips as binary is skipped by `fix` too, and
+    /// named. Before, only UTF-8 was asked, so a NUL-laden blob that
+    /// happened to decode had its bytes rewritten.
+    #[test]
+    fn a_binary_file_is_skipped_and_named_not_rewritten() {
+        let blob = "\0\0\u{2014}\u{FEFF}data\0";
+        let files = [("notes.md", blob)];
+        let Some(root) = fixture("ctrm-fix-binary-fixture", &files) else {
+            return;
+        };
+        let (text, code) = ran(&root, true);
+        assert_eq!(read(&root), blob, "{text}");
+        assert_eq!(text, "notes.md: skipped, binary");
+        assert_eq!(code, 0, "{text}");
     }
 
     /// `.ctrm-map` is discovered beside `.ctrm` and wins over the builtin

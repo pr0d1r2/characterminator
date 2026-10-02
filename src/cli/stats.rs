@@ -14,6 +14,7 @@ use super::check::Checker;
 use super::config::Config;
 use crate::fix::{self as engine, Map};
 use crate::render::{self, FileStats, Format};
+use crate::scan::decode;
 use crate::tokens::{self, Count, Method};
 use std::path::{Path, PathBuf};
 
@@ -110,11 +111,13 @@ impl Pass {
     }
 }
 
-/// A file's text, or `None` when its bytes are not UTF-8.
+/// A file's text, or `None` when `check` would skip it: binary first,
+/// then not UTF-8, by the one decode every verb shares (`src/scan:V8`).
+/// A NUL-laden blob that happens to decode is still not text (B21).
 fn text_of(full: &Path) -> Result<Option<String>, String> {
     let bytes =
         std::fs::read(full).map_err(|e| format!("{}: {e}", full.display()))?;
-    Ok(String::from_utf8(bytes).ok())
+    Ok(decode(&bytes).ok().map(str::to_owned))
 }
 
 fn stat(row: &Row) -> FileStats<'_> {
@@ -178,6 +181,17 @@ mod tests {
         };
         assert!(ran(&root, false).contains('~'), "estimate wears a tilde");
         assert!(ran(&root, true).contains("o200k"), "bpe names its encoding");
+    }
+
+    /// B21: a file `check` skips as binary is not counted either.
+    #[test]
+    fn a_binary_file_is_not_counted() {
+        let files = [("notes.md", "\0\u{2014}data\0")];
+        let Some(root) = fixture("ctrm-stats-binary-fixture", &files) else {
+            return;
+        };
+        let said = ran(&root, false);
+        assert!(!said.contains("outside"), "{said}");
     }
 
     /// A file already inside its set costs the same before and after:

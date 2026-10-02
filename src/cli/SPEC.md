@@ -49,4 +49,5 @@ B3|2026-09-27|report via `println!` → PANIC on closed stdout ∴ `ctrm check \
 B16|2026-10-02|guard output scan reused the FILE byte-0 BOM exemption per string ∴ `"\ufeff..."` in tool output passed. via release review|V53
 B17|2026-10-02|pre-read PASSED a file ⊥ text ∴ U+202E + a `\xff` byte read in silence; the harness showed the model the override. via release review|V66
 B18|2026-10-02|PostToolUse nested > 256 deep = parse error → exit 1, ⊥ block ∴ a hazard in deep MCP output passed. via release review|V67
+B21|2026-10-02|`fix` & `stats` asked UTF-8 only, ⊥ `src/scan` binary test ∴ NUL-laden blob `check` skipped → rewritten by `fix`, counted by `stats`. via review|`src/scan:V8`
 B29|2026-10-02|map parsed only by `fix` & `stats` ∴ `check --map 'U+ZZZZ x y z'` & a 2-line `--map` ran as if the config were valid. via release review|V74
