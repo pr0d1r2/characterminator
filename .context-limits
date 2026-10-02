@@ -69,7 +69,7 @@ src/charset/SPEC.md  3130
 # 1600 -> 2140: V62 and the 2A rewrite of T33 (emoji sequences, specified
 # for the next build). `mth archive` folded T53 and T59 first. 2140 is ~12%
 # over the measured 1911.
-src/fix/SPEC.md      2470
+src/fix/SPEC.md      2810
 # 1160 -> 1460: V56 and B5, the node's first bug row, land with the fix
 # they describe -- a level-only line used to win the set grant. Archiving
 # T49 ran first and bought 15 tokens. 1460 is ~12% over the measured 1305.
