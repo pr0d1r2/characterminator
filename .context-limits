@@ -148,7 +148,15 @@ src/lint/SPEC.md     2440
 # 2250 -> 3080: the per-verb contracts and the full flag list move here
 # from the root §I (the cli node is their owner); the root keeps one line
 # per key. ~12% over the measured 2746.
-src/cli/SPEC.md      3080
+# 3080 -> 2190 on 2026-10-02: LOWERED after the split into `guard` and
+# `explain` sub-nodes took V32, V35, V53, V66, V67 and their bug rows
+# with them. ~12% over the measured 1951, so the parent cannot quietly
+# regrow into the room its children took.
+src/cli/SPEC.md      2190
+# Set 2026-10-02 with the split, ~12% over each measured spec: the hook
+# adapter (four invariants, four bug rows) and the explain verbs (V32).
+src/cli/guard/SPEC.md   1100
+src/cli/explain/SPEC.md  365
 src/scan/SPEC.md      400
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
 # every other node already had, recording work that had invariants but no
@@ -194,9 +202,18 @@ src/render/SPEC.md   740
 #
 # Set 2026-10-01, ~12% over each chain as measured with every release
 # topic integrated, the band every ceiling here uses.
-src                  2490
+#
+# src/cli 3920 -> 3510 on 2026-10-02 after the `guard` and `explain`
+# split, ~12% over the measured 3131. The two sub-nodes get rows of their
+# own, ~12% over their measured chains (explain 3333, guard 3781): a
+# sub-node chain is root + hub + cli + node, four files, so without its
+# own row it would inherit the parent's 3510 by longest prefix, which
+# guard's chain is over.
+src                2490
 src/charset          4330
-src/cli              3920
+src/cli              3510
+src/cli/explain      3740
+src/cli/guard        4240
 src/fix              4510
 src/lint             4670
 src/render           2890
