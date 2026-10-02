@@ -106,11 +106,16 @@ is compiled in, so it travels inside every copy of the binary.
 | file | generated from | Unicode version |
 |---|---|---|
 | [`src/charset/hazard.ctrm-sets`](../src/charset/hazard.ctrm-sets) | `DerivedCoreProperties.txt` (`Default_Ignorable_Code_Point`), `PropList.txt` (`Bidi_Control`), `extracted/DerivedGeneralCategory.txt` (`Cc`) | 18.0.0 |
+| [`src/charset/locales.ctrm-sets`](../src/charset/locales.ctrm-sets) | CLDR `cldr-json` tag 48.2.3, `cldr-misc-full/main/<code>/characters.json` (exemplar characters), with `UnicodeData.txt` for uppercase forms | CLDR 48, UCD 18.0.0 |
 
-The file is the code point ranges of those properties, rewritten into this
-tool's own `U+XXXX` set grammar; its header names the upstream files, their
-dates and SHA-256 digests, and the command that produced each line. No
-upstream file is copied into the repository whole.
+The hazard file is the code point ranges of those properties, rewritten
+into this tool's own `U+XXXX` set grammar; its header names the upstream
+files, their dates and SHA-256 digests, and the command that produced each
+line. The locale file is generated the same way, by
+`src/charset/cldr-letters.sh`, and its header carries the tag and every
+input's SHA-256. No upstream file is copied into the repository whole.
+CLDR is distributed under the same Unicode License v3 as the UCD, so the
+text below covers both.
 
 The Unicode Character Database is distributed under the Unicode License
 v3, reproduced below as Unicode publishes it at
