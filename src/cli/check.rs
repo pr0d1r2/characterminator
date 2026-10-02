@@ -175,3 +175,7 @@ fn skip(source: &Skip) -> Skipped<'_> {
         reason: source.reason,
     }
 }
+
+#[cfg(test)]
+#[path = "check_test.rs"]
+mod tests;
