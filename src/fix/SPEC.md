@@ -33,6 +33,7 @@ V28: map line `= <class> <family>:<member>[,<member>...] ...` declares equivalen
 V31: `emoji` preset = single code points only: ⊥ VS15/VS16, ⊥ skin tone U+1F3FB–U+1F3FF, ⊥ ZWJ U+200D, ⊥ keycap U+20E3, ⊥ tag chars ∴ ∀ sequence has a disallowed code point → builtin sequence map (vendored Unicode emoji data) compresses: selector & skin tone → delete (`👍🏽`→`👍`); ZWJ sequence → single code point equivalent if one exists (`U+1F468+U+200D+U+1F469+U+200D+U+1F467`→`👪`), else first emoji; keycap → its ASCII digit | `#` | `*`; flag → its 2-letter region code (`PL`). map `from` & class members ? be sequences (notation: §I); scan = longest declared sequence first. `emoji-seq` preset REJECTED: a set = CODE POINTS & a sequence ⊥ one ∴ ⊥ expressible as a set; reopens only if the set model itself gains sequences.
 V51: `words` map OPT-IN, ⊥ default (V26): map line `use <name>` reads it AT that line (`src/rules:V19`), origin = that line; unknown → exit 2. `⊥`→not `∴`→so `∵`→because `∀`→all `∈`→in `∃`→exists `≠`→`!=` `→`→`->` `⇒`→`=>`, each ⊥ MORE o200k tok (`.:R11`). `word <from> <to>` = word entry: `\w` edge meets `\w` → 1 space (`⊥owns`→`not owns`), across a delete too; space = PART of replacement ∴ inside span for V6; V5 holds. plain entry ⊥ spaced. `--words` flag REJECTED: 2nd switch for 1 map line, ⊥ positional.
 V60: builtin map DELETES VS15 U+FE0E, VS16 U+FE0F & skin tones U+1F3FB–U+1F3FF ∴ modifier sequence → its base (`👍🏽`→`👍`) w/ ⊥ sequence scan: each is 1 code point the `emoji` preset withholds (V31). = the cheap half of V31; ZWJ sequences, keycaps, flags → T33. a file granting them keeps them (V6).
+V62: 2A = T33 data: pinned Unicode emoji 18.0 `emoji-sequences.txt` + `emoji-zwj-sequences.txt`, vendored in `src/charset` (`src/charset:V22`; sha256 in header, as `src/charset:V59`) ∴ 1 list feeds this map & the hazard exemption (`src/lint:V63`) → generated `emoji-seq.ctrm-map`, 1 line ∀ RGI sequence V60 ⊥ already covers, `from` = the sequence (§I notation), longest match = existing scan. targets: keycap `<k> U+FE0F U+20E3` → `<k>` (digit | `#` | `*`) · flag (2 regional indicators) → its region code (`PL`) · tag flag (U+1F3F4 + tags) → `GB-ENG` | `GB-SCT` | `GB-WLS` · ZWJ seq → 1 code point where a CURATED equivalence holds (family → U+1F46A, couple w/ heart → U+1F491, kiss → U+1F48F; hand-written table, each row cited), else its first emoji. ⊥ guess beyond the table. a file granting a target keeps the base emoji (V6).
 
 ## §T TASKS
 
@@ -41,6 +42,6 @@ T10|x|ARCHIVED to SPEC-ARCHIVE.md|V4,V5,V6
 T26|x|ARCHIVED to SPEC-ARCHIVE.md|V26,`src/charset:V22`
 T29|x|ARCHIVED to SPEC-ARCHIVE.md|V27
 T30|x|ARCHIVED to SPEC-ARCHIVE.md|V28,V27
-T33|.|vendor Unicode emoji data; sequence map generator; longest-match scan|V31,`src/charset:V22`,`src/lint:V34`
+T33|.|2A: vendor emoji 18.0 sequence data; generator → `emoji-seq.ctrm-map`; curated ZWJ table; fixtures ∀ target kind & a non-RGI ZWJ that stays reported; lint exemption per `src/lint:V63`|V62,V31,`src/charset:V22`,`src/lint:V34`
 T53|x|ARCHIVED to SPEC-ARCHIVE.md|V51,V5,V6,`.:R11`
 T59|x|ARCHIVED to SPEC-ARCHIVE.md|V60,V31
