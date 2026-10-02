@@ -125,6 +125,7 @@ fn prepared(
         return Err(sarif_refused(verb));
     }
     let config = config::load(&cwd(), &parsed)?;
+    config.validate()?;
     Ok((parsed, config, format))
 }
 
@@ -399,6 +400,25 @@ mod tests {
         let asked = argv(&["check", "--stirct"]);
         let why = prepared("check", &asked).err().unwrap_or_default();
         assert!(why.contains("--stirct"), "{why}");
+    }
+
+    /// B29: a configuration that does not parse stops EVERY verb, not
+    /// only the ones that read the broken kind; and `--map` takes one
+    /// line exactly as `--set` and `--rule` do (`src/rules:V18`).
+    #[test]
+    fn a_broken_config_of_any_kind_stops_every_verb() {
+        let broken = [
+            ["--map", "U+ZZZZ x y z"],
+            ["--map", "U+2014 -\nU+2013 -"],
+            ["--set", "house U+2261\nmore U+2262"],
+            ["--rule", "* ascii\n* box"],
+        ];
+        for verb in ["check", "explain", "sets", "fix", "stats"] {
+            for [flag, value] in broken {
+                let asked = argv(&[verb, flag, value]);
+                assert!(prepared(verb, &asked).is_err(), "{verb} {value}");
+            }
+        }
     }
 
     /// The whole path, on a tree of its own: a SARIF run reports the

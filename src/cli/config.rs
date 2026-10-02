@@ -167,6 +167,22 @@ impl Config {
         }
     }
 
+    /// Parse all three kinds once, whatever the verb will read (V74).
+    ///
+    /// A verb reads only the kinds it needs, so before this a broken map
+    /// was refused by `fix` and `stats` and silently ignored by `check`,
+    /// which then reported on a run whose configuration did not parse
+    /// (B29). A configuration is one thing, and it is valid or it is not.
+    ///
+    /// # Errors
+    ///
+    /// The first line of any kind that does not parse, at its origin.
+    pub fn validate(&self) -> Result<(), String> {
+        self.rules()?;
+        self.catalog()?;
+        self.map().map(drop)
+    }
+
     /// The rules, in precedence order.
     ///
     /// # Errors
