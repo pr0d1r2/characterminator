@@ -11,6 +11,7 @@ up|.|-
 up|src|the tool: charset presets, rule resolution, scan, fix, lint levels, token facade, render, CLI
 up|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 self|src/cli/guard|`guard` hook adapter: harness payload in, hook decision out, JSON reader
+sib|src/cli/explain|`explain` & `sets` answers, `explain --as` forms: args, lines, agent prompt
 
 ## §V INVARIANTS
 

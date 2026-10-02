@@ -168,7 +168,7 @@ impl Sources {
 
     /// Whether the compiled-in source is part of this chain, which is
     /// what a `--no-builtin-*` flag removes and what an export of the
-    /// chain has to say back (`src/cli:V32`).
+    /// chain has to say back (`src/cli/explain:V32`).
     #[must_use]
     pub fn has_builtin(&self) -> bool {
         self.builtin.is_some()

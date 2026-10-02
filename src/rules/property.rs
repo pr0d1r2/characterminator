@@ -17,9 +17,9 @@
 //!
 //! The whole file is test-only.
 
-/// The generator, shared: `src/cli:V32`'s round trip draws its files from
-/// the same corpus and the same sequence, so "a file of every shape" means
-/// one thing wherever the property is claimed.
+/// The generator, shared: `src/cli/explain:V32`'s round trip draws its
+/// files from the same corpus and the same sequence, so "a file of every
+/// shape" means one thing wherever the property is claimed.
 #[cfg(test)]
 pub(crate) mod corpus {
     /// The line shapes a generated file is built from. Comments, blanks

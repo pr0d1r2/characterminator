@@ -1,8 +1,9 @@
-//! The `explain` and `sets` verbs (T12): what is in force, and why.
+//! The `explain` and `sets` verbs (`src/cli:T12`): what is in force, and
+//! why.
 //!
-//! Both are REPORT-ONLY and exit 0 whatever they find (V7). They answer
-//! questions about configuration rather than about files, so there is
-//! nothing for them to fail at: a path with no rule is an answer, not a
+//! Both are REPORT-ONLY and exit 0 whatever they find (`src/cli:V7`). They
+//! answer questions about configuration rather than about files, so there
+//! is nothing for them to fail at: a path with no rule is an answer, not a
 //! violation.
 //!
 //! They exist because every other verb's verdict rests on a resolution
@@ -10,11 +11,11 @@
 //! `explain` says which line of which file decided that, and `sets` says
 //! what those names hold.
 
-use super::check::Checker;
-use super::config::Config;
 use super::export::{self, Shape};
 use super::prompt;
 use crate::charset::CharSet;
+use crate::cli::check::Checker;
+use crate::cli::config::Config;
 use crate::render::{Explanation, Format, InForce};
 use crate::render::{explain as render_explain, sets as render_sets};
 use crate::rules::{self, Resolution, Sourced};
@@ -72,7 +73,7 @@ fn in_force<'a>(found: &'a Resolution<'a>) -> InForce<'a> {
     }
 }
 
-/// `explain [<path>] --as args|lines|prompt` (`src/cli:V32`): the same
+/// `explain [<path>] --as args|lines|prompt` (`V32`): the same
 /// configuration, rendered for something else to take in.
 ///
 /// Every form is TEXT for a shell, a file or a model, so `--format` has

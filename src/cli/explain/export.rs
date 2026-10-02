@@ -1,5 +1,5 @@
 //! `explain --as args|lines|prompt` (T34): the effective configuration,
-//! written back out in a form something else can take in (`src/cli:V32`).
+//! written back out in a form something else can take in (`V32`).
 //!
 //! `args` and `lines` are the SAME content in the two spellings V18 makes
 //! equal: every entry-bearing line a run contributed -- dotfiles, named
@@ -15,7 +15,7 @@
 //! whole, because a set may be built from another set and a map line may
 //! declare a family a later line uses.
 
-use super::config::{Config, MAP, RULES, SETS};
+use crate::cli::config::{Config, MAP, RULES, SETS};
 use crate::rules;
 
 /// The three forms V32 names.

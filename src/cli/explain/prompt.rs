@@ -1,6 +1,6 @@
 //! `explain --as prompt` (T34): the configuration as an instruction an
 //! agent can draft against, so text arrives compliant instead of being
-//! fixed afterwards (`src/cli:V32`).
+//! fixed afterwards (`V32`).
 //!
 //! DETERMINISTIC, and built from nothing but the configuration: the same
 //! run renders the same bytes, so the prompt can be cached, diffed and
@@ -16,8 +16,8 @@
 //! themselves. A prompt that printed them would itself fail the `ascii`
 //! check it is teaching, and the code point is the unambiguous name.
 
-use super::config::Config;
 use crate::charset::{CharSet, SetCatalog, builtin};
+use crate::cli::config::Config;
 use crate::fix::{self as engine, Map};
 use crate::render::{Format, sets as render_sets};
 use crate::rules::{self, ASCII, Rule, TEXT, describe};

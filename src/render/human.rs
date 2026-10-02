@@ -186,8 +186,8 @@ fn in_force(item: &InForce<'_>) -> Vec<String> {
 
 /// The rule is DESCRIBED in labelled lines rather than written back as a
 /// `.ctrm` line. That grammar belongs to `src/rules`, and rendering config
-/// syntax is `explain --as lines`, which is `src/cli:T34` -- reproducing it
-/// here would mean two nodes owning one grammar.
+/// syntax is `explain --as lines`, which is `src/cli/explain:T34` --
+/// reproducing it here would mean two nodes owning one grammar.
 fn rule_lines(rule: &Rule) -> Vec<String> {
     vec![
         format!("pattern {}", rule.pattern),

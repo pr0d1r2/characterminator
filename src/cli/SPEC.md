@@ -2,12 +2,13 @@
 
 ## §G GOAL
 
-Arg dispatch, verbs, exit codes. parent of the `guard` hook adapter. ⊥ a verb's logic.
+Arg dispatch, verbs, exit codes. parent of the `guard` hook adapter & the `explain` verbs. ⊥ a verb's logic.
 
 ## §F FEDERATION
 
 dir|owns|⊥owns|tokens
 guard|`guard` hook adapter: harness payload in, hook decision out, JSON reader|dispatch, hazard detection|-
+explain|`explain` & `sets` answers, `explain --as` forms: args, lines, agent prompt|dispatch, rule resolution|-
 
 ## §N NAV
 
@@ -28,7 +29,7 @@ sib|src/render|human & json output, stable json contract
 - cmd: `ctrm check [paths]` → violations `path:line:col U+XXXX <set>`, 1 per line. 0 clean / 1 violation / 2 usage.
 - cmd: `ctrm fix [--check] [paths]` → rewrite disallowed chars via transliteration map. `--check` reports & writes ⊥, exit 1 on drift (`rustfmt` grammar). bare: exit 1 only on unmapped char left (`src/cli:V7`).
 - cmd: `ctrm stats [--bpe] [paths]` → per file: chars outside set, bytes, tokens now vs after `fix`, via `itok`. report-only.
-- cmd: `ctrm explain [<path>] [--as args|lines|prompt]` → effective set + winning rule + its config line; `--as` renders effective config as flags, data-file lines, or agent prompt (`src/cli:V32`).
+- cmd: `ctrm explain [<path>] [--as args|lines|prompt]` → effective set + winning rule + its config line; `--as` renders effective config as flags, data-file lines, or agent prompt (`src/cli/explain:V32`).
 - cmd: `ctrm sets` → builtin sets & members.
 - cmd: `ctrm guard` → hook adapter: harness hook JSON stdin → decision JSON stdout; fuse on hazard (`src/cli/guard:V35`).
 - flag: `--format human|json` ∀ verbs; `sarif` `check` only (`src/render:V50`) · `-C <dir>`.
@@ -38,7 +39,6 @@ sib|src/render|human & json output, stable json contract
 ## §V INVARIANTS
 
 V7: only `check` & `fix --check` gate. bare `fix` rewrites only on explicit call; exit 1 only if an unmapped char is LEFT (`src/fix:V4`), ⊥ for what it repaired. `stats`/`explain`/`sets` report-only, exit 0.
-V32: `explain --as args|lines|prompt` renders effective config (per path | whole repo): `args` = flags, `lines` = data-file lines, `prompt` = deterministic agent instruction (allowed chars, replacements, fidelity) for drafting compliant code up front. round trip: `--as args` output fed back ≡ same config, property-tested w/ `src/rules:V18`. ⊥ model (CPU only).
 V47: stdout closed by reader (EPIPE, `ctrm check | head`) → stop writing, keep verdict, ⊥ panic. other write error → named, exit 2 ∵ lost output ⊥ silent. ∀ verb. LIMIT: a stdout CLOSED before start (`ctrm check >&-`) ⊥ detectable: the Rust runtime reopens fd 1 on `/dev/null` before `main` & `unsafe` is forbidden ∴ ≡ discarded output, exit by verdict.
 V71: path matched (`src/rules`) & shown in LEXICAL normal form: `.` dropped, `..` folded ∴ `sub/../sub/c.md` ≡ `sub/c.md` ∀ anchored rule. symlink ⊥ resolved.
 V72: bare `fix` = 2 phases: judge ∀ file, THEN write ∴ a refusal (`src/fix:V5`, `src/fix:V6`) or read error writes ⊥ file.
@@ -51,7 +51,6 @@ id|status|task|cites
 T8|x|ARCHIVED to SPEC-ARCHIVE.md|V7,`src/tokens:V9`,`.:I.cmd`
 T11|x|ARCHIVED to SPEC-ARCHIVE.md|`src/tokens:V10`
 T12|x|ARCHIVED to SPEC-ARCHIVE.md|`src/rules:V2`,V7
-T34|x|ARCHIVED to SPEC-ARCHIVE.md|V32,`src/rules:V18`
 T44|x|ARCHIVED to SPEC-ARCHIVE.md|V7,`src/tokens:V43`
 T50|x|ARCHIVED to SPEC-ARCHIVE.md|V7,`src/fix:V4`,`src/rules:V45`
 T55|x|ARCHIVED to SPEC-ARCHIVE.md|`src/rules:V18`,`src/rules:V19`,`src/lint:V36`

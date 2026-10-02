@@ -13,11 +13,9 @@ mod args;
 mod check;
 mod config;
 mod explain;
-mod export;
 mod fix;
 mod guard;
 mod out;
-mod prompt;
 mod stats;
 
 pub use config::{Config, from_argv};
@@ -214,7 +212,7 @@ fn said(answer: Result<String, String>) -> Outcome {
     }
 }
 
-/// `--as` asks for the configuration in another form (`src/cli:V32`).
+/// `--as` asks for the configuration in another form (`src/cli/explain:V32`).
 fn explained(run: &Run<'_>) -> Outcome {
     let (config, paths) = (run.config, &run.args.paths);
     said(match run.args.value("--as") {
