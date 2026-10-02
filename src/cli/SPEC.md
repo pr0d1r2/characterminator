@@ -56,3 +56,6 @@ B22|2026-10-02|`check` exit = findings only, skips ignored ∴ invalid UTF-8 nam
 B23|2026-10-02|`fix` counted unmapped chars, rendered ⊥ ∴ exit 1 w/ ⊥ output. now per-path hits → `check` rows + json `unmapped`. via review|`src/fix:V4`
 B26|2026-10-02|`stats` dropped a not-UTF-8 file w/o a word ∴ a total short of a file read as complete. now binary & not-UTF-8 named as skipped (json `skipped`), exit 0 (V7). via review|`src/scan:V8`
 B29|2026-10-02|map parsed only by `fix` & `stats` ∴ `check --map 'U+ZZZZ x y z'` & a 2-line `--map` ran as if the config were valid. via release review|V74
+B37|2026-10-02|guard judged ∀ PreToolUse w/ `tool_input.file_path` as a Read ∴ an Edit of a hazard file was denied as "Read blocked". via release review|V35
+B38|2026-10-02|a named path w/ `..` (`sub/../sub/c.md`) ⊥ normalised ∴ missed anchored rules & was judged `ascii`. via release review|V71
+B39|2026-10-02|`sets a.md` & `explain a.md b.txt` silently ignored the extra path ∴ the run read as if it had judged it. via release review|V73
