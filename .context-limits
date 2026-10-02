@@ -161,7 +161,7 @@ src/tokens/SPEC.md    660
 # looked at first and buys nothing: the node's only finished rows are T9,
 # its one-line origin, and T43, which lands in the same wave. 630 is ~12%
 # over the new measured 559.
-src/render/SPEC.md    630
+src/render/SPEC.md   740
 
 # CHAIN ceilings, read by `sherd budget` (T14, V16). These rows are keyed
 # by node DIRECTORY, not by file: sherd costs a node as its whole chain --
