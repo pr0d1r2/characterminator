@@ -28,7 +28,7 @@ V49: hazard = 1 lint per class, first class holding the char wins: `bidi-control
 V55: pedantic, ⊥ vendored data (T39). `unicode-space` = Zs ∖ U+0020 (U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000). finding = 1 char IN the file ∴ `Hit`, json, SARIF unchanged: `crlf` → the CR of a CR LF · `trailing-whitespace` → 1st char of a line's trailing White_Space run · `final-newline` → last char of a non-empty file, ≠ LF. 1 char ≤ 1 claim: hazard > `outside-set` > pedantic ∴ `ascii` (⊥ `cr`) reports CR LF as `outside-set`. human last column = lint name. exemption: later rule `<glob> !<lint>=allow`; names ⊥ set ∴ grant untouched (`src/rules:V56`).
 V57: ZWNJ U+200C & ZWJ U+200D = SPELLING in fa & Devanagari ∴ a file whose rule names a COMPILED-IN preset granting a joiner & ⊥ other hazard (`persian`: ZWNJ; `hindi`: both) ⊥ fires on it. ⊥ level change (V36 holds): the char ⊥ hazard IN THAT FILE. presets read from builtin data ∴ `.ctrm-sets` redeclaring `persian` ⊥ widens it; `any` grants other hazards ∴ excuses ⊥. bidi, tag, control ⊥ excusable ∴ `persian` omits U+061C. tool output (guard) has ⊥ grant ∴ ⊥ excuse.
 V58: pedantic via `unicode-normalization` & `unicode-security`, call site `ucd.rs` only (`src:C`). 1 char IN file (V55 shape): `nfkc-compat` → NFKC(c) ≠ NFC(c) · `confusable` → non-ASCII c, UTS #39 skeleton non-empty ASCII · `not-nfc` → per NFC segment (UAX #15 boundary: ccc 0 ∧ NFC_QC=Yes) NFC changes, 1st char differing · `mixed-script` → per word (alnum ∪ marks), 1st char emptying UTS #39 resolved script set. Zs → `unicode-space` only. claim order: V55 then `nfkc-compat` > `confusable` > `not-nfc` > `mixed-script`. ⊥ asked → ⊥ lookup.
-V63: 2A exemption (V34): ZWJ U+200D inside an RGI ZWJ sequence & tag chars inside an RGI tag sequence (the 3 subdivision flags) ⊥ hazard. EXACT match against the vendored list (`src/fix:V62`), longest first ∴ a joiner | tag ⊥ in a listed sequence still fires, & ⊥ "joiner between 2 emoji" heuristic (a 2nd, private definition of a sequence). the exempted char then = `outside-set` (`emoji` withholds it, `src/fix:V31`) ∴ `fix` compresses the sequence. guard: same list, same exemption on tool output. list read from compiled-in data ∴ config ⊥ widens it (V49).
+V63: 2A exemption (V34): ZWJ U+200D inside an RGI ZWJ sequence, tag chars inside an RGI tag sequence (the 3 subdivision flags) & VS16 U+FE0F inside an RGI presentation (`Basic_Emoji` + VS16) | keycap | ZWJ sequence (B15) ⊥ hazard. EXACT match against the vendored list (`src/fix:V62`), longest first ∴ a joiner | tag ⊥ in a listed sequence still fires, & ⊥ "joiner between 2 emoji" heuristic (a 2nd, private definition of a sequence). the exempted char then = `outside-set` (`emoji` withholds it, `src/fix:V31`) ∴ `fix` compresses the sequence. guard: same list, same exemption on tool output. list read from compiled-in data ∴ config ⊥ widens it (V49).
 
 ## §T TASKS
 
@@ -38,3 +38,8 @@ T36|x|ARCHIVED to SPEC-ARCHIVE.md|V34,V36,V49
 T38|x|ARCHIVED to SPEC-ARCHIVE.md|V36
 T39|x|ARCHIVED to SPEC-ARCHIVE.md|V37,V36,V55,V58
 T58|.|`locale-literal` (V37): needs code-file & string-literal notion ⊥ in tree; ⊥ registered til built|V37,`src/rules:V17`
+
+## §B BUGS
+
+id|date|cause|fix
+B15|2026-10-02|VS16 U+FE0F = Default_Ignorable ∴ hazard everywhere; V34 exempts it inside declared emoji sequences but ⊥ list held `Basic_Emoji` presentation sequences ∴ `U+2764+U+FE0F` (red heart) fired forbid under `ascii+emoji`. via 2A smoke run|V63

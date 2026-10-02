@@ -44,12 +44,14 @@ EOF
 #
 # One line per sequence, in upstream order: `<kind> <sequence> [name]`,
 # the sequence in the map grammar's notation (`src/fix:I`). Kinds:
-# `keycap`, `flag` (two regional indicators), `tag` (a subdivision flag)
-# and `zwj`. LEFT OUT: `Basic_Emoji`, whose sequences are one code point
-# plus VS16, and `RGI_Emoji_Modifier_Sequence`, one base plus one skin
-# tone -- the builtin map deletes both modifiers (`src/fix:V60`), so
-# neither needs a sequence. A flag carries no name: upstream spells some
-# of them outside ASCII, and the region code is in the sequence itself.
+# `presentation` (a `Basic_Emoji` code point plus VS16), `keycap`, `flag`
+# (two regional indicators), `tag` (a subdivision flag) and `zwj`. A
+# `presentation` line maps to nothing -- the builtin map deletes VS16
+# (`src/fix:V60`) -- and is listed so VS16 inside it is no hazard
+# (`src/lint:V63`, B15). LEFT OUT: single-code-point `Basic_Emoji` and
+# `RGI_Emoji_Modifier_Sequence`, which hold no hazard to excuse. A flag or
+# a presentation carries no name: upstream spells some of those outside
+# ASCII (curly quotes), and the sequence itself identifies it.
 
 EOF
 }
@@ -60,7 +62,8 @@ data() {
     /^#/ || NF < 3 { next }
     {
       type = $2; gsub(/ /, "", type)
-      if (type == "Emoji_Keycap_Sequence") kind = "keycap"
+      if (type == "Basic_Emoji" && $1 ~ / FE0F/) kind = "presentation"
+      else if (type == "Emoji_Keycap_Sequence") kind = "keycap"
       else if (type == "RGI_Emoji_Flag_Sequence") kind = "flag"
       else if (type == "RGI_Emoji_Tag_Sequence") kind = "tag"
       else if (type == "RGI_Emoji_ZWJ_Sequence") kind = "zwj"
@@ -69,7 +72,8 @@ data() {
       for (i = 1; i <= n; i++) seq = seq (i > 1 ? "+" : "") "U+" cp[i]
       name = $3; sub(/#.*/, "", name)
       gsub(/^ +| +$/, "", name)
-      if (kind == "flag") print kind, seq; else print kind, seq, name
+      if (kind == "flag" || kind == "presentation") print kind, seq
+      else print kind, seq, name
     }'
 }
 
@@ -124,6 +128,7 @@ map() {
       return out
     }
     /^#/ || NF < 2 { next }
+    $1 == "presentation" { next }
     $1 == "keycap" { split($2, p, "+"); print $2, "U+" p[2]; next }
     $1 == "flag" { print $2, letters($2, hex("1F1E6")); next }
     $1 == "tag" {

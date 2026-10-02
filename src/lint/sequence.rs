@@ -1,5 +1,7 @@
-//! The emoji sequence exemption (V63): where a joiner or a tag character
-//! is PART of an RGI emoji sequence, and so no hazard.
+//! The emoji sequence exemption (V63): where a joiner, a tag character or
+//! VARIATION SELECTOR-16 is PART of an RGI emoji sequence, and so no
+//! hazard. VS16 joined the list with B15: without it a plain heart with
+//! its emoji presentation selector fired a forbid hazard under `emoji`.
 //!
 //! The list is the vendored one the charset node compiles in
 //! (`src/fix:V62`), never the run's map or sets, so no configuration can
@@ -18,6 +20,9 @@ const ZWJ: char = '\u{200D}';
 
 /// The tag characters, U+E0000-U+E007F.
 const TAGS: std::ops::RangeInclusive<char> = '\u{E0000}'..='\u{E007F}';
+
+/// VARIATION SELECTOR-16, emoji presentation (B15).
+const VS16: char = '\u{FE0F}';
 
 /// The RGI ZWJ and tag sequences, by first character, longest first.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -79,7 +84,7 @@ impl Sequences {
 
 /// Whether a character is one this exemption can let off.
 fn joined(c: char) -> bool {
-    c == ZWJ || TAGS.contains(&c)
+    c == ZWJ || c == VS16 || TAGS.contains(&c)
 }
 
 /// The offsets of the exemptible characters inside one sequence.
@@ -94,7 +99,8 @@ fn exempting(line: &str) -> Option<String> {
     let mut words = line.split_whitespace();
     let kind = words.next()?;
     let sequence = words.next()?;
-    matches!(kind, "zwj" | "tag").then(|| decode(sequence))?
+    matches!(kind, "zwj" | "tag" | "keycap" | "presentation")
+        .then(|| decode(sequence))?
 }
 
 /// `U+XXXX+U+XXXX...` as text.
@@ -118,17 +124,27 @@ mod tests {
         Sequences::builtin().exempt(text)
     }
 
-    /// Every ZWJ and tag line of the vendored list is read: 1614 + 3.
+    /// Every line that holds a hazard is read: 1614 ZWJ + 3 tag + 12 keycap
+    /// + 207 presentation.
     #[test]
     fn every_listed_sequence_is_read() {
         let held = Sequences::builtin();
         let count: usize = held.by_first.values().map(Vec::len).sum();
-        assert_eq!(count, 1617);
+        assert_eq!(count, 1836);
     }
 
     #[test]
     fn the_joiners_of_a_listed_sequence_are_exempt() {
         assert_eq!(exempt(&format!("a{FAMILY}")), vec![5, 12]);
+    }
+
+    /// B15: VS16 after a heart is a listed presentation sequence, so it is
+    /// no hazard; after a grinning face it is in no sequence and still is.
+    #[test]
+    fn vs16_in_a_listed_presentation_is_exempt_and_elsewhere_is_not() {
+        assert_eq!(exempt("\u{2764}\u{FE0F}"), vec![3]);
+        assert_eq!(exempt("1\u{FE0F}\u{20E3}"), vec![1]);
+        assert!(exempt("\u{1F600}\u{FE0F}").is_empty());
     }
 
     #[test]
