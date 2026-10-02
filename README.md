@@ -334,7 +334,8 @@ What it does with each call:
   file's set -- an em dash in a README -- does **not** block: the read goes
   ahead with a note naming the lint and the count. A hook that refused every
   stray character would be switched off within the hour, and a switched-off
-  hook guards nothing.
+  hook guards nothing. A `PreToolUse` for any other tool passes unjudged:
+  only a `Read` names a file whose characters are known before the call.
 - **After a web fetch, a web search, a shell command or an MCP tool**, every
   string in the tool's output is scanned, however deeply nested. A hazard
   sends a `block` decision whose reason tells the model the content is
@@ -348,7 +349,10 @@ change what the model reads without telling anyone, which is the harm it
 exists to prevent.
 
 The decision travels in the JSON on stdout, and the exit code only says
-whether the adapter worked. Input that is not a hook payload is named on
+whether the adapter worked. Tool output whose payload cannot be parsed is
+still scanned, as raw text: a hazard in it sends the same `block` decision,
+in JSON with exit `0`, so a malformed payload cannot carry one past the
+guard. Input that is not a hook payload and holds no hazard is named on
 stderr and exits `1`, which Claude Code shows as a non-blocking error and
 lets the call through. It never exits `2`: Claude Code reads `2` as "block",
 so a broken adapter answering `2` would deny every read for the rest of the
