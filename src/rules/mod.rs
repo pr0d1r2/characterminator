@@ -57,6 +57,18 @@ pub enum Origin {
     Builtin { line: usize },
 }
 
+/// One effective setting and the origin of the line that set it (V20).
+///
+/// `explain` reports what is IN FORCE, and the winner of the grant is not
+/// the only rule that decides it: a level-only line moves levels (V56)
+/// and another line may name the family (V29). Each carries its own
+/// origin here, so the report names every line that decided something.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Sourced<'a, T> {
+    pub value: T,
+    pub origin: &'a Origin,
+}
+
 /// A level set for one lint or group by a rule, as in `!pedantic=warn`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LevelChoice {

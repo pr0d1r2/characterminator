@@ -15,8 +15,9 @@ use super::config::Config;
 use super::export::{self, Shape};
 use super::prompt;
 use crate::charset::CharSet;
-use crate::render::{Explanation, Format};
+use crate::render::{Explanation, Format, InForce};
 use crate::render::{explain as render_explain, sets as render_sets};
+use crate::rules::{self, Resolution, Sourced};
 
 /// `explain [<path>]`: the effective set for a path, and the rule behind
 /// it.
@@ -38,14 +39,37 @@ pub fn run(
     let checker = Checker::configured(config)?;
     let asked = paths.first().map(String::as_str);
     let (set, winner) = checker.effective(asked.unwrap_or(""))?;
+    let rules = config.rules()?;
+    let found = rules::resolve(asked.unwrap_or(""), &rules, &rules::matches);
     Ok(render_explain(
         format,
         &Explanation {
             path: asked,
             set: &set,
             rule: winner.as_ref(),
+            in_force: in_force(&found),
         },
     ))
+}
+
+/// The family and levels in force, each with the line that set it
+/// (`src/rules:V20`): the winner of the grant need not be that line, and
+/// reporting only the winner hid a family or a level that `check` applied
+/// (B28).
+fn in_force<'a>(found: &'a Resolution<'a>) -> InForce<'a> {
+    let level = found.leveller.and_then(|rule| {
+        let value = rule.default_level?;
+        Some(Sourced {
+            value,
+            origin: &rule.origin,
+        })
+    });
+    InForce {
+        family: &found.family,
+        family_origin: found.fidelity.map(|rule| &rule.origin),
+        level,
+        levels: found.sourced.clone(),
+    }
 }
 
 /// `explain [<path>] --as args|lines|prompt` (`src/cli:V32`): the same
@@ -152,6 +176,30 @@ mod tests {
         let said = explained(&root, &["src/main.rs".to_owned()]);
         assert!(said.contains("set ascii"), "{said}");
         assert!(said.contains("rule none"), "{said}");
+    }
+
+    /// B28: the family and the level `check` applies are named with the
+    /// argument that set them, though neither line won the grant.
+    #[test]
+    fn explain_names_a_family_and_a_level_the_winner_did_not_set() {
+        let Some(root) = fixture("ctrm-explain-in-force-fixture", &[]) else {
+            return;
+        };
+        let flags = "--rule|*.md marks|--fidelity|emoji|--rule|*.md !warn";
+        let said = run(&argued(&root, flags), &["m.md".to_owned()], HUMAN)
+            .unwrap_or_else(|why| why);
+        assert!(said.contains("effective family emoji argv[5]"), "{said}");
+        assert!(said.contains("effective level warn argv[7]"), "{said}");
+    }
+
+    const HUMAN: Format = Format::Human;
+
+    /// The configuration of `ctrm explain <flags>`, the flags written as
+    /// one `|`-separated string so a test reads as its command line.
+    fn argued(root: &Path, flags: &str) -> Config {
+        let words = std::iter::once("explain").chain(flags.split('|'));
+        let argv: Vec<String> = words.map(str::to_owned).collect();
+        crate::cli::from_argv(root, &argv).unwrap_or_default()
     }
 
     #[test]

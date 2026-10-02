@@ -1,7 +1,7 @@
 //! Which rule WINS for a path, and what that rule grants it.
 
 use crate::lint::Level;
-use crate::rules::{ASCII, LevelChoice, Rule, TEXT};
+use crate::rules::{ASCII, LevelChoice, Rule, Sourced, TEXT};
 
 /// How a pattern is tested against a path.
 ///
@@ -51,6 +51,11 @@ pub struct Resolution<'a> {
     /// the winner: a rule may grant sets without expressing a
     /// preference, and it leaves the standing choice alone.
     pub fidelity: Option<&'a Rule>,
+    /// `levels`, each with the origin of the line that set it last (V20).
+    pub sourced: Vec<Sourced<'a, LevelChoice>>,
+    /// The last matching rule that set a bare level: `default_level`'s
+    /// line, which need not be the winner either (V56).
+    pub leveller: Option<&'a Rule>,
 }
 
 /// Resolve `path` against `rules`, in the order the rules were assembled.
@@ -81,8 +86,8 @@ pub fn resolve<'a, M: PathMatcher + ?Sized>(
 #[derive(Default)]
 struct Found<'a> {
     winner: Option<&'a Rule>,
-    levels: Vec<LevelChoice>,
-    default_level: Option<Level>,
+    levels: Vec<Sourced<'a, LevelChoice>>,
+    leveller: Option<&'a Rule>,
     fidelity: Option<&'a Rule>,
 }
 
@@ -95,19 +100,22 @@ impl<'a> Found<'a> {
         if !rule.sets.is_empty() {
             self.winner = Some(rule);
         }
-        self.default_level = rule.default_level.or(self.default_level);
+        let bare = rule.default_level.map(|_| rule);
+        self.leveller = bare.or(self.leveller);
         self.fidelity = rule.family.as_ref().map(|_| rule).or(self.fidelity);
-        merge_levels(&mut self.levels, &rule.levels);
+        merge_levels(&mut self.levels, rule);
     }
 
     fn finish(self) -> Resolution<'a> {
         Resolution {
             sets: granted(self.winner),
-            levels: self.levels,
-            default_level: self.default_level,
+            levels: self.levels.iter().map(|l| l.value.clone()).collect(),
+            default_level: self.leveller.and_then(|r| r.default_level),
             family: family_named(self.fidelity),
             winner: self.winner,
             fidelity: self.fidelity,
+            sourced: self.levels,
+            leveller: self.leveller,
         }
     }
 }
@@ -156,11 +164,22 @@ fn family_named(source: Option<&Rule>) -> String {
 /// Per TARGET rather than per rule: a later rule that speaks about one
 /// lint says nothing about the others, in the same way V19 has a later
 /// map entry win per character rather than per file.
-fn merge_levels(into: &mut Vec<LevelChoice>, from: &[LevelChoice]) {
-    for choice in from {
-        match into.iter_mut().find(|held| held.target == choice.target) {
-            Some(held) => held.level = choice.level,
-            None => into.push(choice.clone()),
+///
+/// Each choice keeps the origin of the line that set it, so a later rule
+/// overriding one level takes over its origin too (V20).
+fn merge_levels<'a>(into: &mut Vec<Sourced<'a, LevelChoice>>, from: &'a Rule) {
+    let origin = &from.origin;
+    for choice in &from.levels {
+        let held = into.iter_mut().find(|h| h.value.target == choice.target);
+        match held {
+            Some(held) => {
+                held.value.level = choice.level;
+                held.origin = origin;
+            }
+            None => into.push(Sourced {
+                value: choice.clone(),
+                origin,
+            }),
         }
     }
 }
@@ -260,6 +279,22 @@ mod tests {
         let pedantic = levels.first().map(|held| held.level);
         assert_eq!(pedantic, Some(Level::Allow));
         assert_eq!(levels.len(), 2);
+    }
+
+    /// B28: the line that set a level is named even when another line
+    /// won the grant, and a later override takes over the origin.
+    #[test]
+    fn every_level_keeps_the_origin_of_the_line_that_set_it() {
+        let lines =
+            &["* caveman !pedantic=warn", "src/* !pedantic=allow !warn"];
+        let rules = rules(lines);
+        let found = resolved("src/main.rs", &rules);
+        let at: Vec<&Origin> = found.sourced.iter().map(|l| l.origin).collect();
+        assert_eq!(at, vec![&Origin::Argument { index: 1 }]);
+        let bare = found.leveller.map(|rule| rule.origin.clone());
+        assert_eq!(bare, Some(Origin::Argument { index: 1 }));
+        let winner = found.winner.map(|rule| rule.origin.clone());
+        assert_eq!(winner, Some(Origin::Argument { index: 0 }));
     }
 
     #[test]

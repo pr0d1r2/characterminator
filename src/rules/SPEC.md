@@ -29,7 +29,7 @@ V2: rule resolution: later matching line wins (gitignore semantics); per-type gl
 V17: locale separation: extended sets granted to data paths (`locales/**`, `*.po`, `config/locales/*.yml`); code stays `ascii`. non-ASCII string literal in code file → the `locale-literal` pedantic lint (`src/lint:V37`), ⊥ a mechanism of its own.
 V18: ∀ data-file line kind → flag twin: `--rule` ≡ rules line, `--map` ≡ map line, `--set` ≡ sets line. flag value = exactly 1 line, same parser ∴ ∀ file F: `--no-files` + 1 flag per line of F ≡ F, property-tested.
 V19: precedence, low → high: builtin → discovered dotfiles → `--*-file` (argv order) → inline flags (argv order). later wins: rule per V2, map entry per char, set per name.
-V20: ∀ effective rule, map entry, set → origin (`<file>:<line>` | `argv[<n>]` | `builtin:<line>`). `explain` ! print it. export via `explain --as` (`src/cli:V32`).
+V20: ∀ effective rule, map entry, set → origin (`<file>:<line>` | `argv[<n>]` | `builtin:<line>`). `explain` ! print it: grant winner + effective family + ∀ effective level, each w/ the origin of the line that set it, ⊥ only the winner's (B28). export via `explain --as` (`src/cli:V32`).
 V21: zero-file run: `--no-files --no-builtin-map --no-builtin-sets` → config from argv only. `ascii` intrinsic (code, ⊥ data) ∴ V1 holds w/ ⊥ file.
 V24: `ascii` = implicit base ∀ rule: effective set = `ascii` ∪ named sets ∴ `*.md caveman` ≡ `*.md ascii+caveman`. explicit `ascii+` stays legal.
 V56: a rule naming ⊥ set (`docs/** !warn`) moves levels ONLY, ⊥ competes for the grant: the grant = last matching rule that NAMES a set, as fidelity = last that names a family (V29). `explain` winner = that rule. a level line that won the grant REJECTED ∵ it narrowed the path back to `ascii` & a line written to RELAX a lint made more chars fail (B5).
@@ -55,3 +55,4 @@ T49|x|ARCHIVED to SPEC-ARCHIVE.md|V45,V19
 
 id|date|cause|fix
 B5|2026-10-01|level-only rule (`*.bat !crlf=allow`) won the grant ∴ narrowed path to `ascii`; the exemption line made CR a violation. via T39 fixtures|V56
+B28|2026-10-02|`explain` printed only the grant winner ∴ `--fidelity emoji` & a level-only `!warn` that `check` applied read as "family none" / "rule none". via release review|V20

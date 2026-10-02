@@ -16,12 +16,14 @@
 //! added to a stable contract is a key that can never be taken back.
 
 use crate::charset::{CharRange, CharSet};
+use crate::lint::Level;
+use crate::render::Violation;
 use crate::render::escape::string;
 use crate::render::name::{codepoint, level_name, method_name};
 use crate::render::order;
 use crate::render::value::{array, field, number, object, optional};
-use crate::render::{Change, Explanation, FileStats, Skipped, Violation};
-use crate::rules::{LevelChoice, Origin, Rule};
+use crate::render::{Change, Explanation, FileStats, InForce, Skipped};
+use crate::rules::{LevelChoice, Origin, Rule, Sourced};
 use crate::scan::{Hit, Unreadable};
 use crate::tokens::Count;
 use std::path::Path;
@@ -137,6 +139,41 @@ pub fn explain(item: &Explanation<'_>) -> String {
         field("path", &optional(item.path)),
         field("set", &char_set(item.set)),
         field("rule", &item.rule.map_or_else(null, rule)),
+        field("effective", &in_force(&item.in_force)),
+    ])
+}
+
+/// What is in force, each setting with its line (`src/rules:V20`, B28).
+/// ADDED after `rule`, so every key a consumer already read keeps its
+/// place and meaning (V11). A null origin is the default family.
+fn in_force(item: &InForce<'_>) -> String {
+    let family = object(&[
+        field("name", &string(item.family)),
+        field("origin", &item.family_origin.map_or_else(null, origin)),
+    ]);
+    let levels: Vec<String> = item.levels.iter().map(sourced_level).collect();
+    object(&[
+        field("family", &family),
+        field(
+            "default_level",
+            &item.level.as_ref().map_or_else(null, bare),
+        ),
+        field("levels", &array(&levels)),
+    ])
+}
+
+fn bare(item: &Sourced<'_, Level>) -> String {
+    object(&[
+        field("level", &string(level_name(item.value))),
+        field("origin", &origin(item.origin)),
+    ])
+}
+
+fn sourced_level(item: &Sourced<'_, LevelChoice>) -> String {
+    object(&[
+        field("target", &string(&item.value.target)),
+        field("level", &string(level_name(item.value.level))),
+        field("origin", &origin(item.origin)),
     ])
 }
 
@@ -232,8 +269,9 @@ mod tests {
     use crate::charset::{CharRange, CharSet};
     use crate::fix::Rewrite;
     use crate::lint::{Finding, Group, Level, Lint};
-    use crate::render::{Change, Explanation, FileStats, Skipped, Violation};
-    use crate::rules::{LevelChoice, Origin, Rule};
+    use crate::render::Violation;
+    use crate::render::{Change, Explanation, FileStats, InForce, Skipped};
+    use crate::rules::{LevelChoice, Origin, Rule, Sourced};
     use crate::scan::{Hit, Position, Unreadable};
     use crate::tokens::{Count, Method};
     use std::path::PathBuf;
@@ -331,7 +369,27 @@ mod tests {
             path,
             set: &set,
             rule: Some(rule),
+            in_force: alone(rule),
         })
+    }
+
+    /// What one rule puts in force when it is the only one that matched.
+    fn alone(rule: &Rule) -> InForce<'_> {
+        let at = &rule.origin;
+        let sourced = |value| Sourced { value, origin: at };
+        InForce {
+            family: rule.family.as_deref().unwrap_or("text"),
+            family_origin: rule.family.as_ref().map(|_| at),
+            level: rule.default_level.map(sourced),
+            levels: rule
+                .levels
+                .iter()
+                .map(|c| Sourced {
+                    value: c.clone(),
+                    origin: at,
+                })
+                .collect(),
+        }
     }
 
     #[test]
@@ -428,7 +486,12 @@ mod tests {
             r#""sets":["ascii"],"family":"dash","levels":["#,
             r#"{"target":"pedantic","level":"warn"}],"#,
             r#""default_level":null,"origin":{"#,
-            r#""kind":"file","path":".ctrm","line":4}}}"#
+            r#""kind":"file","path":".ctrm","line":4}},"#,
+            r#""effective":{"family":{"name":"dash","origin":{"#,
+            r#""kind":"file","path":".ctrm","line":4}},"#,
+            r#""default_level":null,"levels":[{"target":"pedantic","#,
+            r#""level":"warn","origin":{"#,
+            r#""kind":"file","path":".ctrm","line":4}}]}}"#
         );
         assert_eq!(explained(Some("a.rs")), expected);
     }
@@ -445,7 +508,13 @@ mod tests {
             r#""sets":["ascii"],"family":"dash","levels":["#,
             r#"{"target":"pedantic","level":"warn"}],"#,
             r#""default_level":"warn","origin":{"#,
-            r#""kind":"file","path":".ctrm","line":4}}}"#
+            r#""kind":"file","path":".ctrm","line":4}},"#,
+            r#""effective":{"family":{"name":"dash","origin":{"#,
+            r#""kind":"file","path":".ctrm","line":4}},"#,
+            r#""default_level":{"level":"warn","origin":{"#,
+            r#""kind":"file","path":".ctrm","line":4}},"#,
+            r#""levels":[{"target":"pedantic","level":"warn","origin":{"#,
+            r#""kind":"file","path":".ctrm","line":4}}]}}"#
         );
         assert_eq!(explained_by(None, &rule), expected);
     }

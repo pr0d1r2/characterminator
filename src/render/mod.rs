@@ -47,8 +47,8 @@ pub use name::codepoint;
 
 use crate::charset::CharSet;
 use crate::fix::Rewrite;
-use crate::lint::Finding;
-use crate::rules::Rule;
+use crate::lint::{Finding, Level};
+use crate::rules::{LevelChoice, Origin, Rule, Sourced};
 use crate::scan::Unreadable;
 use crate::tokens::Count;
 
@@ -132,6 +132,25 @@ pub struct Explanation<'a> {
     /// and a synthesised rule would put an origin in the report that no
     /// file could be opened at.
     pub rule: Option<&'a Rule>,
+    /// What is IN FORCE, each setting with the line that set it
+    /// (`src/rules:V20`). The rule above won the grant, and that is all
+    /// it won: a level-only line moves levels (`src/rules:V56`) and
+    /// another may name the family (`src/rules:V29`), so a report naming
+    /// only the winner hid the lines that decided the rest (B28).
+    pub in_force: InForce<'a>,
+}
+
+/// The effective family and levels of an [`Explanation`], with origins.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InForce<'a> {
+    /// The fidelity family, never empty: `text` when no rule named one.
+    pub family: &'a str,
+    /// The line that named the family, or none for the default.
+    pub family_origin: Option<&'a Origin>,
+    /// The bare level (`!warn`) and its line, or none when no rule set one.
+    pub level: Option<Sourced<'a, Level>>,
+    /// Per lint or group, each with the line that set it last.
+    pub levels: Vec<Sourced<'a, LevelChoice>>,
 }
 
 /// `check`: the violations, then the files that could not be read.

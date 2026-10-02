@@ -15,9 +15,10 @@
 
 use crate::charset::{CharRange, CharSet};
 use crate::lint::Group;
+use crate::render::Violation;
 use crate::render::name::{codepoint, level_name};
 use crate::render::order;
-use crate::render::{Change, Explanation, FileStats, Skipped, Violation};
+use crate::render::{Change, Explanation, FileStats, InForce, Skipped};
 use crate::rules::{LevelChoice, Origin, Rule};
 use crate::scan::Unreadable;
 use crate::tokens::{Count, Method};
@@ -133,9 +134,28 @@ pub fn explain(item: &Explanation<'_>) -> String {
     match item.rule {
         Some(rule) => lines.extend(rule_lines(rule)),
         // V1: the strict default, with no line behind it to name.
-        None => lines.push(String::from("rule none -- unmatched path")),
+        None => lines.push(String::from("rule none -- no rule grants a set")),
     }
+    lines.extend(in_force(&item.in_force));
     lines.join("\n")
+}
+
+/// What is in force, each with the line that set it (`src/rules:V20`),
+/// which need not be the winner's (B28). The family always has an answer,
+/// so it always prints; a level nobody set does not.
+fn in_force(item: &InForce<'_>) -> Vec<String> {
+    let named = item.family_origin.map_or_else(|| "default".into(), origin);
+    let mut lines = vec![format!("effective family {} {named}", item.family)];
+    if let Some(bare) = &item.level {
+        let (level, at) = (level_name(bare.value), origin(bare.origin));
+        lines.push(format!("effective level {level} {at}"));
+    }
+    for choice in &item.levels {
+        let (target, at) = (&choice.value.target, origin(choice.origin));
+        let level = level_name(choice.value.level);
+        lines.push(format!("effective level {target}={level} {at}"));
+    }
+    lines
 }
 
 /// The rule is DESCRIBED in labelled lines rather than written back as a
@@ -210,8 +230,9 @@ mod tests {
     use crate::charset::{CharRange, CharSet};
     use crate::fix::Rewrite;
     use crate::lint::{Finding, Group, Level, Lint};
-    use crate::render::{Change, Explanation, FileStats, Skipped, Violation};
-    use crate::rules::{Origin, Rule};
+    use crate::render::Violation;
+    use crate::render::{Change, Explanation, FileStats, InForce, Skipped};
+    use crate::rules::{LevelChoice, Origin, Rule, Sourced};
     use crate::scan::{Hit, Position, Unreadable};
     use crate::tokens::{Count, Method};
 
@@ -286,6 +307,15 @@ mod tests {
     }
 
     fn explained() -> String {
+        explained_with(InForce {
+            family: "text",
+            family_origin: None,
+            level: None,
+            levels: vec![],
+        })
+    }
+
+    fn explained_with(in_force: InForce<'_>) -> String {
         let set = CharSet {
             name: String::from("ascii"),
             ranges: vec![],
@@ -295,6 +325,7 @@ mod tests {
             path: None,
             set: &set,
             rule: Some(&rule),
+            in_force,
         })
     }
 
@@ -380,8 +411,38 @@ mod tests {
     fn explain_labels_every_line_rather_than_writing_config_syntax() {
         let expected = concat!(
             "path (whole repo)\nset ascii\npattern docs/**\nsets ascii\n",
-            "family none\nlevels none\nlevel none\norigin builtin:3"
+            "family none\nlevels none\nlevel none\norigin builtin:3\n",
+            "effective family text default"
         );
         assert_eq!(explained(), expected);
+    }
+
+    /// B28: the family and the levels in force are named with the line
+    /// that set them, which here is not the winner's.
+    #[test]
+    fn explain_names_what_is_in_force_and_where_each_came_from() {
+        let at = Origin::Argument { index: 5 };
+        let said = explained_with(InForce {
+            family: "emoji",
+            family_origin: Some(&at),
+            level: Some(Sourced {
+                value: Level::Allow,
+                origin: &at,
+            }),
+            levels: vec![pedantic_warn(&at)],
+        });
+        let tail = concat!(
+            "origin builtin:3\neffective family emoji argv[5]\neffective ",
+            "level allow argv[5]\neffective level pedantic=warn argv[5]"
+        );
+        assert!(said.ends_with(tail), "{said}");
+    }
+
+    fn pedantic_warn(origin: &Origin) -> Sourced<'_, LevelChoice> {
+        let value = LevelChoice {
+            target: String::from("pedantic"),
+            level: Level::Warn,
+        };
+        Sourced { value, origin }
     }
 }
