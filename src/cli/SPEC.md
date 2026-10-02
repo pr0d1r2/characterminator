@@ -47,7 +47,7 @@ T55|x|ARCHIVED to SPEC-ARCHIVE.md|`src/rules:V18`,`src/rules:V19`,`src/lint:V36`
 ## §B BUGS
 
 id|date|cause|fix
-B3|2026-09-27|report via `println!` → PANIC on closed stdout ∴ `ctrm check \| head` crashed ∀ verb. via wave 1 (`.:R7`)|V47
+B3|2026-09-27|report via `println!` → PANIC on closed stdout ∴ `ctrm check \| head` crashed ∀ verb. via wave 1 (`src/tokens:R7`)|V47
 B16|2026-10-02|guard output scan reused the FILE byte-0 BOM exemption per string ∴ `"\ufeff..."` in tool output passed. via release review|V53
 B17|2026-10-02|pre-read PASSED a file ⊥ text ∴ U+202E + a `\xff` byte read in silence; the harness showed the model the override. via release review|V66
 B18|2026-10-02|PostToolUse nested > 256 deep = parse error → exit 1, ⊥ block ∴ a hazard in deep MCP output passed. via release review|V67

@@ -22,6 +22,11 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
 - `itok::` named here & nowhere else in crate (`src:V39`).
 
+## §R RESEARCH
+
+id|topic|finding|src
+R7|wave 1 corpus|12 sibling Rust repos: public `itok` `microlith` `pklith` `sherd` `xenolith` + 7 private. `rekall` ⊥ scanned ∵ B4; rescanned after fix: 115 files, 42 non-ASCII, 1,187 outside, 0 tok saved. 1,484 tracked files, 561 non-ASCII, 17,271 chars outside `ascii`, 85% in `.md`. top: `⊥` 3660, `§` 3374, U+2014 2439, `→` 1717, `∴` 1703, `·` 1460|scan 2026-09-27, `ctrm` @`61b40d2`, private repos anonymous
+
 ## §V INVARIANTS
 
 V9: default fileset = git-tracked (`itok::walk::tracked`); explicit paths reach untracked.
@@ -44,6 +49,6 @@ T47|x|ARCHIVED to SPEC-ARCHIVE.md|V43,`src/cli:T44`
 ## §B BUGS
 
 id|date|cause|fix
-B4|2026-09-27|V9 fileset took `itok::walk::tracked` as-is, symlinks incl. ∴ tracked link to a dir → `Is a directory`, exit 2, WHOLE run aborted (`.:R7`)|V48
+B4|2026-09-27|V9 fileset took `itok::walk::tracked` as-is, symlinks incl. ∴ tracked link to a dir → `Is a directory`, exit 2, WHOLE run aborted (R7)|V48
 B25|2026-10-02|tracked file deleted from the tree stayed in V9 fileset ∴ read failed → exit 2, WHOLE run aborted, & bare `fix` had already written the files before it. via review|V70,`src/cli:V72`
 B27|2026-10-02|`-C /nonexistent`, `-C <file>` & a bare run outside git → V9 fileset empty ∴ clean report, exit 0, about ⊥ file. via review|V69

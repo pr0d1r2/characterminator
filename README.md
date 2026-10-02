@@ -442,7 +442,7 @@ SPEC.md outside 146 bytes 8700 tokens 3013 (o200k) -> 2923 (o200k)
 Across all ten: 15,062 -> 14,576 tokens (-486, -3.2%), against -26 for the
 builtin map alone. `ctrm fix` then made 523 rewrites and left 246 characters
 it has no word for -- mostly the middle dot (73) and the section sign (72),
-which `SPEC.md` R9 measured at parity -- kept and reported, exit 1, never
+which `src/fix/SPEC.md` R9 measured at parity -- kept and reported, exit 1, never
 dropped. Grant those back in a set of your own, or leave the file failing until you
 decide.
 

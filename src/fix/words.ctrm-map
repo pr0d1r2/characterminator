@@ -8,13 +8,13 @@
 # meaning, so rewriting them is a decision a project makes, never one this
 # crate makes for it (V26 stays as it is).
 #
-# WHY IT EXISTS AT ALL, measured rather than assumed (`.:R9`, `.:R11`):
+# WHY IT EXISTS AT ALL, measured rather than assumed (`src/fix:R9`, `src/fix:R11`):
 # o200k spends two or three tokens on each of the first few symbols below
 # and one on the word, which makes this the one rewrite in the crate that
 # buys tokens. Only o200k was measured; the Claude tokenizer was not.
 #
 # HOW AN ENTRY GOT IN: it costs no MORE tokens than the symbol, measured
-# on 112 caveman `SPEC*.md` files (`.:R11`). Saved over that corpus, and
+# on 112 caveman `SPEC*.md` files (`src/fix:R11`). Saved over that corpus, and
 # the number of uses it was saved over, are on each line's comment.
 #
 # A `word` line keeps its word apart from a neighbouring letter or digit
