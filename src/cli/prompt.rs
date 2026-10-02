@@ -181,15 +181,45 @@ fn replacements(map: &Map, allowed: &CharSet) -> Result<Vec<String>, String> {
     let mut out = vec![String::from(
         "\nInstead of these, write the replacement (what `ctrm fix` would do):",
     )];
-    for source in sources(map) {
-        let fixed = engine::fix(&source, map, &|c| allowed.contains(c));
-        let fixed =
-            fixed.map_err(|bad| format!("{}: {bad}", points(&source)))?;
-        if fixed.output != source {
-            out.push(format!("{} -> {:?}", points(&source), fixed.output));
-        }
+    let (sequences, listed): (Vec<_>, Vec<_>) = sources(map)
+        .into_iter()
+        .partition(|source| builtin_sequence(map, source));
+    for source in listed {
+        out.extend(replacement(map, allowed, &source)?);
+    }
+    if !sequences.is_empty() {
+        out.push(String::from(EMOJI_SEQUENCES));
     }
     Ok(out)
+}
+
+/// One source's line, or none when `fix` would leave it as it is.
+fn replacement(
+    map: &Map,
+    allowed: &CharSet,
+    source: &str,
+) -> Result<Option<String>, String> {
+    let fixed = engine::fix(source, map, &|c| allowed.contains(c));
+    let fixed = fixed.map_err(|bad| format!("{}: {bad}", points(source)))?;
+    Ok((fixed.output != source)
+        .then(|| format!("{} -> {:?}", points(source), fixed.output)))
+}
+
+/// The builtin emoji sequences (`src/fix:V62`), said as ONE line rather
+/// than listed: they run to nearly two thousand, and most targets are
+/// emoji, which a prompt kept to ASCII could only spell as code points.
+const EMOJI_SEQUENCES: &str = "Emoji sequences (keycap, flag, ZWJ) become \
+    their digit, their region code (`PL`), or one emoji.";
+
+/// Whether `source` is a sequence the BUILTIN map declares. The
+/// hand-written builtin holds single code points only (V26, V60), so a
+/// longer builtin source is one of the generated emoji sequences.
+fn builtin_sequence(map: &Map, source: &str) -> bool {
+    source.chars().nth(1).is_some()
+        && map.entries().iter().any(|entry| {
+            entry.from == source
+                && matches!(entry.origin, rules::Origin::Builtin { .. })
+        })
 }
 
 /// Every source text the map declares, once: its entries, then the

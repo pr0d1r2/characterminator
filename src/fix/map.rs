@@ -22,6 +22,7 @@ use crate::fix::family::{ROOT, Tree};
 use crate::fix::{Class, Error, Family, MapEntry};
 use crate::rules::Origin;
 use std::cmp::Reverse;
+use std::collections::BTreeMap;
 
 /// The builtin map, in the `.ctrm-map` grammar (`src/charset:V22`).
 ///
@@ -29,7 +30,15 @@ use std::cmp::Reverse;
 /// lowest source of the precedence chain (`src/rules:V19`) and arrives
 /// there the same way a `.ctrm-map` or a `--map` flag does. One grammar,
 /// one parser, and an entry a user overrides by declaring it again.
-pub const BUILTIN: &str = include_str!("map.ctrm-map");
+///
+/// Two files joined at compile time, as the sets are: the hand-written
+/// typography and modifier map (V26, V60), then the GENERATED emoji
+/// sequence map (V62), which a regeneration rewrites whole. A builtin
+/// line number counts from the top of the joined text.
+pub const BUILTIN: &str = concat!(
+    include_str!("map.ctrm-map"),
+    include_str!("emoji-seq.ctrm-map")
+);
 
 /// The opt-in `words` map (V51): notation to the English it abbreviates.
 ///
@@ -81,6 +90,10 @@ pub struct Map {
     tree: Tree,
     fidelity: Option<String>,
     candidates: Vec<Candidate>,
+    /// Each first character, and the candidates opening with it, in
+    /// candidate order: the scan asks at EVERY position, and two thousand
+    /// emoji sequences (V62) tried in turn cost seconds on a large file.
+    starts: BTreeMap<char, Vec<usize>>,
 }
 
 impl Map {
@@ -166,7 +179,9 @@ impl Map {
         rest: &str,
         allowed: &dyn Fn(char) -> bool,
     ) -> Result<Option<Match>, Error> {
-        for candidate in &self.candidates {
+        let first = rest.chars().next().and_then(|c| self.starts.get(&c));
+        let held = first.into_iter().flatten();
+        for candidate in held.filter_map(|at| self.candidates.get(*at)) {
             let Some(to) = self.try_at(candidate, rest, allowed)? else {
                 continue;
             };
@@ -321,6 +336,17 @@ impl Map {
         self.index_classes();
         self.candidates
             .sort_by_key(|held| Reverse(held.source.len()));
+        self.index_starts();
+    }
+
+    /// Group the sorted candidates by first character, keeping their order.
+    fn index_starts(&mut self) {
+        self.starts = BTreeMap::new();
+        for (at, held) in self.candidates.iter().enumerate() {
+            if let Some(first) = held.source.chars().next() {
+                self.starts.entry(first).or_default().push(at);
+            }
+        }
     }
 
     fn index_classes(&mut self) {
@@ -609,10 +635,24 @@ mod tests {
     /// answer was another non-ASCII character would move the problem
     /// rather than solve it, and `fix` would report the result as a
     /// violation of the same rule (V4).
+    ///
+    /// The ONE exception is V62's: a ZWJ sequence compresses to a single
+    /// emoji, which has no ASCII form. It is still ONE code point the
+    /// `emoji` preset grants, so a file under `emoji` is settled by it,
+    /// and a file under `ascii` is left one finding instead of several.
     #[test]
-    fn every_builtin_replacement_is_ascii() {
+    fn every_builtin_replacement_is_ascii_or_one_emoji() {
+        let emoji = crate::charset::builtin::catalog()
+            .ok()
+            .and_then(|c| c.resolve("emoji", "text").ok());
         for entry in parsed(super::BUILTIN).entries() {
-            assert!(entry.to.is_ascii(), "{} -> {}", entry.from, entry.to);
+            let one = entry.to.chars().count() == 1
+                && entry
+                    .to
+                    .chars()
+                    .all(|c| emoji.as_ref().is_some_and(|e| e.contains(c)));
+            let ok = entry.to.is_ascii() || one;
+            assert!(ok, "{} -> {}", entry.from, entry.to);
         }
     }
 

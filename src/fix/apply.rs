@@ -6,7 +6,8 @@
 //! reported rather than dropped (V4). A replacement is itself run through
 //! the map before it is emitted, so a chain (skin tone to thumbs up to `+1`)
 //! lands on its fixed point in one pass and a second run changes nothing
-//! (V5).
+//! (V5) -- unless a rewrite revealed a sequence the scan had passed, and
+//! then the passes repeat until one changes nothing (V65).
 //!
 //! Whether a character is ALLOWED is not decided here. It arrives as a
 //! predicate, because that answer belongs to the charset and rules nodes.
@@ -43,20 +44,53 @@ pub struct Fixed {
 ///
 /// The V6 and V5 guards run BEFORE this returns, so a caller that writes
 /// what it gets back cannot write a file that failed either.
+///
+/// Passes repeat until one changes nothing (V65), each guarded by V6 on
+/// its own input. A text that settles in one pass -- every text before
+/// the sequence map -- is reported exactly as before. One that needed
+/// more reports a later pass's rewrites at their place in the text that
+/// pass read, and its unmapped characters at their place in the output.
 pub fn fix(
     text: &str,
     map: &Map,
     allowed: &dyn Fn(char) -> bool,
 ) -> Result<Fixed, Error> {
+    let mut pass = guarded(text, map, allowed)?;
+    for later in 0..SETTLE {
+        let again = guarded(&pass.output, map, allowed)?;
+        if again.output == pass.output {
+            if later > 0 {
+                pass.unmapped = again.unmapped;
+            }
+            return Ok(pass.finish());
+        }
+        pass.spans.extend(again.spans);
+        pass.output = again.output;
+    }
+    Err(Error::NotIdempotent)
+}
+
+/// How many passes past the first `fix` may take to settle (V65). One
+/// rewrite can REVEAL a sequence: deleting a stray VS16 or skin tone out
+/// of `woman U+FE0F ZWJ laptop` leaves the RGI `woman ZWJ laptop`, which
+/// the scan had already walked past (B14). Each later pass only ever
+/// shortens what the last one revealed, so two settle anything the
+/// builtin map can produce; the bound is what turns a map that never
+/// settles into a refusal rather than a loop.
+const SETTLE: usize = 3;
+
+/// One pass, refused if it touched a byte outside a violation (V6).
+fn guarded(
+    text: &str,
+    map: &Map,
+    allowed: &dyn Fn(char) -> bool,
+) -> Result<Pass, Error> {
     let pass = run(text, map, allowed, map.budget())?;
-    if !untouched_bytes_match(text, &pass) {
-        return Err(Error::TouchedAllowedBytes);
+    if untouched_bytes_match(text, &pass) {
+        Ok(pass)
+    } else {
+        Err(Error::TouchedAllowedBytes)
     }
-    let again = run(&pass.output, map, allowed, map.budget())?;
-    if again.output != pass.output {
-        return Err(Error::NotIdempotent);
-    }
-    Ok(pass.finish())
 }
 
 /// Report what `fix` would do and hand back nothing to write (`--check`).
@@ -733,6 +767,142 @@ mod tests {
             .unwrap_or_default();
         let done = fix("caf\u{00E9}s", &map, &ascii).unwrap_or_default();
         assert_eq!(done.output, "cafes");
+    }
+
+    /// The builtin map's emoji sequences (V62), run through the engine.
+    mod sequences {
+        use super::{Map, Origin, fix};
+        use crate::charset::{CharSet, builtin};
+        use std::sync::LazyLock;
+
+        /// Built once: every test here asks the same map and preset.
+        static MAP: LazyLock<Map> = LazyLock::new(builtin_map);
+        static EMOJI: LazyLock<CharSet> = LazyLock::new(emoji);
+
+        fn builtin_map() -> Map {
+            Map::parse(crate::fix::BUILTIN, &|line| Origin::Builtin { line })
+                .unwrap_or_default()
+        }
+
+        /// The `emoji` preset, which a file grants on top of ASCII.
+        fn emoji() -> CharSet {
+            let found = builtin::catalog()
+                .ok()
+                .and_then(|c| c.resolve("emoji", "emoji").ok());
+            assert!(found.is_some());
+            found.unwrap_or_else(builtin::ascii)
+        }
+
+        /// `text` fixed by the builtin map, with `emoji` granted or not.
+        fn fixed(text: &str, grant_emoji: bool) -> String {
+            let allowed =
+                |c: char| c.is_ascii() || grant_emoji && EMOJI.contains(c);
+            fix(text, &MAP, &allowed)
+                .map(|done| done.output)
+                .unwrap_or_else(|why| format!("<{why}>"))
+        }
+
+        /// England: U+1F3F4, the tag letters `gbeng`, the cancel tag.
+        const ENGLAND: &str =
+            "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
+        /// A gendered, skin-toned couple with heart.
+        const COUPLE: &str = "\u{1F469}\u{1F3FB}\u{200D}\u{2764}\u{FE0F}\
+            \u{200D}\u{1F468}\u{1F3FF}";
+        /// Kiss: man, man. (The untoned neutral kiss is U+1F48F itself.)
+        const KISS: &str = "\u{1F468}\u{200D}\u{2764}\u{FE0F}\u{200D}\
+            \u{1F48B}\u{200D}\u{1F468}";
+        /// Man, woman, girl.
+        const FAMILY: &str = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+
+        /// One fixture per target kind. The ASCII targets are asked under
+        /// `ascii`; the emoji ones under `emoji`, where they settle.
+        const CASES: [(&str, &str, bool); 10] = [
+            ("1\u{FE0F}\u{20E3}", "1", false),
+            ("#\u{FE0F}\u{20E3}", "#", false),
+            ("*\u{FE0F}\u{20E3}", "*", false),
+            ("\u{1F1F5}\u{1F1F1}", "PL", true),
+            (ENGLAND, "GB-ENG", true),
+            (FAMILY, "\u{1F46A}", true),
+            (COUPLE, "\u{1F491}", true),
+            (KISS, "\u{1F48F}", true),
+            ("\u{1F468}\u{1F3FD}\u{200D}\u{1F4BB}", "\u{1F468}", true),
+            ("\u{1F3F3}\u{FE0F}\u{200D}\u{1F308}", "\u{1F3F3}", true),
+        ];
+
+        #[test]
+        fn each_kind_of_sequence_lands_on_its_target() {
+            for (text, want, grant) in CASES {
+                let got = fixed(&format!("a{text}b"), grant);
+                assert_eq!(got, format!("a{want}b"), "{text:?}");
+            }
+        }
+
+        /// Under `ascii` a ZWJ sequence still compresses: one finding is
+        /// left where there were several, since the target has no ASCII.
+        #[test]
+        fn under_ascii_a_zwj_sequence_leaves_one_emoji() {
+            assert_eq!(fixed(FAMILY, false), "\u{1F46A}");
+        }
+
+        /// A joiner in no RGI sequence is not a sequence: it stays, and
+        /// is reported (V4), while the emoji around it are left alone.
+        #[test]
+        fn a_joiner_outside_any_listed_sequence_stays_reported() {
+            let set = emoji();
+            let text = "\u{1F600}\u{200D}\u{1F600}";
+            let done = fix(text, &builtin_map(), &|c| set.contains(c));
+            let done = done.unwrap_or_default();
+            assert_eq!(done.output, text);
+            let unmapped = done.report.unmapped.first().map(|h| h.character);
+            assert_eq!(unmapped, Some('\u{200D}'));
+        }
+
+        /// A file granting every code point of a sequence keeps it (V6).
+        #[test]
+        fn a_granted_sequence_is_left_alone() {
+            let text = format!("x{COUPLE}y");
+            let all = fix(&text, &builtin_map(), &|_| true);
+            assert_eq!(all.map(|done| done.output).ok(), Some(text));
+        }
+
+        /// The V26 and V60 entries answer as before.
+        #[test]
+        fn the_single_code_point_entries_are_unchanged() {
+            assert_eq!(fixed("a\u{2014}b", false), "a--b");
+            assert_eq!(fixed("\u{201C}q\u{201D}", false), "\"q\"");
+            assert_eq!(fixed("\u{1F44D}\u{1F3FD}", true), "\u{1F44D}");
+            assert_eq!(fixed("\u{2764}\u{FE0F}", true), "\u{2764}");
+        }
+
+        /// B14: a deletion that REVEALS a sequence the scan walked past
+        /// settles in a later pass (V65) instead of being refused as
+        /// unsettled (V5).
+        #[test]
+        fn a_sequence_revealed_by_a_deletion_still_settles() {
+            let stray = "\u{1F469}\u{FE0F}\u{200D}\u{1F4BB}";
+            assert_eq!(fixed(stray, true), "\u{1F469}");
+            let toned = "\u{1F468}\u{1F3FB}\u{200D}\u{1F469}\u{1F3FB}\
+                \u{200D}\u{1F467}";
+            assert_eq!(fixed(toned, true), "\u{1F46A}");
+        }
+
+        /// Every listed sequence, under `ascii` and under `emoji`: `fix`
+        /// returns, so V6 and V5 held, and a second fix changes nothing.
+        #[test]
+        fn every_listed_sequence_settles_and_is_idempotent() {
+            let map = &*MAP;
+            let long =
+                |e: &&crate::fix::MapEntry| e.from.chars().nth(1).is_some();
+            let texts = map.entries().iter().filter(long);
+            let texts = texts.map(|entry| format!("a{}b", entry.from));
+            for (text, grant) in
+                texts.flat_map(|t| [(t.clone(), false), (t, true)])
+            {
+                let once = fixed(&text, grant);
+                assert!(!once.starts_with('<'), "{text:?}: {once}");
+                assert_eq!(fixed(&once, grant), once, "{text:?}");
+            }
+        }
     }
 
     impl Fixed {
