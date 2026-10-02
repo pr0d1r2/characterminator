@@ -17,7 +17,7 @@ use crate::render::{self, Format, Skipped, Violation};
 use crate::rules::{self, Resolution, Rule};
 use crate::scan::{Hit, Unreadable, decode, scan_str};
 use crate::tokens;
-use std::path::Path;
+use std::path::{Component, Path, PathBuf};
 
 /// The lint a character outside its set is reported under. Named for what
 /// is true of the character, not for its group (`src/lint` registry).
@@ -367,11 +367,35 @@ fn heard(hits: Vec<(Lint, Hit)>, levels: &Levels) -> Vec<Finding> {
 
 /// The path as a reader typed it: relative to the root, so it matches the
 /// patterns in `.ctrm` and reads like the file they meant.
+///
+/// Both sides are folded LEXICALLY first (V71): `sub/../sub/c.md` names
+/// `sub/c.md`, and a rule anchored at `sub/c.md` has to see that spelling
+/// or it silently judges the file by another rule. Lexical, not
+/// canonical: a symlink is not resolved, so the path stays the one typed.
 pub(super) fn shown_path(root: &Path, full: &Path) -> String {
-    full.strip_prefix(root)
-        .unwrap_or(full)
+    let (root, full) = (lexical(root), lexical(full));
+    full.strip_prefix(&root)
+        .unwrap_or(&full)
         .to_string_lossy()
         .into_owned()
+}
+
+/// `path` with every `.` dropped and every `..` folded into the name
+/// before it. A `..` with no name before it is kept: it leaves the tree.
+fn lexical(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for part in path.components() {
+        let named =
+            matches!(out.components().next_back(), Some(Component::Normal(_)));
+        match part {
+            Component::CurDir => {}
+            Component::ParentDir if named => {
+                out.pop();
+            }
+            other => out.push(other),
+        }
+    }
+    out
 }
 
 fn gather(
@@ -609,6 +633,33 @@ mod tests {
             shown_path(root, Path::new("/elsewhere/a.rs")),
             "/elsewhere/a.rs"
         );
+    }
+
+    /// V71: `.` and `..` fold away before a path is matched or shown.
+    #[test]
+    fn a_path_is_shown_in_lexical_normal_form() {
+        let root = Path::new("/repo/./x/..");
+        let shown = |full: &str| shown_path(root, Path::new(full));
+        assert_eq!(shown("/repo/sub/../sub/c.md"), "sub/c.md");
+        assert_eq!(shown("/repo/./a.md"), "a.md");
+        assert_eq!(shown("/repo/../repo/a.md"), "a.md");
+        assert_eq!(shown("/elsewhere/../b/a.rs"), "/b/a.rs");
+    }
+
+    /// V71 through the verb: an anchored rule reaches a file named the
+    /// long way round, so it is judged by that rule and not by `ascii`.
+    #[test]
+    fn an_anchored_rule_reaches_a_path_spelled_with_dot_dot() {
+        let Some(root) = fixture("ctrm-dotdot", &[(".ctrm", "sub/c.md any\n")])
+        else {
+            return;
+        };
+        let wrote = std::fs::create_dir_all(root.join("sub"))
+            .and_then(|()| std::fs::write(root.join("sub/c.md"), "\u{2014}\n"));
+        assert!(wrote.is_ok());
+        let asked = [String::from("sub/../sub/c.md")];
+        let found = run(&Config::discovered(&root), &asked, Format::Human);
+        assert_eq!(found.map(|r| (r.text, r.code)), Ok((String::new(), 0)));
     }
 
     /// A tree carrying the dotfiles named, or `None` if it cannot be
