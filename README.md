@@ -176,9 +176,13 @@ Each entry remembers where it came from, and `explain` prints it:
 ```text
 $ ctrm explain docs/a.md
 path docs/a.md
-set ascii+typography
-pattern *.md
-origin .ctrm:2
+set ascii+typography+emoji
+pattern docs/**/*.md
+sets ascii typography emoji
+family emoji
+levels none
+level none
+origin .ctrm:3
 ```
 
 ### Flags
