@@ -90,7 +90,7 @@ pub fn run(
         pass.visit(full, shown, &mut found)?;
     }
     written(&found.pending)?;
-    Ok(report_of(&found, format))
+    Ok(report_of(&found, format, pass.write))
 }
 
 /// The second phase (V72): every file was judged and none refused, so
@@ -199,19 +199,21 @@ fn absorb(found: &mut Found, path: String, report: engine::Report) {
 
 /// The report, and the code that goes with it.
 ///
-/// Exit 1 covers BOTH halves of the verb's contract: drift under
-/// `--check` (the root spec's interface section) and a disallowed
-/// character no map entry covers (`src/fix:V4`). A bare `fix` that
-/// rewrote everything it could still exits 1 when something was left,
-/// because the file is not yet clean and a zero would say it was.
-fn report_of(found: &Found, format: Format) -> Report {
+/// `--check` GATES (V7): exit 1 on drift (the root spec's interface
+/// section) or on a character no map entry covers (`src/fix:V4`). A bare
+/// `fix` does not gate on what it just repaired: exit 1 only when an
+/// unmapped character is LEFT, because then the tree is still not clean.
+/// A run that cleaned everything exits 0. The `ctrm-fix` pre-commit hook
+/// still refuses the commit: pre-commit fails any hook that modified files.
+fn report_of(found: &Found, format: Format, write: bool) -> Report {
     let changes: Vec<Change<'_>> = found.rows.iter().map(change).collect();
     let skipped: Vec<Skipped<'_>> = found.skips.iter().map(skip).collect();
     let kept: Vec<Violation<'_>> = found.unmapped.iter().map(kept).collect();
-    let drifted = !found.rows.is_empty() || !kept.is_empty();
+    let drifted = !write && !found.rows.is_empty();
+    let failed = drifted || !kept.is_empty();
     Report {
         text: render::fix(format, &changes, &kept, &skipped),
-        code: u8::from(drifted),
+        code: u8::from(failed),
     }
 }
 
@@ -279,9 +281,9 @@ mod tests {
         };
         let (text, code) = ran(&root, true);
         assert_eq!(read(&root), "a -- \"b\"\n", "{text}");
-        // Rewrites happened, so the file was not clean when the run
-        // started: exit 1 says so even though it is clean now.
-        assert_eq!(code, 1, "{text}");
+        // V7: a bare `fix` that left nothing behind exits 0. Only `check`
+        // and `fix --check` gate, and the file IS clean now.
+        assert_eq!(code, 0, "{text}");
     }
 
     /// `--check` reports the SAME thing and writes nothing, which is the
