@@ -431,12 +431,12 @@ SPEC.md ascii
 src/**/SPEC.md ascii
 
 $ ctrm stats --bpe SPEC.md          # with `use words` in .ctrm-map
-SPEC.md outside 134 bytes 7651 tokens 2702 (o200k) -> 2622 (o200k)
+SPEC.md outside 146 bytes 8700 tokens 3013 (o200k) -> 2923 (o200k)
 ```
 
-Across all ten: 10,901 -> 10,617 tokens (-284, -2.6%), against -20 for the
-builtin map alone. `ctrm fix` then made 338 rewrites and left 209 characters
-it has no word for -- mostly the section sign (66) and the middle dot (56),
+Across all ten: 15,062 -> 14,576 tokens (-486, -3.2%), against -26 for the
+builtin map alone. `ctrm fix` then made 523 rewrites and left 246 characters
+it has no word for -- mostly the middle dot (73) and the section sign (72),
 which `SPEC.md` R9 measured at parity -- kept and reported, exit 1, never
 dropped. Grant those back in a set of your own, or leave the file failing until you
 decide.
