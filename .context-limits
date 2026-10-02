@@ -151,7 +151,7 @@ src/scan/SPEC.md      400
 # than refused, which is one invariant and one task row here, and the one
 # finished row this node had is already archived. 520 is ~12% over the new
 # measured 461.
-src/tokens/SPEC.md   780
+src/tokens/SPEC.md   940
 # RAISED 315 -> 630, reviewed. The node gains its second output form: V50,
 # the SARIF log `check --format sarif` writes for code scanning, and T52,
 # the row that builds it. The rule is long because SARIF is exacting about
