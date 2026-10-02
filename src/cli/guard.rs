@@ -114,7 +114,8 @@ fn unconfigured(
     let Ok(hits) = scan_bytes(bytes, |c| !hazards.contains(c)) else {
         return Verdict::Pass;
     };
-    let found = hazards_in(hits, hazards);
+    let text = std::str::from_utf8(bytes).unwrap_or_default();
+    let found = hazards_in(hits, hazards, &hazards.exempt(text));
     match found.first() {
         Some(first) => Verdict::Block(denied(shown, first, found.len())),
         None => Verdict::Note(format!(
@@ -124,11 +125,16 @@ fn unconfigured(
     }
 }
 
-/// The hazards among `hits`, each as the finding the lint node names.
-fn hazards_in(hits: Vec<Hit>, hazards: &Hazards) -> Vec<Finding> {
+/// The hazards among `hits`, each as the finding the lint node names,
+/// less a joiner or tag inside an RGI emoji sequence (`src/lint:V63`).
+fn hazards_in(
+    hits: Vec<Hit>,
+    hazards: &Hazards,
+    exempt: &[usize],
+) -> Vec<Finding> {
     hits.into_iter()
         .filter_map(|hit| {
-            let lint = hazards.lint_for(hit)?;
+            let lint = hazards.lint_at(hit, exempt)?;
             let level = lint.default_level();
             Some(Finding { hit, lint, level })
         })
@@ -194,7 +200,10 @@ fn output(
 ) -> Verdict {
     let mut found = texts.iter().flat_map(|(at, text)| {
         let hits = scan_str(text, |c| !hazards.contains(c));
-        hazards_in(hits, hazards).into_iter().map(move |f| (at, f))
+        let exempt = hazards.exempt(text);
+        hazards_in(hits, hazards, &exempt)
+            .into_iter()
+            .map(move |f| (at, f))
     });
     let Some((at, first)) = found.next() else {
         return Verdict::Pass;
@@ -375,6 +384,25 @@ mod tests {
             assert!(got.starts_with(block), "{got}");
             assert!(got.contains(first), "{got}");
             assert!(got.contains("holds 2 hazard"), "{got}");
+        }
+    }
+
+    /// `src/lint:V63`: the joiners of an RGI family and the tags of the
+    /// England flag are no hazard in tool output; a joiner between two
+    /// emoji that form no listed sequence, and tags after U+1F3F4 that
+    /// spell no listed subdivision, still block.
+    #[test]
+    fn only_a_listed_emoji_sequence_lets_its_joiners_and_tags_off() {
+        let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+        let england =
+            "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
+        let ok = format!("{{\"result\":\"{family} {england}\"}}");
+        assert_eq!(answer(&output_payload("WebFetch", &ok)), "");
+        let smuggled = "\u{1F3F4}\u{E0069}\u{E0067}\u{E006E}\u{E007F}";
+        for bad in ["\u{1F600}\u{200D}\u{1F600}", smuggled] {
+            let body = format!("{{\"result\":\"{bad}\"}}");
+            let got = answer(&output_payload("WebFetch", &body));
+            assert!(got.starts_with(r#"{"decision":"block""#), "{got}");
         }
     }
 

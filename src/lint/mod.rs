@@ -12,6 +12,7 @@ mod level;
 mod pedantic;
 mod registry;
 mod resolve;
+mod sequence;
 mod target;
 mod ucd;
 

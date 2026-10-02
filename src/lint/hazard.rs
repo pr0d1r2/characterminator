@@ -7,14 +7,14 @@
 //! order the classes are tried in, and the one cut a set cannot make --
 //! a byte order mark at byte 0 is an encoding signature, not a hazard.
 //!
-//! WHAT IS NOT DONE YET, stated rather than approximated: V34 exempts a
-//! ZERO WIDTH JOINER inside a declared emoji sequence. Sequences arrive
-//! with `src/fix:T33`, and until they do every joiner fires. Guessing at
-//! a sequence here (say, "a joiner between two emoji") would be a second,
-//! private definition of what T33 is for, and the two would drift.
+//! A joiner inside an RGI ZWJ sequence, and a tag inside an RGI tag
+//! sequence, are no hazard (V63). That cut is POSITIONAL, so it needs the
+//! text: a caller asks [`Hazards::exempt`] once per text and hands the
+//! offsets to [`Hazards::lint_at`]. The list lives in `sequence`.
 
 use crate::charset::{CharSet, builtin};
 use crate::lint::Lint;
+use crate::lint::sequence::Sequences;
 use crate::scan::Hit;
 
 /// The hazard classes in the order they are TRIED, each with the lint it
@@ -48,6 +48,8 @@ pub struct Hazards {
     classes: Vec<(Lint, CharSet)>,
     /// Each compiled-in preset that excuses joiners, and which (V57).
     excusing: Vec<Excuse>,
+    /// The RGI sequences whose joiners and tags are no hazard (V63).
+    sequences: Sequences,
 }
 
 impl Hazards {
@@ -62,18 +64,26 @@ impl Hazards {
     /// Only a defect in this crate: the data file failing to parse, a
     /// class it does not declare, or a lint the registry does not hold.
     pub fn builtin() -> Result<Self, String> {
-        let catalog = builtin::hazard_catalog().map_err(|e| e.to_string())?;
-        let classes = CLASSES
-            .iter()
-            .map(|(set, lint)| {
-                let lint = Lint::named(lint)
-                    .ok_or_else(|| format!("no `{lint}` lint registered"))?;
-                let set = catalog.resolve(set, FAMILY);
-                Ok((lint, set.map_err(|e| e.to_string())?))
-            })
-            .collect::<Result<Vec<_>, String>>()?;
+        let classes = classes()?;
         let excusing = excusing(&classes)?;
-        Ok(Self { classes, excusing })
+        let sequences = Sequences::builtin();
+        Ok(Self {
+            classes,
+            excusing,
+            sequences,
+        })
+    }
+
+    /// The byte offsets in `text` of every joiner and tag character that
+    /// sits inside an RGI emoji sequence (V63), ascending.
+    pub fn exempt(&self, text: &str) -> Vec<usize> {
+        self.sequences.exempt(text)
+    }
+
+    /// [`Hazards::lint_for`], less a hit at an `exempt` offset.
+    pub fn lint_at(&self, hit: Hit, exempt: &[usize]) -> Option<Lint> {
+        let inside = exempt.binary_search(&hit.position.byte).is_ok();
+        self.lint_for(hit).filter(|_| !inside)
     }
 
     /// Whether a file granted `granted` (a `+`-joined set name, as `check`
@@ -109,6 +119,23 @@ impl Hazards {
         let signature = lint.name == STRAY_BOM && hit.position.byte == 0;
         (!signature).then_some(*lint)
     }
+}
+
+/// One hazard class and the lint it fires.
+type Class = (Lint, CharSet);
+
+/// Each class of the compiled-in hazard file, paired with its lint.
+fn classes() -> Result<Vec<Class>, String> {
+    let catalog = builtin::hazard_catalog().map_err(|e| e.to_string())?;
+    CLASSES
+        .iter()
+        .map(|(set, lint)| {
+            let lint = Lint::named(lint)
+                .ok_or_else(|| format!("no `{lint}` lint registered"))?;
+            let set = catalog.resolve(set, FAMILY);
+            Ok((lint, set.map_err(|e| e.to_string())?))
+        })
+        .collect()
 }
 
 /// ZERO WIDTH NON-JOINER and ZERO WIDTH JOINER: the only hazards a grant
@@ -161,6 +188,7 @@ mod tests {
         built.unwrap_or(Hazards {
             classes: Vec::new(),
             excusing: Vec::new(),
+            sequences: super::Sequences::default(),
         })
     }
 

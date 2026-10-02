@@ -71,9 +71,36 @@ struct Judge<'a> {
     set: &'a CharSet,
     hazards: &'a Hazards,
     outside: Lint,
+    /// The offsets of this text's joiners and tags that sit inside an
+    /// RGI emoji sequence, and so are no hazard (`src/lint:V63`).
+    exempt: Vec<usize>,
+}
+
+impl<'a> Judge<'a> {
+    /// A judge for one set, before any text is read.
+    const fn new(
+        set: &'a CharSet,
+        hazards: &'a Hazards,
+        outside: Lint,
+    ) -> Self {
+        Self {
+            set,
+            hazards,
+            outside,
+            exempt: Vec::new(),
+        }
+    }
 }
 
 impl Judge<'_> {
+    /// This judge, with the sequence exemption read off `text`.
+    fn over(&self, text: &str) -> Self {
+        Judge {
+            exempt: self.hazards.exempt(text),
+            ..*self
+        }
+    }
+
     /// Whether the scan may walk past a character without stopping.
     ///
     /// A HAZARD STOPS IT EVEN WHEN THE SET GRANTS IT. That is V34's whole
@@ -106,7 +133,8 @@ impl Judge<'_> {
     /// outside the set either.
     fn lints_for(&self, hit: Hit) -> Vec<Lint> {
         let excused = self.hazards.excuses(&self.set.name, hit.character);
-        let hazard = self.hazards.lint_for(hit).filter(|_| !excused);
+        let hazard =
+            self.hazards.lint_at(hit, &self.exempt).filter(|_| !excused);
         let outside =
             (!self.set.contains(hit.character)).then_some(self.outside);
         let pedantic = char_lints(hit.character);
@@ -157,11 +185,7 @@ impl Checker {
 
     /// What one file's characters are judged against.
     fn judge<'a>(&'a self, set: &'a CharSet) -> Judge<'a> {
-        Judge {
-            set,
-            hazards: &self.hazards,
-            outside: self.outside,
-        }
+        Judge::new(set, &self.hazards, self.outside)
     }
 
     /// What one path may contain, and how loudly a stray character there
@@ -271,6 +295,7 @@ fn inspect(bytes: &[u8], judge: &Judge<'_>, levels: &Levels) -> Looked {
 /// than one merged walk; the report's order is `src/render`'s to impose
 /// (by path, then byte), so nothing here has to interleave them.
 fn findings_in(text: &str, judge: &Judge<'_>, levels: &Levels) -> Vec<Finding> {
+    let judge = &judge.over(text);
     let deep = asked(&CHAR_LINTS, levels);
     let hits = scan_str(text, |c| judge.passes(c, deep));
     let mut found = reportable(hits, judge, levels);
@@ -498,11 +523,7 @@ mod tests {
     /// What `check` finds in `bytes` when the file is granted `set`.
     fn found_in(bytes: &[u8], set: &CharSet) -> Looked {
         let hazards = hazards();
-        let judge = Judge {
-            set,
-            hazards: &hazards,
-            outside: lint(),
-        };
+        let judge = Judge::new(set, &hazards, lint());
         inspect(bytes, &judge, &Levels::new())
     }
 
@@ -776,6 +797,38 @@ mod tests {
         assert_eq!(fired, vec![("invisible", Level::Forbid, 1)]);
     }
 
+    fn emoji() -> CharSet {
+        builtin::catalog()
+            .ok()
+            .and_then(|c| c.resolve("emoji", "emoji").ok())
+            .unwrap_or_else(builtin::ascii)
+    }
+
+    /// `src/lint:V63`: a joiner inside an RGI ZWJ sequence is no hazard,
+    /// so under `emoji` (which withholds it) it is `outside-set` and the
+    /// sequence is `fix`'s to compress. A joiner in no listed sequence,
+    /// and tags after U+1F3F4 that spell no listed flag, still fire.
+    #[test]
+    fn a_listed_sequence_turns_its_joiner_into_an_outside_set_finding() {
+        let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+        let fired = findings(family, &emoji());
+        let outside = vec![
+            ("outside-set", Level::Deny, 4),
+            ("outside-set", Level::Deny, 11),
+        ];
+        assert_eq!(fired, outside);
+    }
+
+    #[test]
+    fn a_joiner_or_tag_outside_a_listed_sequence_still_fires() {
+        let emoji = emoji();
+        let stray = findings("\u{1F600}\u{200D}\u{1F600}", &emoji);
+        assert_eq!(stray, vec![("invisible", Level::Forbid, 4)]);
+        let smuggled = findings("\u{1F3F4}\u{E0069}\u{E007F}", &emoji);
+        let tag = ("tag-character", Level::Forbid, 4);
+        assert_eq!(smuggled, vec![tag, ("tag-character", Level::Forbid, 8)]);
+    }
+
     /// The whole path, through a real `.ctrm`: a rule that grants `any`
     /// and tries to allow the group, the lint, and the charset findings,
     /// plus a `.ctrm-sets` that redeclares the class as harmless. None of
@@ -824,11 +877,7 @@ mod tests {
         levels.set(Target::Group(Group::Pedantic), Level::Warn);
         levels.set_charset(charset);
         let hazards = hazards();
-        let judge = Judge {
-            set,
-            hazards: &hazards,
-            outside: lint(),
-        };
+        let judge = Judge::new(set, &hazards, lint());
         let mut all = match inspect(text.as_bytes(), &judge, &levels) {
             Looked::Findings(all) => all.iter().map(summary).collect(),
             Looked::Unread(_) => Vec::new(),
