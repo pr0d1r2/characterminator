@@ -48,7 +48,23 @@ pub fn run(stdin: &str, root: &Path) -> Result<String, String> {
             hook::response(Event::After, &legible(verdict))
         }
         Call::Other => String::new(),
+        Call::Unparsed { text, why } => unparsed(&text, &hazards).ok_or(why)?,
     })
+}
+
+/// Input no reader accepts -- broken, or nested past the depth bound --
+/// judged as raw text, escapes decoded (V67). A hazard is a `block`
+/// decision, which Claude Code honours on either event, and exit 0: an
+/// attacker who shapes a tool's output must not turn a hazard into an
+/// adapter error that lets it through. `None` is clean, and the caller
+/// keeps the named error and its exit 1 (V53).
+fn unparsed(text: &str, hazards: &Hazards) -> Option<String> {
+    let hits = scan_str(text, |c| !hazards.contains(c));
+    let exempt = hazards.exempt(text);
+    let found = hazards_in(hits, |hit| hazards.lint_unsigned(hit, &exempt));
+    let first = found.first()?;
+    let why = tainted("unparsed hook", "payload", first, found.len());
+    Some(hook::response(Event::After, &legible(Verdict::Block(why))))
 }
 
 /// A reason quotes data -- a path, a field label, a tool's name -- and
@@ -532,6 +548,27 @@ mod tests {
         let name = "x\u{202E}.rs";
         let got = read_of("ctrm-guard-name", &[(name, "\u{200B}\n")], name);
         assert!(got.contains("x<U+202E>.rs:1:1 U+200B invisible"), "{got}");
+    }
+
+    /// B18: an MCP result nested past the reader's depth bound used to be
+    /// an adapter error, exit 1, and so a pass. Its raw text is judged
+    /// instead, escapes decoded, pairs included (V67).
+    #[test]
+    fn a_hazard_too_deep_to_parse_is_still_tainted() {
+        let pair = format!("{}udb40{}udc41", '\\', '\\');
+        for hazard in ["\u{202E}", &pair] {
+            let got = answer(&too_deep(&format!("\"x{hazard}\"")));
+            assert!(got.starts_with(r#"{"decision":"block""#), "{got}");
+        }
+        let got = run(&too_deep("1"), Path::new("."));
+        let why = got.err().unwrap_or_default();
+        assert!(why.contains("nested too deep"), "{why}");
+    }
+
+    /// A PostToolUse payload with `inner` 300 arrays down.
+    fn too_deep(inner: &str) -> String {
+        let (open, close) = ("[".repeat(300), "]".repeat(300));
+        output_payload("mcp__x__y", &format!("{open}{inner}{close}"))
     }
 
     /// Malformed input is a NAMED error, which the cli turns into exit 1

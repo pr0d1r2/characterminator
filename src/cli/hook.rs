@@ -50,6 +50,11 @@ pub(super) enum Call {
     },
     /// An event, or a call, with nothing to judge.
     Other,
+    /// Input that is not JSON at all, or not JSON this reader accepts --
+    /// nested past its depth bound, say. Not a call, but its TEXT can
+    /// still be judged, and an attacker shapes an MCP tool's output
+    /// (`src/cli:V67`). `why` is the refusal, kept for when it is clean.
+    Unparsed { text: String, why: String },
 }
 
 /// Which hook a verdict answers. The two spell a block differently.
@@ -83,14 +88,25 @@ pub(super) enum Verdict {
 ///
 /// # Errors
 ///
-/// Input that is not JSON, or JSON that names no hook event.
+/// JSON that names no hook event. Input that is not JSON is
+/// [`Call::Unparsed`], its escapes decoded, for `guard` to judge raw.
 pub(super) fn call(stdin: &str) -> Result<Call, String> {
-    let payload = json::parse(stdin)
-        .map_err(|why| format!("hook input is not JSON: {why}"))?;
+    json::parse(stdin)
+        .map_or_else(|why| Ok(unparsed(stdin, &why)), |p| mapped(&p))
+}
+
+fn unparsed(stdin: &str, why: &str) -> Call {
+    Call::Unparsed {
+        text: json::unescaped(stdin),
+        why: format!("hook input is not JSON: {why}"),
+    }
+}
+
+fn mapped(payload: &Value) -> Result<Call, String> {
     let event = payload.get("hook_event_name").and_then(Value::text);
     match event {
-        Some("PreToolUse") => Ok(before(&payload)),
-        Some("PostToolUse") => Ok(after(&payload)),
+        Some("PreToolUse") => Ok(before(payload)),
+        Some("PostToolUse") => Ok(after(payload)),
         Some(_) => Ok(Call::Other),
         None => Err(String::from("hook input names no `hook_event_name`")),
     }
@@ -237,8 +253,10 @@ mod tests {
     fn a_payload_with_no_event_or_no_json_is_refused_by_name() {
         let why = call(r#"{"tool_name":"Read"}"#).err().unwrap_or_default();
         assert!(why.contains("hook_event_name"), "{why}");
-        let why = call("not json").err().unwrap_or_default();
-        assert!(why.starts_with("hook input is not JSON"), "{why}");
+        let got = call("not json");
+        let refused = matches!(&got, Ok(Call::Unparsed { why, .. })
+            if why.starts_with("hook input is not JSON"));
+        assert!(refused, "{got:?}");
     }
 
     #[test]

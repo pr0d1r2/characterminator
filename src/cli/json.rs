@@ -115,6 +115,28 @@ pub(super) fn parse(text: &str) -> Result<Value, String> {
     }
 }
 
+/// `text` with every `\u` escape decoded -- a surrogate pair to its one
+/// character, a lone half to U+FFFD -- and everything else kept as it is
+/// written. For a payload [`parse`] refused (`src/cli:V67`): it is not a
+/// document, but an escaped hazard in it is still a hazard. An escaped
+/// backslash stays escaped, so a literal backslash-u is not decoded.
+pub(super) fn unescaped(text: &str) -> String {
+    let mut reader = Reader {
+        text,
+        at: 0,
+        depth: 0,
+    };
+    let mut out = String::with_capacity(text.len());
+    while let Some(next) = reader.bump() {
+        if next == '\\' {
+            reader.raw_escape(&mut out);
+        } else {
+            out.push(next);
+        }
+    }
+    out
+}
+
 /// A cursor over the document. `at` is a byte offset that only ever moves
 /// by a whole character, so every `get(at..)` lands on a boundary.
 struct Reader<'a> {
@@ -311,6 +333,22 @@ impl<'a> Reader<'a> {
         Ok(())
     }
 
+    /// After a backslash outside any document: a `\u` escape decoded,
+    /// any other escape kept whole, so the character after it is never
+    /// read as the start of one.
+    fn raw_escape(&mut self, out: &mut String) {
+        let start = self.at;
+        if self.peek() == Some('u') {
+            self.skip(1);
+            if self.unicode(out).is_ok() {
+                return;
+            }
+            self.at = start;
+        }
+        out.push('\\');
+        out.extend(self.bump());
+    }
+
     fn hex(&mut self) -> Result<u16, String> {
         let digits = self.rest().get(..4).filter(|digits| {
             digits.chars().all(|digit| digit.is_ascii_hexdigit())
@@ -325,7 +363,7 @@ impl<'a> Reader<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{DEPTH, Value, parse};
+    use super::{DEPTH, Value, parse, unescaped};
 
     fn read(text: &str) -> Value {
         let parsed = parse(text);
@@ -423,6 +461,23 @@ mod tests {
             let why = parse(bad).err().unwrap_or_default();
             assert!(why.contains("at byte"), "{bad:?} -> {why:?}");
         }
+    }
+
+    /// A JSON `\u` escape of `hex`, built so no escape sits in this source.
+    fn esc(hex: &str) -> String {
+        format!("\\u{hex}")
+    }
+
+    /// V67: a refused payload still has its escapes decoded -- a pair to
+    /// one character, a lone half to U+FFFD -- and nothing else changed.
+    #[test]
+    fn unescaping_raw_text_decodes_only_unicode_escapes() {
+        let pair = format!("[[\"a{}{}\"", esc("db40"), esc("dc41"));
+        assert_eq!(unescaped(&pair), "[[\"a\u{E0041}\"");
+        let lone = format!("{}x{}", esc("d800"), esc("202E"));
+        assert_eq!(unescaped(&lone), "\u{FFFD}x\u{202E}");
+        let kept = format!("\\\\{} \\n \\u12G4 \\", "u202e");
+        assert_eq!(unescaped(&kept), kept);
     }
 
     #[test]
