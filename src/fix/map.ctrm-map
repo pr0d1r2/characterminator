@@ -59,3 +59,21 @@ U+00A0 U+0020
 # which is the other half of why they leave rather than change.
 U+200B
 U+FEFF
+
+# EMOJI MODIFIERS, deleted (V60). The `emoji` preset grants single code
+# points only (V31), so a thumbs-up with a skin tone, or a check mark
+# with the emoji presentation selector, always carries one code point the
+# preset withholds. Deleting the modifier leaves the base emoji, which the
+# preset grants: thumbs-up medium skin tone becomes thumbs-up. This is
+# the cheap half of V31 and needs no sequence scanning; ZWJ sequences,
+# keycaps and flags still wait for `src/fix:T33`.
+#
+# VARIATION SELECTOR-15 and -16 (text and emoji presentation), then the
+# five EMOJI MODIFIER FITZPATRICK skin tones.
+U+FE0E
+U+FE0F
+U+1F3FB
+U+1F3FC
+U+1F3FD
+U+1F3FE
+U+1F3FF

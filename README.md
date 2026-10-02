@@ -464,8 +464,9 @@ list goes stale and that one does not.
 - **The `hazard` exemption for emoji sequences.** A zero width joiner
   inside a declared emoji sequence is meant to pass; sequences arrive with
   emoji sequence compression, so until then every joiner is reported.
-- **Locale letter presets** from CLDR, and **emoji sequence compression**,
-  both need data vendored first.
+- **Locale letter presets** from CLDR, and **emoji ZWJ sequences, keycaps
+  and flags**, both need data vendored first. Presentation selectors and
+  skin tones already compress: the builtin map deletes them.
 - **Four pedantic lints need data**: `not-nfc`, `nfkc-compat`,
   `mixed-script` and `confusable` are registered and fire nothing until
   Unicode normalization and UTS #39 data are vendored; `locale-literal` is

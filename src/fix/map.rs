@@ -544,6 +544,17 @@ mod tests {
         assert_eq!(found.map(|e| e.to.as_str()), Some(to), "{from:?}");
     }
 
+    /// V60: the presentation selectors and skin tones are deleted, so an
+    /// emoji with a modifier compresses to its base without a sequence
+    /// scan.
+    #[test]
+    fn the_builtin_map_deletes_the_emoji_modifiers() {
+        let map = parsed(super::BUILTIN);
+        for from in ['\u{FE0E}', '\u{FE0F}', '\u{1F3FB}', '\u{1F3FF}'] {
+            rewrites(&map, from, "");
+        }
+    }
+
     #[test]
     fn the_builtin_map_targets_what_v26_names() {
         let map = parsed(super::BUILTIN);
