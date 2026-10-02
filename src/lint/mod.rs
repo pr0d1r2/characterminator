@@ -13,12 +13,16 @@ mod pedantic;
 mod registry;
 mod resolve;
 mod target;
+mod ucd;
 
 pub use finding::{Finding, exit_code};
 pub use group::Group;
 pub use hazard::Hazards;
 pub use level::Level;
-pub use pedantic::{CRLF, LINE_LINTS, line_hits, unicode_space};
+pub use pedantic::{
+    CHAR_LINTS, CRLF, LINE_LINTS, TEXT_LINTS, char_lints, line_hits, text_hits,
+    unicode_space,
+};
 pub use registry::{LINTS, Lint};
 pub use resolve::Levels;
 pub use target::Target;

@@ -43,7 +43,7 @@ path = "src/main.rs"
 [dependencies]
 itok = { version = "0.3", default-features = false, features = ["bpe"] }
 
-# The Unicode tables the four data-bound pedantic lints read (`src/lint:T39`):
+# The Unicode tables the four data-bound pedantic lints read (`src/lint:V58`):
 # normalization (`not-nfc`, `nfkc-compat`) and UTS #39 (`mixed-script`'s
 # resolved script set, `confusable`'s skeleton). Published tables, called
 # rather than re-vendored: a private copy of a decomposition or confusables

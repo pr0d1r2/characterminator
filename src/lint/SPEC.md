@@ -27,6 +27,7 @@ V37: `pedantic` group = maximum purity, opt-in (`--pedantic` ≡ `--rule '* !ped
 V49: hazard = 1 lint per class, first class holding the char wins: `bidi-control` (Bidi_Control) · `tag-character` · `stray-bom` · `control-character` (Cc ∖ `\t` `\n` `\r`) · `invisible` (rest of Default_Ignorable). char ∈ hazard ∧ ∉ set → 1 finding, the hazard; report names set `hazard`. classes read from COMPILED-IN data (`src/charset:V22`), ⊥ run's catalog ∴ `.ctrm-sets` | `--no-builtin-sets` ⊥ empty them. ZWJ exemption (V34) needs sequences ∴ lands w/ `src/fix:T33`; til then ∀ ZWJ fires, ⊥ approximated.
 V55: pedantic, ⊥ vendored data (T39). `unicode-space` = Zs ∖ U+0020 (U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000). finding = 1 char IN the file ∴ `Hit`, json, SARIF unchanged: `crlf` → the CR of a CR LF · `trailing-whitespace` → 1st char of a line's trailing White_Space run · `final-newline` → last char of a non-empty file, ≠ LF. 1 char ≤ 1 claim: hazard > `outside-set` > pedantic ∴ `ascii` (⊥ `cr`) reports CR LF as `outside-set`. human last column = lint name. exemption: later rule `<glob> !<lint>=allow`; names ⊥ set ∴ grant untouched (`src/rules:V56`).
 V57: ZWNJ U+200C & ZWJ U+200D = SPELLING in fa & Devanagari ∴ a file whose rule names a COMPILED-IN preset granting a joiner & ⊥ other hazard (`persian`: ZWNJ; `hindi`: both) ⊥ fires on it. ⊥ level change (V36 holds): the char ⊥ hazard IN THAT FILE. presets read from builtin data ∴ `.ctrm-sets` redeclaring `persian` ⊥ widens it; `any` grants other hazards ∴ excuses ⊥. bidi, tag, control ⊥ excusable ∴ `persian` omits U+061C. tool output (guard) has ⊥ grant ∴ ⊥ excuse.
+V58: pedantic via `unicode-normalization` & `unicode-security`, call site `ucd.rs` only (`src:C`). 1 char IN file (V55 shape): `nfkc-compat` → NFKC(c) ≠ NFC(c) · `confusable` → non-ASCII c, UTS #39 skeleton non-empty ASCII · `not-nfc` → per NFC segment (UAX #15 boundary: ccc 0 ∧ NFC_QC=Yes) NFC changes, 1st char differing · `mixed-script` → per word (alnum ∪ marks), 1st char emptying UTS #39 resolved script set. Zs → `unicode-space` only. claim order: V55 then `nfkc-compat` > `confusable` > `not-nfc` > `mixed-script`. ⊥ asked → ⊥ lookup.
 
 ## §T TASKS
 
@@ -34,4 +35,5 @@ id|status|task|cites
 T35|x|ARCHIVED to SPEC-ARCHIVE.md|V33,`src/render:V11`
 T36|x|ARCHIVED to SPEC-ARCHIVE.md|V34,V36,V49
 T38|x|ARCHIVED to SPEC-ARCHIVE.md|V36
-T39|~|pedantic lints per V37, each w/ legit-FP fixture. built (V55): `crlf` `trailing-whitespace` `final-newline` `unicode-space`. open: `not-nfc` `nfkc-compat` `mixed-script` `confusable` need UCD data; `locale-literal` ⊥ registered|V37,V36,V55
+T39|x|ARCHIVED to SPEC-ARCHIVE.md|V37,V36,V55,V58
+T58|.|`locale-literal` (V37): needs code-file & string-literal notion ⊥ in tree; ⊥ registered til built|V37,`src/rules:V17`

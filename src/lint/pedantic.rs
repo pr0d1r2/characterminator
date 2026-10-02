@@ -17,13 +17,19 @@
 //! and `Hit` would have to grow an "absent" case every renderer and the
 //! `fix` node then had to handle.
 //!
-//! WHAT IS NOT DONE, stated rather than approximated: `not-nfc`,
-//! `nfkc-compat`, `mixed-script` and `confusable` need Unicode data this
-//! crate does not vendor (decompositions, Script, UTS #39), so they stay
-//! registered and fire nothing. A guess at any of them would be a second
-//! private definition of a published table.
+//! The four that need Unicode tables (V58) ask `ucd.rs`, the one file
+//! that calls the Unicode crates, and point where it says:
+//!
+//! - `nfkc-compat`: the character NFKC folds and NFC keeps.
+//! - `confusable`: a non-ASCII character drawn as ASCII (UTS #39).
+//! - `not-nfc`: the first character where a segment and its NFC differ.
+//! - `mixed-script`: the first character that empties a word's scripts.
+//!
+//! A character `unicode-space` claims is claimed by no other pedantic
+//! lint: NFKC folds a no-break space and UTS #39 draws it as U+0020, and
+//! one space with three names would be one finding said three ways.
 
-use crate::lint::{Group, Lint};
+use crate::lint::{Group, Lint, ucd};
 use crate::scan::{Hit, located};
 
 /// A space that is not U+0020.
@@ -38,6 +44,24 @@ pub const TRAILING_WHITESPACE: Lint =
 
 /// A non-empty file whose last character is not a line feed.
 pub const FINAL_NEWLINE: Lint = Lint::new("final-newline", Group::Pedantic);
+
+/// Text NFC would change.
+pub const NOT_NFC: Lint = Lint::new("not-nfc", Group::Pedantic);
+
+/// A character NFKC folds and NFC keeps: fullwidth, ligature, superscript.
+pub const NFKC_COMPAT: Lint = Lint::new("nfkc-compat", Group::Pedantic);
+
+/// One word written in two scripts.
+pub const MIXED_SCRIPT: Lint = Lint::new("mixed-script", Group::Pedantic);
+
+/// A non-ASCII character UTS #39 draws as ASCII.
+pub const CONFUSABLE: Lint = Lint::new("confusable", Group::Pedantic);
+
+/// The lints [`text_hits`] can fire, for the same question as below.
+pub const TEXT_LINTS: [Lint; 2] = [NOT_NFC, MIXED_SCRIPT];
+
+/// The lints [`char_lints`] can fire.
+pub const CHAR_LINTS: [Lint; 3] = [UNICODE_SPACE, NFKC_COMPAT, CONFUSABLE];
 
 /// The lints [`line_hits`] can fire, so a caller can ask whether any of
 /// them is switched on before paying for a second walk of the text.
@@ -64,6 +88,31 @@ const SPACES: [char; 16] = [
 /// The pedantic lint one character fires on its own, wherever it sits.
 pub fn unicode_space(character: char) -> Option<Lint> {
     SPACES.contains(&character).then_some(UNICODE_SPACE)
+}
+
+/// Every pedantic lint one character fires on its own, the strongest
+/// claim first. ASCII is none of them, and pays no table lookup.
+pub fn char_lints(character: char) -> [Option<Lint>; 3] {
+    if character.is_ascii() {
+        return [None; 3];
+    }
+    if let Some(space) = unicode_space(character) {
+        return [Some(space), None, None];
+    }
+    let compat = ucd::compat(character).then_some(NFKC_COMPAT);
+    let lookalike = ucd::lookalike(character).then_some(CONFUSABLE);
+    [None, compat, lookalike]
+}
+
+/// Every finding that needs the characters around it to decide, in byte
+/// order, `not-nfc` before `mixed-script` on the same character.
+pub fn text_hits(text: &str) -> Vec<(Lint, Hit)> {
+    let hits: Vec<Hit> = located(text).collect();
+    let nfc = ucd::denormal(&hits).into_iter().map(|hit| (NOT_NFC, hit));
+    let words = ucd::mixed(&hits).into_iter().map(|hit| (MIXED_SCRIPT, hit));
+    let mut found: Vec<(Lint, Hit)> = nfc.chain(words).collect();
+    found.sort_by_key(|(_, hit)| hit.position.byte);
+    found
 }
 
 /// Every line-shaped finding in a text, as the lint and the character it
@@ -132,10 +181,48 @@ impl Walk {
 #[cfg(test)]
 mod tests {
     use super::{
-        CRLF, FINAL_NEWLINE, LINE_LINTS, SPACES, TRAILING_WHITESPACE,
-        UNICODE_SPACE, line_hits, unicode_space,
+        CHAR_LINTS, CONFUSABLE, CRLF, FINAL_NEWLINE, LINE_LINTS, MIXED_SCRIPT,
+        NFKC_COMPAT, NOT_NFC, SPACES, TEXT_LINTS, TRAILING_WHITESPACE,
+        UNICODE_SPACE, char_lints, line_hits, text_hits, unicode_space,
     };
-    use crate::lint::{Group, Lint};
+    use crate::lint::{Group, LINTS, Lint};
+
+    /// Every pedantic lint is fired by exactly one of the three walks.
+    #[test]
+    fn every_pedantic_lint_has_one_detector() {
+        let pedantic = LINTS.iter().filter(|l| l.group == Group::Pedantic);
+        for lint in pedantic {
+            let homes = [&CHAR_LINTS[..], &TEXT_LINTS, &LINE_LINTS]
+                .iter()
+                .filter(|walk| walk.contains(lint))
+                .count();
+            assert_eq!(homes, 1, "{}", lint.name);
+        }
+    }
+
+    /// A space is `unicode-space` and nothing else; a fullwidth letter is
+    /// both compatibility and a lookalike, compatibility first.
+    #[test]
+    fn char_lints_claim_in_order() {
+        assert_eq!(char_lints('a'), [None; 3]);
+        let space = [Some(UNICODE_SPACE), None, None];
+        assert_eq!(char_lints('\u{a0}'), space);
+        let both = [None, Some(NFKC_COMPAT), Some(CONFUSABLE)];
+        assert_eq!(char_lints('\u{ff21}'), both);
+        assert_eq!(char_lints('\u{b2}'), [None, Some(NFKC_COMPAT), None]);
+    }
+
+    /// Text hits come in byte order, `not-nfc` first on a tie.
+    #[test]
+    fn text_hits_are_in_byte_order() {
+        let found: Vec<(&str, usize)> = text_hits("\u{3bb}e\u{301} x\u{212b}")
+            .into_iter()
+            .map(|(lint, hit)| (lint.name, hit.position.byte))
+            .collect();
+        let expected =
+            vec![(NOT_NFC.name, 2), (MIXED_SCRIPT.name, 2), (NOT_NFC.name, 7)];
+        assert_eq!(found, expected);
+    }
 
     /// One finding as `(lint, line, column, character)`.
     type Fired = (&'static str, usize, usize, char);

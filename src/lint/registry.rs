@@ -33,10 +33,9 @@ pub struct Lint {
 /// names up front is what lets `--pedantic` and `!not-nfc=warn` be parsed,
 /// explained and rejected-on-typo before any of them can fire.
 ///
-/// T39 built four (V55), and their rows are the constants `pedantic.rs`
-/// detects under, so the name is spelled once. `not-nfc`, `nfkc-compat`,
-/// `mixed-script` and `confusable` need Unicode data this crate does not
-/// vendor yet: asking for them is legal and reports nothing.
+/// Every pedantic row is the constant `pedantic.rs` detects under, so the
+/// name is spelled once: four need no data (V55), four read Unicode's
+/// tables (V58).
 pub const LINTS: &[Lint] = &[
     // V34's classes, one lint each, in the order `hazard.rs` tries them.
     // One lint per class rather than one `hazard` lint: the json names
@@ -52,11 +51,11 @@ pub const LINTS: &[Lint] = &[
     // than for its group, because `charset` is already the group's name.
     Lint::new("outside-set", Group::Charset),
     // V37's candidates, in the order that spec lists them.
-    Lint::new("not-nfc", Group::Pedantic),
-    Lint::new("nfkc-compat", Group::Pedantic),
+    pedantic::NOT_NFC,
+    pedantic::NFKC_COMPAT,
     pedantic::UNICODE_SPACE,
-    Lint::new("mixed-script", Group::Pedantic),
-    Lint::new("confusable", Group::Pedantic),
+    pedantic::MIXED_SCRIPT,
+    pedantic::CONFUSABLE,
     pedantic::CRLF,
     pedantic::TRAILING_WHITESPACE,
     pedantic::FINAL_NEWLINE,

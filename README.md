@@ -470,10 +470,8 @@ list goes stale and that one does not.
 - **Emoji ZWJ sequences, keycaps and flags** need data vendored first.
   Presentation selectors and skin tones already compress: the builtin map
   deletes them.
-- **Four pedantic lints need data**: `not-nfc`, `nfkc-compat`,
-  `mixed-script` and `confusable` are registered and fire nothing until
-  Unicode normalization and UTS #39 data are vendored; `locale-literal` is
-  not built.
+- **One pedantic lint is not built**: `locale-literal` needs a notion of
+  which files are code and how each language spells a string literal.
 - **Nothing published**: no crates.io release, no tag. CI
   (`.github/workflows/ci.yml`) runs the gate on three platforms and the
   action on one, and has not yet run on GitHub.

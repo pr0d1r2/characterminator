@@ -9,8 +9,9 @@
 use super::config::Config;
 use crate::charset::{CharSet, SetCatalog};
 use crate::lint::{
-    CRLF, Finding, Group, Hazards, LINE_LINTS, Level, Levels, Lint, Target,
-    exit_code, line_hits, unicode_space,
+    CHAR_LINTS, CRLF, Finding, Group, Hazards, LINE_LINTS, Level, Levels, Lint,
+    TEXT_LINTS, Target, char_lints, exit_code, line_hits, text_hits,
+    unicode_space,
 };
 use crate::render::{self, Format, Skipped, Violation};
 use crate::rules::{self, Resolution, Rule};
@@ -79,12 +80,16 @@ impl Judge<'_> {
     /// point: `any` grants every code point, and the exclusion lives in
     /// the level, so the set alone cannot be what decides.
     ///
-    /// A pedantic space stops it too, whatever its level: whether that
-    /// lint speaks is the level's question, asked once in `loudest`.
-    fn passes(&self, character: char) -> bool {
+    /// A pedantic character stops it too, whatever its level: whether
+    /// that lint speaks is the level's question, asked once in `loudest`.
+    /// `deep` is whether any table-reading one is asked for; without it
+    /// only the cheap space list is consulted, so a run that did not ask
+    /// pays no Unicode lookup per character (`src/lint:V58`).
+    fn passes(&self, character: char, deep: bool) -> bool {
         self.set.contains(character)
             && !self.hazard(character)
             && unicode_space(character).is_none()
+            && !(deep && char_lints(character).iter().any(Option::is_some))
     }
 
     /// Whether a character is a hazard IN THIS FILE: a joiner the file's
@@ -95,16 +100,21 @@ impl Judge<'_> {
     }
 
     /// The lints one hit could fire, the strongest claim first: a hazard,
-    /// then `outside-set`, then `unicode-space` (`src/lint:V55`). Empty
-    /// is the byte order mark at byte 0 in a file whose set grants it: no
-    /// hazard (V34), and not outside the set either.
+    /// then `outside-set`, then the pedantic ones a character fires alone
+    /// (`src/lint:V55`, `src/lint:V58`). Empty is the byte order mark at
+    /// byte 0 in a file whose set grants it: no hazard (V34), and not
+    /// outside the set either.
     fn lints_for(&self, hit: Hit) -> Vec<Lint> {
         let excused = self.hazards.excuses(&self.set.name, hit.character);
         let hazard = self.hazards.lint_for(hit).filter(|_| !excused);
         let outside =
             (!self.set.contains(hit.character)).then_some(self.outside);
-        let space = unicode_space(hit.character);
-        [hazard, outside, space].into_iter().flatten().collect()
+        let pedantic = char_lints(hit.character);
+        [hazard, outside]
+            .into_iter()
+            .chain(pedantic)
+            .flatten()
+            .collect()
     }
 }
 
@@ -247,10 +257,17 @@ fn inspect(bytes: &[u8], judge: &Judge<'_>, levels: &Levels) -> Looked {
 /// than one merged walk; the report's order is `src/render`'s to impose
 /// (by path, then byte), so nothing here has to interleave them.
 fn findings_in(text: &str, judge: &Judge<'_>, levels: &Levels) -> Vec<Finding> {
-    let hits = scan_str(text, |c| judge.passes(c));
+    let deep = asked(&CHAR_LINTS, levels);
+    let hits = scan_str(text, |c| judge.passes(c, deep));
     let mut found = reportable(hits, judge, levels);
-    found.extend(line_findings(text, judge, levels));
+    found.extend(context_findings(text, judge, levels));
     found
+}
+
+/// Whether a run asked for any of these lints: none at `allow` is the
+/// common case, and it is what lets a run skip their work entirely.
+fn asked(lints: &[Lint], levels: &Levels) -> bool {
+    lints.iter().any(|l| levels.level_of(*l) != Level::Allow)
 }
 
 /// A finding at `allow` is not reported: the level system decides what is
@@ -278,22 +295,35 @@ fn loudest(hit: Hit, judge: &Judge<'_>, levels: &Levels) -> Option<Finding> {
         .find(|finding| finding.level != Level::Allow)
 }
 
-/// The line-shaped pedantic findings (`src/lint:V55`), or none without a
-/// second walk when every one of those lints is at `allow` -- which is
-/// every run that did not ask for pedantic.
-fn line_findings(
+/// The pedantic findings one character cannot decide alone: line-shaped
+/// (`src/lint:V55`) and text-shaped (`src/lint:V58`). Neither walk runs
+/// when every lint it serves is at `allow` -- which is every run that did
+/// not ask for pedantic. Two text findings on one character are one: the
+/// first, `not-nfc`.
+fn context_findings(
     text: &str,
     judge: &Judge<'_>,
     levels: &Levels,
 ) -> Vec<Finding> {
-    if LINE_LINTS
-        .iter()
-        .all(|l| levels.level_of(*l) == Level::Allow)
-    {
-        return Vec::new();
+    let mut found = Vec::new();
+    if asked(&LINE_LINTS, levels) {
+        found.extend(heard(line_hits(text), judge, levels));
     }
-    line_hits(text)
-        .into_iter()
+    if asked(&TEXT_LINTS, levels) {
+        let mut words = heard(text_hits(text), judge, levels);
+        words.dedup_by_key(|finding| finding.hit.position.byte);
+        found.extend(words);
+    }
+    found
+}
+
+/// The context hits a run reports: not said already, not at `allow`.
+fn heard(
+    hits: Vec<(Lint, Hit)>,
+    judge: &Judge<'_>,
+    levels: &Levels,
+) -> Vec<Finding> {
+    hits.into_iter()
         .filter(|(lint, hit)| !said_already(*lint, *hit, judge, levels))
         .map(|(lint, hit)| levels.finding(hit, lint))
         .filter(|finding| finding.level != Level::Allow)
@@ -302,7 +332,10 @@ fn line_findings(
 
 /// Whether the character pass already reported this hit's news.
 ///
-/// Only `crlf` can collide. `ascii` does not grant the carriage return
+/// `crlf`, `not-nfc` and `mixed-script` can collide; the text lints point
+/// at a character for what it IS among its neighbours, so a character
+/// the first pass already named keeps that one name (`src/lint:V58`).
+/// `ascii` does not grant the carriage return
 /// (`src/charset` keeps it in the separate `cr` set), so under the
 /// default a CR LF is ALREADY `outside-set`, and a second finding on the
 /// same character would say one thing twice. `crlf` therefore speaks
@@ -315,7 +348,8 @@ fn said_already(
     judge: &Judge<'_>,
     levels: &Levels,
 ) -> bool {
-    lint == CRLF && loudest(hit, judge, levels).is_some()
+    (lint == CRLF || TEXT_LINTS.contains(&lint))
+        && loudest(hit, judge, levels).is_some()
 }
 
 /// The path as a reader typed it: relative to the root, so it matches the
@@ -938,6 +972,91 @@ mod tests {
         );
         let ctrm = format!("{base}fr.md ascii+french !unicode-space=allow\n");
         assert_eq!(report("ctrm-space-off", &ctrm, &files), one);
+    }
+
+    /// One V58 fixture: `files` under `* any !pedantic=warn` fires `on`,
+    /// and adding `exempt` (a later rule naming no set) leaves `off`.
+    fn exempted(
+        name: &str,
+        files: &[(&str, &str)],
+        exempt: &str,
+    ) -> [String; 2] {
+        let base = "* any !pedantic=warn\n";
+        let on = report(&format!("{name}-on"), base, files);
+        let ctrm = format!("{base}{exempt}\n");
+        [on, report(&format!("{name}-off"), &ctrm, files)]
+    }
+
+    /// V58 fixture, `not-nfc`: a listing captured on macOS, whose file
+    /// system hands names back DECOMPOSED. The golden file must keep the
+    /// bytes it was given; prose elsewhere is still held to NFC.
+    #[test]
+    fn a_macos_listing_is_decomposed_on_purpose() {
+        let files =
+            [("ls.out", "cafe\u{301}.txt\n"), ("a.md", "cafe\u{301}\n")];
+        let [on, off] = exempted("ctrm-nfc", &files, "*.out !not-nfc=allow");
+        let md = "a.md:1:4 U+0065 not-nfc";
+        assert_eq!(on, format!("{md}\nls.out:1:4 U+0065 not-nfc"));
+        assert_eq!(off, md);
+    }
+
+    /// V58 fixture, `nfkc-compat`: SQUARE METRES are written with a
+    /// superscript two, and `m2` is not the same text to a reader.
+    #[test]
+    fn a_unit_superscript_is_compatibility_on_purpose() {
+        let files = [("area.md", "50 m\u{b2}\n"), ("a.md", "x\u{fb01}\n")];
+        let exempt = "area.md !nfkc-compat=allow";
+        let [on, off] = exempted("ctrm-nfkc", &files, exempt);
+        let md = "a.md:1:2 U+FB01 nfkc-compat";
+        assert_eq!(on, format!("{md}\narea.md:1:5 U+00B2 nfkc-compat"));
+        assert_eq!(off, md);
+    }
+
+    /// V58 fixture, `mixed-script`: a micrometre is Greek mu then Latin
+    /// m, one word in two scripts by definition. The finding points at
+    /// the letter that emptied the word's scripts: the `m`.
+    #[test]
+    fn a_micrometre_mixes_scripts_on_purpose() {
+        let files = [("lab.md", "5 \u{3bc}m\n"), ("a.md", "p\u{3bb}y\n")];
+        let exempt = "lab.md !mixed-script=allow";
+        let [on, off] = exempted("ctrm-mixed", &files, exempt);
+        let md = "a.md:1:2 U+03BB mixed-script";
+        assert_eq!(on, format!("{md}\nlab.md:1:4 U+006D mixed-script"));
+        assert_eq!(off, md);
+    }
+
+    /// V58 fixture, `confusable`: Russian prose. Half its alphabet is
+    /// drawn like Latin, so every such letter is a lookalike, and a
+    /// Russian file says so once, per path.
+    #[test]
+    fn russian_prose_is_confusable_on_purpose() {
+        let mir = "\u{43c}\u{438}\u{440}\n";
+        let files = [("ru.md", mir), ("a.md", "\u{440}\n")];
+        let exempt = "ru.md !confusable=allow";
+        let [on, off] = exempted("ctrm-confusable", &files, exempt);
+        let md = "a.md:1:1 U+0440 confusable";
+        assert_eq!(on, format!("{md}\nru.md:1:3 U+0440 confusable"));
+        assert_eq!(off, md);
+    }
+
+    /// Asked for nothing, none of the four fires, and a character the
+    /// set refuses is one `outside-set` finding however many lints it
+    /// would also fire. The `e` the accent decomposes from is in the set, so
+    /// `not-nfc` still names it.
+    #[test]
+    fn the_unicode_lints_are_silent_until_asked_and_claim_once() {
+        let text = "cafe\u{301} p\u{430}y \u{ff21}\n";
+        assert_eq!(findings(text, &any()), vec![]);
+        let ascii = builtin::ascii();
+        let fired = pedantic(text, &ascii, Level::Deny);
+        let deny = Level::Deny;
+        let expected = vec![
+            ("not-nfc", Level::Warn, 3),
+            ("outside-set", deny, 4),
+            ("outside-set", deny, 8),
+            ("outside-set", deny, 12),
+        ];
+        assert_eq!(fired, expected);
     }
 
     /// The json contract is unchanged by a pedantic finding: the same keys,
