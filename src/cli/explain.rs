@@ -102,12 +102,11 @@ pub fn exported(
 
 /// `sets`: every declared set and what it holds.
 ///
-/// Resolved at the DEFAULT fidelity, and the listing says so rather than
-/// hiding it: a preset with labelled members (`src/charset:V41`) holds
-/// different characters at another one, and a listing that quietly showed
-/// one spelling would be a wrong answer about `marks`.
-///
-/// # Errors
+/// Resolved at the family the run's rules give the whole repo, the
+/// question `explain` with no path asks (`src/rules:V29`): a preset with
+/// labelled members (`src/charset:V41`) holds different characters at
+/// another family, so `--fidelity emoji` and `--rule '* @emoji'`, which
+/// are one rule, list the same thing (B30).
 ///
 /// Every CLDR locale set is listed, not only the ones the rules name.
 ///
@@ -115,13 +114,11 @@ pub fn exported(
 ///
 /// As [`Checker::configured`], plus a declared set that cannot be resolved --
 /// a cycle, or a member naming a set nothing declares.
-pub fn sets(
-    config: &Config,
-    family: &str,
-    format: Format,
-) -> Result<String, String> {
+pub fn sets(config: &Config, format: Format) -> Result<String, String> {
     let checker = Checker::listing(config)?;
-    let listed: Vec<CharSet> = checker.declared(family)?;
+    let rules = config.rules()?;
+    let family = rules::resolve("", &rules, &rules::matches).family;
+    let listed: Vec<CharSet> = checker.declared(&family)?;
     Ok(render_sets(format, &listed))
 }
 
@@ -207,8 +204,8 @@ mod tests {
         let Some(root) = fixture("ctrm-sets-fixture", &[]) else {
             return;
         };
-        let listed = sets(&Config::discovered(&root), "text", Format::Human)
-            .unwrap_or_default();
+        let listed =
+            sets(&Config::discovered(&root), HUMAN).unwrap_or_default();
         assert!(listed.contains("caveman"), "{listed}");
         assert!(listed.contains("U+2192"), "{listed}");
     }
@@ -221,8 +218,8 @@ mod tests {
         let Some(root) = fixture("ctrm-sets-declared-fixture", &files) else {
             return;
         };
-        let listed = sets(&Config::discovered(&root), "text", Format::Human)
-            .unwrap_or_default();
+        let listed =
+            sets(&Config::discovered(&root), HUMAN).unwrap_or_default();
         assert!(listed.contains("house U+2261"), "{listed}");
     }
 
@@ -235,7 +232,7 @@ mod tests {
             return;
         };
         let config = Config::discovered(&root);
-        let listed = sets(&config, "text", Format::Human).unwrap_or_default();
+        let listed = sets(&config, HUMAN).unwrap_or_default();
         assert!(listed.contains("ja U+3005"), "{listed}");
         assert!(listed.contains("pt-BR U+"), "{listed}");
         let catalog = config.catalog().unwrap_or_default();
@@ -250,12 +247,36 @@ mod tests {
         let Some(root) = fixture("ctrm-sets-fidelity-fixture", &[]) else {
             return;
         };
-        let text = sets(&Config::discovered(&root), "text", Format::Human)
-            .unwrap_or_default();
-        let emoji = sets(&Config::discovered(&root), "emoji", Format::Human)
-            .unwrap_or_default();
+        let text = sets(&Config::discovered(&root), HUMAN).unwrap_or_default();
+        let emoji =
+            sets(&argued(&root, "--fidelity|emoji"), HUMAN).unwrap_or_default();
         assert!(text.contains("U+2713"), "{text}");
         assert!(emoji.contains("U+2705"), "{emoji}");
         assert_ne!(text, emoji);
+    }
+
+    /// B30: `--fidelity f` IS the rule `* @f`, so the listing cannot tell
+    /// them apart; it used to read the flag and ignore the rule.
+    #[test]
+    fn sets_lists_at_the_family_a_rule_names_as_at_the_flag() {
+        let Some(root) = fixture("ctrm-sets-rule-family-fixture", &[]) else {
+            return;
+        };
+        let flag = sets(&argued(&root, "--fidelity|emoji"), HUMAN);
+        let rule = sets(&argued(&root, "--rule|* @emoji"), HUMAN);
+        assert!(flag.is_ok() && flag == rule, "{flag:?} {rule:?}");
+    }
+
+    /// B30: a family the map's tree does not declare is refused, at the
+    /// argument that named it, rather than resolved as a typo.
+    #[test]
+    fn an_undeclared_family_is_refused() {
+        let Some(root) = fixture("ctrm-sets-bad-family-fixture", &[]) else {
+            return;
+        };
+        let why = argued(&root, "--fidelity|emjoi").validate();
+        let why = why.err().unwrap_or_default();
+        assert!(why.contains("argv[3]") && why.contains("emjoi"), "{why}");
+        assert!(argued(&root, "--rule|* @ascii").validate().is_ok());
     }
 }

@@ -178,9 +178,12 @@ impl Config {
     ///
     /// The first line of any kind that does not parse, at its origin.
     pub fn validate(&self) -> Result<(), String> {
-        self.rules()?;
         self.catalog()?;
-        self.map().map(drop)
+        let map = self.map()?;
+        for rule in self.rules()? {
+            declared(&map, &rule)?;
+        }
+        Ok(())
     }
 
     /// The rules, in precedence order.
@@ -259,6 +262,20 @@ impl Config {
             map = map.layer(&line, &|n| place.origin(n)).map_err(named)?;
         }
         Ok(map)
+    }
+}
+
+/// A rule's family is one the map's family tree declares
+/// (`src/rules:V29`, `src/fix:V27`). An undeclared one used to pass as a
+/// name and resolve to the unlabelled members alone, so `--fidelity
+/// emjoi` was a typo that quietly meant something (B30).
+fn declared(map: &Map, rule: &Rule) -> Result<(), String> {
+    let Some(family) = &rule.family else {
+        return Ok(());
+    };
+    match map.tree().path(family) {
+        Ok(_) => Ok(()),
+        Err(bad) => Err(format!("{}: {bad}", rules::describe(&rule.origin))),
     }
 }
 

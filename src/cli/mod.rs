@@ -25,7 +25,6 @@ mod stats;
 pub use config::{Config, from_argv};
 
 use crate::render::Format;
-use crate::rules::TEXT;
 use args::Args;
 use std::io::Read;
 use std::path::PathBuf;
@@ -224,11 +223,11 @@ fn explained(run: &Run<'_>) -> Outcome {
     })
 }
 
-/// The fidelity a listing is resolved at (`src/charset:V41`), which
-/// `--fidelity` names and `src/rules:V29` defaults to `text`.
+/// `sets` resolves at the family the run's rules give (`src/rules:V29`),
+/// where `--fidelity` is already the rule `* @<f>`: reading the flag here
+/// as well ignored a `--rule '* @emoji'` that meant the same (B30).
 fn listed(run: &Run<'_>) -> Outcome {
-    let family = run.args.value("--fidelity").unwrap_or(TEXT);
-    said(explain::sets(run.config, family, run.format))
+    said(explain::sets(run.config, run.format))
 }
 
 /// `fix` WRITES unless `--check` is given, which is V7's split: the verb

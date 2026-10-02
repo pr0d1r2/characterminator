@@ -33,7 +33,7 @@ V20: ∀ effective rule, map entry, set → origin (`<file>:<line>` | `argv[<n>]
 V21: zero-file run: `--no-files --no-builtin-map --no-builtin-sets` → config from argv only. `ascii` intrinsic (code, ⊥ data) ∴ V1 holds w/ ⊥ file.
 V24: `ascii` = implicit base ∀ rule: effective set = `ascii` ∪ named sets ∴ `*.md caveman` ≡ `*.md ascii+caveman`. explicit `ascii+` stays legal.
 V56: a rule naming ⊥ set (`docs/** !warn`) moves levels ONLY, ⊥ competes for the grant: the grant = last matching rule that NAMES a set, as fidelity = last that names a family (V29). `explain` winner = that rule. a level line that won the grant REJECTED ∵ it narrowed the path back to `ascii` & a line written to RELAX a lint made more chars fail (B5).
-V29: fidelity = family name, default `text`; per rule `@<family>` suffix (`docs/** marks @emoji`); last matching rule naming one wins. `--fidelity <f>` ≡ `--rule '* @<f>'` (V19 order). presets w/ classes grant only resolved family's members ∴ other families compress into it; `src/fix:V6` holds. mix → grant variants explicitly.
+V29: fidelity = family name, default `text`; per rule `@<family>` suffix (`docs/** marks @emoji`); last matching rule naming one wins. `--fidelity <f>` ≡ `--rule '* @<f>'` (V19 order). presets w/ classes grant only resolved family's members ∴ other families compress into it; `src/fix:V6` holds. mix → grant variants explicitly. family ∉ map tree (`src/fix:V27`) → config error, exit 2 ∀ verb (`src/cli:V74`) ∵ a typo resolved to unlabelled members only (B30). `sets` lists at the whole-repo family ∴ both spellings ≡.
 
 V45: DISCOVERED dotfile = `.ctrm`, `.ctrm-sets`, `.ctrm-map` @ the RUN ROOT only (`-C <dir>` | cwd). ⊥ per-dir & ⊥ ancestor walk ∵ a law that ? sit in any ancestor is one ⊥ reader resolves by looking.
 
@@ -56,3 +56,4 @@ T49|x|ARCHIVED to SPEC-ARCHIVE.md|V45,V19
 id|date|cause|fix
 B5|2026-10-01|level-only rule (`*.bat !crlf=allow`) won the grant ∴ narrowed path to `ascii`; the exemption line made CR a violation. via T39 fixtures|V56
 B28|2026-10-02|`explain` printed only the grant winner ∴ `--fidelity emoji` & a level-only `!warn` that `check` applied read as "family none" / "rule none". via release review|V20
+B30|2026-10-02|`sets` read `--fidelity` alone ∴ ignored `--rule '* @emoji'`; an undeclared family (`emjoi`) passed as a name. via release review|V29
