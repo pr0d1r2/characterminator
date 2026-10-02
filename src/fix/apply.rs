@@ -227,6 +227,7 @@ fn run<'a>(
         at: Cursor::start(),
         pass: Pass::default(),
         gap: false,
+        paired: false,
     };
     walk.walk()?;
     Ok(walk.pass)
@@ -246,13 +247,19 @@ struct Run<'a> {
     /// The last thing written was a word ending in a letter or a digit, so
     /// the next thing to open with one is kept apart from it (V51).
     gap: bool,
+    /// The last character kept opened a pair of regional indicators, so
+    /// the next one, if it is one, closes that pair and starts no flag of
+    /// its own (V76): a run pairs from its start, as UAX #29 reads it.
+    paired: bool,
 }
 
 impl Run<'_> {
     fn walk(&mut self) -> Result<(), Error> {
         while let Some(rest) = self.text.get(self.at.byte..) {
             let Some(ch) = rest.chars().next() else { break };
-            match self.matched(rest)? {
+            let found = self.matched(rest)?;
+            self.paired = found.is_none() && !self.paired && regional(ch);
+            match found {
                 Some((source, found)) => self.rewrite(source, ch, found)?,
                 None => self.keep(ch),
             }
@@ -263,6 +270,9 @@ impl Run<'_> {
     /// The span to rewrite here, if any. A zero-length match is refused: it
     /// would leave the cursor where it is.
     fn matched<'b>(&self, rest: &'b str) -> Found<'b> {
+        if self.paired && rest.chars().next().is_some_and(regional) {
+            return Ok(None);
+        }
         let Some(found) = self.map.resolve_at(rest, self.allowed)? else {
             return Ok(None);
         };
@@ -355,6 +365,11 @@ impl Run<'_> {
 /// symbol before a Polish word fuses as badly as before an English one.
 fn joins(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
+}
+
+/// A regional indicator, U+1F1E6 to U+1F1FF: half of a flag (V76).
+fn regional(ch: char) -> bool {
+    ('\u{1F1E6}'..='\u{1F1FF}').contains(&ch)
 }
 
 /// Where the walk is, in the three units `Position` reports.
@@ -900,8 +915,8 @@ mod tests {
             ("1\u{FE0F}\u{20E3}", "1", false),
             ("#\u{FE0F}\u{20E3}", "#", false),
             ("*\u{FE0F}\u{20E3}", "*", false),
-            ("\u{1F1F5}\u{1F1F1}", "PL", true),
-            (ENGLAND, "GB-ENG", true),
+            ("\u{1F1F5}\u{1F1F1}", " PL ", true),
+            (ENGLAND, " GB-ENG ", true),
             (FAMILY, "\u{1F46A}", true),
             (COUPLE, "\u{1F491}", true),
             (KISS, "\u{1F48F}", true),
@@ -939,6 +954,33 @@ mod tests {
                 "\u{1F9D1}",
             ),
         ];
+
+        /// V76, B35: regional indicators pair from the start of their
+        /// run (`XU` then a lone `S`, never `US`), and a flag's code is
+        /// a word, kept off a letter or another code beside it.
+        const FLAGS: [(&str, &str); 5] = [
+            ("\u{1F1FD}\u{1F1FA}\u{1F1F8}", "\u{1F1FD}\u{1F1FA}\u{1F1F8}"),
+            (
+                "\u{1F1FD}\u{1F1FA}\u{1F1FA}\u{1F1F8}",
+                "\u{1F1FD}\u{1F1FA}US",
+            ),
+            ("\u{1F1F5}\u{1F1F1}\u{1F1E9}\u{1F1EA}", "PL DE"),
+            ("A\u{1F1F5}\u{1F1F1}B", "A PL B"),
+            ("x \u{1F1F5}\u{1F1F1}.", "x PL."),
+        ];
+
+        /// Each under `ascii` and under `emoji`: `fix` returns, so V6
+        /// held, the bytes around the flag are as they were, and a second
+        /// fix changes nothing (V5).
+        #[test]
+        fn flags_pair_from_the_run_start_and_stay_apart() {
+            let runs = FLAGS.iter().flat_map(|c| [(c, false), (c, true)]);
+            for ((text, want), grant) in runs {
+                let once = fixed(text, grant);
+                assert_eq!(once, *want, "{text:?}");
+                assert_eq!(fixed(&once, grant), once, "{text:?}");
+            }
+        }
 
         #[test]
         fn holding_hands_lands_on_its_grouping() {

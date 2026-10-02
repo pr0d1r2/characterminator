@@ -91,6 +91,10 @@ map_header() {
 #   tag     U+1F3F4 + tag letters + U+E007F -> `GB-ENG`, `GB-SCT`, `GB-WLS`
 #   zwj     the curated single code point below, else the first code point
 #
+# A flag's code is a `word` entry (`src/fix:V51`, V76): it is letters, so
+# it is kept apart by a space from a letter, a digit or another flag's
+# code beside it (`A` flag-PL `B` -> `A PL B`), never fused (`APLB`).
+#
 # THE CURATED TABLE, by the upstream name's prefix. UTS #51 revision 31
 # (Emoji 18.0), section 2.6 Multi-Person Groupings, lists the single code
 # points whose ZWJ sequences make them specific by gender and by skin
@@ -141,10 +145,10 @@ map() {
     /^#/ || NF < 2 { next }
     $1 == "presentation" { next }
     $1 == "keycap" { split($2, p, "+"); print $2, "U+" p[2]; next }
-    $1 == "flag" { print $2, letters($2, hex("1F1E6")); next }
+    $1 == "flag" { print "word", $2, letters($2, hex("1F1E6")); next }
     $1 == "tag" {
       code = letters($2, hex("E0061"))
-      print $2, substr(code, 1, 2) "-" substr(code, 3); next
+      print "word", $2, substr(code, 1, 2) "-" substr(code, 3); next
     }
     $1 == "zwj" {
       name = $0; sub(/^[^ ]+ [^ ]+ /, "", name)
