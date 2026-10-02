@@ -38,12 +38,26 @@ fn violation(item: &Violation<'_>) -> String {
     let at = item.finding.hit.position;
     format!(
         "{}:{}:{} {} {}",
-        item.path,
+        shown(item.path),
         at.line,
         at.column,
         codepoint(item.finding.hit.character),
         verdict(item)
     )
+}
+
+/// A path as a terminal may safely print it (V11): every character outside
+/// printable ASCII is spelled `<U+XXXX>`, as `src/cli:V53` spells a guard
+/// reason. A tracked file can be named `e<ESC>[2Jx<U+202E>y.md`, and a
+/// report that echoed it raw would clear the screen or reverse the line
+/// it sits on (B31). The json form needs none of this: it escapes.
+fn shown(path: &str) -> String {
+    path.chars()
+        .map(|c| match c {
+            ' '..='~' => String::from(c),
+            _ => format!("<{}>", codepoint(c)),
+        })
+        .collect()
 }
 
 /// The last word of the line: the set the character was judged against,
@@ -72,9 +86,9 @@ fn unread_lines(items: &[Skipped<'_>]) -> Vec<String> {
 fn unread(item: &Skipped<'_>) -> String {
     match item.reason {
         Unreadable::NotUtf8 { byte } => {
-            format!("{}: invalid UTF-8 at byte {byte}", item.path)
+            format!("{}: invalid UTF-8 at byte {byte}", shown(item.path))
         }
-        Unreadable::Binary => format!("{}: skipped, binary", item.path),
+        Unreadable::Binary => format!("{}: skipped, binary", shown(item.path)),
     }
 }
 
@@ -90,7 +104,7 @@ fn change(item: &Change<'_>) -> String {
     let at = item.rewrite.hit.position;
     format!(
         "{}:{}:{} {} -> {:?}",
-        item.path,
+        shown(item.path),
         at.line,
         at.column,
         codepoint(item.rewrite.hit.character),
@@ -107,7 +121,7 @@ pub fn stats(files: &[FileStats<'_>]) -> String {
 fn row(item: &FileStats<'_>) -> String {
     format!(
         "{} outside {} bytes {} tokens {} -> {}",
-        item.path,
+        shown(item.path),
         item.outside,
         item.bytes,
         count(item.now),
@@ -128,7 +142,10 @@ fn count(value: Count) -> String {
 /// `explain`: the effective set, and the rule that won.
 pub fn explain(item: &Explanation<'_>) -> String {
     let mut lines = vec![
-        format!("path {}", item.path.unwrap_or("(whole repo)")),
+        format!(
+            "path {}",
+            item.path.map_or_else(|| "(whole repo)".into(), shown)
+        ),
         format!("set {}", item.set.name),
     ];
     match item.rule {
@@ -191,7 +208,9 @@ fn levels(items: &[LevelChoice]) -> String {
 /// the same line said `.ctrm:2`, which is exactly the drift V20 forbids.
 fn origin(item: &Origin) -> String {
     match item {
-        Origin::File { path, line } => format!("{}:{line}", path.display()),
+        Origin::File { path, line } => {
+            format!("{}:{line}", shown(&path.to_string_lossy()))
+        }
         Origin::Argument { index } => format!("argv[{index}]"),
         Origin::Builtin { line } => format!("builtin:{line}"),
     }
@@ -332,6 +351,20 @@ mod tests {
     #[test]
     fn a_violation_is_path_line_column_codepoint_then_set() {
         assert_eq!(check(&[em_dash()], &[]), "src/a.rs:2:5 U+2014 ascii");
+    }
+
+    /// B31: a file name carrying an escape sequence and a bidi override
+    /// reaches the terminal spelled out, on every line that names a path.
+    #[test]
+    fn a_path_never_carries_a_control_or_bidi_character_out() {
+        let path = "e\u{1b}[2Jx\u{202e}y.md";
+        let safe = "e<U+001B>[2Jx<U+202E>y.md";
+        let mut item = em_dash();
+        item.path = path;
+        let said = check(&[item], &[skip(path)]);
+        let want = format!("{safe}:2:5 U+2014 ascii\n{safe}: skipped, binary");
+        assert_eq!(said, want);
+        assert_eq!(super::shown("za\u{17c}.md"), "za<U+017C>.md");
     }
 
     /// A pedantic finding names its LINT where the set would go: the set
