@@ -37,9 +37,9 @@ use crate::render::json_string;
 /// What `guard` is asked about, with the harness spelled out of it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Call {
-    /// Before a tool runs on a file: judge the file first. Any tool naming
-    /// `tool_input.file_path` qualifies; `Read` is the one a settings
-    /// matcher normally sends.
+    /// Before a `Read` of a file: judge the file first. ONLY `Read`
+    /// (`src/cli:V35`, "before file read"): an `Edit` or a `Write` names a
+    /// `file_path` too, and denying it as "Read blocked" would be wrong.
     Read { cwd: Option<String>, path: String },
     /// After a tool ran: every string in its output, each labelled with
     /// where it sat, because the output's shape varies by tool and a
@@ -96,9 +96,14 @@ pub(super) fn call(stdin: &str) -> Result<Call, String> {
     }
 }
 
-/// A call that names no file -- `Bash`, say -- has nothing to read, so
-/// nothing to judge before it runs.
+/// A call that reads no file -- `Bash`, say, or an `Edit` -- has nothing
+/// to judge before it runs. The tool NAME decides, not the presence of a
+/// `file_path`: a matcher wider than `Read` must not turn every edit of a
+/// hazard file into a denied read.
 fn before(payload: &Value) -> Call {
+    if text_of(payload, "tool_name").as_deref() != Some("Read") {
+        return Call::Other;
+    }
     let input = payload.get("tool_input");
     let path = input.and_then(|i| i.get("file_path")).and_then(Value::text);
     path.map_or(Call::Other, |path| Call::Read {
@@ -191,6 +196,19 @@ mod tests {
         let bash = r#"{"hook_event_name":"PreToolUse","tool_name":"Bash",
             "tool_input":{"command":"ls"}}"#;
         assert_eq!(mapped(bash), Call::Other);
+    }
+
+    /// V35 says "before file read": an `Edit` or a `Write` names a
+    /// `file_path` and is still no read, so it passes unjudged.
+    #[test]
+    fn only_a_read_is_judged_before_it_runs() {
+        for tool in ["Edit", "Write", "MultiEdit", "NotebookEdit"] {
+            let stdin = format!(
+                r#"{{"hook_event_name":"PreToolUse","tool_name":"{tool}",
+                "tool_input":{{"file_path":"/repo/a.rs"}}}}"#
+            );
+            assert_eq!(mapped(&stdin), Call::Other, "{tool}");
+        }
     }
 
     #[test]
