@@ -257,7 +257,7 @@ plus **one** of these.
 | `box` | box drawing and geometric shapes |
 | `emoji` | emoji as single code points |
 | `cr` | carriage return, alone |
-| `pl`, `ja`, `pt-BR`, `sr-Latn`, ... | one locale's letters, from CLDR, both cases: every locale CLDR ships (766, CJK, Indic and RTL included), named by its code; a variant equal to its parent is an alias (`pt-BR` is `pt`). `<code>-aux` adds its loan letters; a locale whose letters are all ASCII (`en`) declares none. Read only when a rule names one, and listed by `ctrm sets` |
+| `pl`, `ja`, `pt-BR`, `sr-Latn`, ... | one locale's letters, from CLDR, both cases: every locale CLDR ships (766, CJK, Indic and RTL included), named by its code; a variant equal to its parent is an alias (`pt-BR` is `pt`). `<code>-aux` adds its loan letters; a locale whose letters are all ASCII (`en`) is `ascii`, and its `-aux` alone adds anything. Read only when a rule names one, and listed by `ctrm sets` |
 | `latin1`, `latin-ext`, `cyrillic`, `greek`, `arabic` | coarse blocks |
 | `persian`, `hindi` | a script whose spelling needs a zero width joiner: naming one is what lets that joiner through, and nothing else |
 | `any` | everything, for a file you do not own -- hazards still fire |

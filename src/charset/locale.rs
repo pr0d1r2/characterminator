@@ -84,7 +84,7 @@ pub fn adopt_all(catalog: &mut SetCatalog) -> Result<(), ParseError> {
 #[cfg(test)]
 mod tests {
     use super::{LOCALES, adopt, adopt_all};
-    use crate::charset::builtin::{SETS, catalog};
+    use crate::charset::builtin::{SETS, ascii, catalog};
     use crate::charset::{CharSet, SetCatalog, parse_line};
 
     const TEXT: &str = "text";
@@ -191,16 +191,33 @@ mod tests {
         assert!(!locale("pl").contains('\u{00E4}'));
     }
 
+    /// Every line resolves, and grants either letters beyond ASCII or,
+    /// for an all-ASCII locale, exactly `ascii` (V59).
     #[test]
-    fn every_locale_resolves_grants_letters_and_no_ascii() {
+    fn every_locale_resolves_to_letters_or_to_ascii() {
         let sets = everything();
         let names = locale_names();
-        assert_eq!(names.len(), 1563);
+        assert_eq!(names.len(), 1831);
         for name in names {
             let set = resolved(&sets, &name);
-            assert!(!set.is_empty(), "{name} grants nothing");
-            assert!(set.ranges.iter().all(|r| r.start > '\u{7F}'), "{name}");
+            let beyond = set.ranges.iter().all(|r| r.start > '\u{7F}');
+            let plain = set.ranges == ascii().ranges;
+            assert!(!set.is_empty() && (beyond || plain), "{name}");
         }
+    }
+
+    /// B32: an all-ASCII locale, its regional variants and its CLDR
+    /// default-content codes resolve, and grant ASCII and nothing more.
+    const PLAIN: [&str; 9] = [
+        "en", "en-GB", "en-US", "en-150", "id", "ms", "ceb", "ceb-PH", "id-ID",
+    ];
+
+    #[test]
+    fn an_all_ascii_locale_resolves_to_ascii() {
+        for name in PLAIN {
+            assert_eq!(locale(name).ranges, ascii().ranges, "{name}");
+        }
+        assert!(locale("en-aux").contains('\u{00E9}'));
     }
 
     /// The generator subtracts the hazard file (V59); this says it did,

@@ -71,8 +71,10 @@ header() {
 # (\`a-z\`) and an escape (\`\\uXXXX\`) are expanded. A multi-character
 # exemplar (\`{ch}\`, \`{a\` + combining circumflex \`}\`) is granted as its
 # code points one by one: a set holds code points, and a sequence's
-# combining mark is what a decomposed spelling of it needs. A locale with
-# nothing left after the subtraction declares no set.
+# combining mark is what a decomposed spelling of it needs. A locale
+# whose letters are all ASCII (\`en\`, \`id\`) is ONE alias line naming
+# \`ascii\` (\`en ascii\`), so its code resolves and grants ASCII only. An
+# \`-aux\` with nothing left after the subtraction declares no set.
 #
 # A regional or script variant whose set equals its CLDR parent's is ONE
 # alias line naming the parent (\`pt-BR pt\`), so a variant resolves and
@@ -145,12 +147,15 @@ def points: ltrimstr("[") | rtrimstr("]")
     | if . == "und" or $data[.] then . else parent end;
   def line($code; $part; $suffix):
     $data[$code][$part] as $own | ($code | parent) as $up
-    | if $own == [] then empty
+    | if $own == [] and $part == "aux" then empty
       elif $up != "und" and $data[$up][$part] == $own
       then "\($code)\($suffix) \($up)\($suffix)"
+      elif $own == [] then "\($code) ascii"
       else "\($code)\($suffix) \($own | render)" end;
   def alias($code; $part; $suffix): ($code | parent) as $up
-    | if $up == "und" or $data[$up][$part] == [] then empty
+    | if $up == "und" and $part == "main" then "\($code) ascii"
+      elif $up == "und" or ($part == "aux" and $data[$up][$part] == [])
+      then empty
       else "\($code)\($suffix) \($up)\($suffix)" end;
   ($order[] | .key | line(.; "main"; ""), line(.; "aux"; "-aux")),
   ($dc[0].defaultContent[] | select($data[.] | not)
