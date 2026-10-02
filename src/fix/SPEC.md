@@ -24,7 +24,7 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
 ## §V INVARIANTS
 
-V4: `fix` replaces only via declared transliteration map. char w/o mapping → kept & reported, exit 1. ⊥ silent drop.
+V4: `fix` replaces only via declared transliteration map. char w/o mapping → kept & reported as `check` row (json `unmapped`), exit 1. ⊥ silent drop.
 V5: `fix` idempotent: `fix(fix(x)) == fix(x)`, property-tested.
 V6: `fix` touches ⊥ allowed char: bytes outside violations ! identical pre/post, asserted before write.
 V26: typography = builtin map targets, ⊥ default grant (`src/charset:R4`: 45.1% of non-ASCII files need no grant after map): `—`→`--` · `–` `−`→`-` · curly quotes → straight · `…`→`...` · `«»`→`"` · NBSP → space · ZWSP & BOM → delete. `typography` set SHIPS ∴ prose that wants real typography grants it & `fix` leaves those chars (V6). per-locale `typography-<code>` from CLDR punctuation (`src/charset:R6`) DEFERRED til `src/charset:T32` vendors CLDR.

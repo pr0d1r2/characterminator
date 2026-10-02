@@ -85,13 +85,23 @@ fn reason_fields(reason: Unreadable) -> Vec<String> {
     }
 }
 
-/// `fix`: every rewrite, and every file that could not be read.
-pub fn fix(items: &[Change<'_>], skipped: &[Skipped<'_>]) -> String {
+/// `fix`: every rewrite, every character no map entry covers (`src/fix:V4`)
+/// in `check`'s violation shape, and every file that could not be read.
+pub fn fix(
+    items: &[Change<'_>],
+    unmapped: &[Violation<'_>],
+    skipped: &[Skipped<'_>],
+) -> String {
     let rewrites: Vec<String> =
         order::changes(items).into_iter().map(change).collect();
+    let kept: Vec<String> = order::violations(unmapped)
+        .into_iter()
+        .map(violation)
+        .collect();
     object(&[
         field("verb", &string("fix")),
         field("rewrites", &array(&rewrites)),
+        field("unmapped", &array(&kept)),
         field("skipped", &unread(skipped)),
     ])
 }
@@ -433,9 +443,22 @@ mod tests {
         let expected = concat!(
             r#"{"verb":"fix","rewrites":[{"path":"a.rs","line":2,"#,
             r#""column":5,"byte":7,"codepoint":"U+2014","#,
-            r#""character":"\u2014","to":"--"}],"skipped":[]}"#
+            r#""character":"\u2014","to":"--"}],"unmapped":[],"skipped":[]}"#
         );
-        assert_eq!(fix(&[change], &[]), expected);
+        assert_eq!(fix(&[change], &[], &[]), expected);
+    }
+
+    /// B23: what no map entry covers is in the document, as `check`'s
+    /// violation, so a caller learns WHY `fix` exited 1.
+    #[test]
+    fn a_fix_document_carries_the_unmapped_characters() {
+        let expected = concat!(
+            r#"{"verb":"fix","rewrites":[],"unmapped":[{"path":"src/a.rs","#,
+            r#""line":2,"column":5,"byte":7,"codepoint":"U+2014","#,
+            r#""character":"\u2014","set":"ascii","lint":"charset","#,
+            r#""level":"deny"}],"skipped":[]}"#
+        );
+        assert_eq!(fix(&[], &[em_dash()], &[]), expected);
     }
 
     #[test]

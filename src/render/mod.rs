@@ -166,16 +166,18 @@ pub fn check(
     }
 }
 
-/// `fix` and `fix --check`: the rewrites, then the files that could not be
-/// read.
+/// `fix` and `fix --check`: the rewrites, then the characters no map entry
+/// covers (`src/fix:V4`), in `check`'s own row shape, then the files that
+/// could not be read.
 pub fn fix(
     format: Format,
     changes: &[Change<'_>],
+    unmapped: &[Violation<'_>],
     skipped: &[Skipped<'_>],
 ) -> String {
     match format {
-        Format::Human => human::fix(changes, skipped),
-        Format::Json | Format::Sarif => json::fix(changes, skipped),
+        Format::Human => human::fix(changes, unmapped, skipped),
+        Format::Json | Format::Sarif => json::fix(changes, unmapped, skipped),
     }
 }
 

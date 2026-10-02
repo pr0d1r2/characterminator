@@ -51,4 +51,5 @@ B17|2026-10-02|pre-read PASSED a file ⊥ text ∴ U+202E + a `\xff` byte read i
 B18|2026-10-02|PostToolUse nested > 256 deep = parse error → exit 1, ⊥ block ∴ a hazard in deep MCP output passed. via release review|V67
 B21|2026-10-02|`fix` & `stats` asked UTF-8 only, ⊥ `src/scan` binary test ∴ NUL-laden blob `check` skipped → rewritten by `fix`, counted by `stats`. via review|`src/scan:V8`
 B22|2026-10-02|`check` exit = findings only, skips ignored ∴ invalid UTF-8 named & exit 0, ∀ format. now: not-UTF-8 skip → 1, binary skip → 0. via review|`src/scan:V8`
+B23|2026-10-02|`fix` counted unmapped chars, rendered ⊥ ∴ exit 1 w/ ⊥ output. now per-path hits → `check` rows + json `unmapped`. via review|`src/fix:V4`
 B29|2026-10-02|map parsed only by `fix` & `stats` ∴ `check --map 'U+ZZZZ x y z'` & a 2-line `--map` ran as if the config were valid. via release review|V74

@@ -92,10 +92,17 @@ fn unread(item: &Skipped<'_>) -> String {
     }
 }
 
-/// `fix`: what was rewritten, and what it became.
-pub fn fix(items: &[Change<'_>], skipped: &[Skipped<'_>]) -> String {
+/// `fix`: what was rewritten, and what it became; then what no map entry
+/// covers, as `check` would print it, since that is what a reader goes to
+/// look at next (`src/fix:V4`).
+pub fn fix(
+    items: &[Change<'_>],
+    unmapped: &[Violation<'_>],
+    skipped: &[Skipped<'_>],
+) -> String {
     let mut lines: Vec<String> =
         order::changes(items).into_iter().map(change).collect();
+    lines.extend(order::violations(unmapped).into_iter().map(violation));
     lines.extend(unread_lines(skipped));
     lines.join("\n")
 }
@@ -424,7 +431,26 @@ mod tests {
             path: "a.rs",
             rewrite,
         };
-        assert_eq!(fix(&[change], &[]), "a.rs:2:5 U+2014 -> \"--\"");
+        assert_eq!(fix(&[change], &[], &[]), "a.rs:2:5 U+2014 -> \"--\"");
+    }
+
+    /// B23: a character `fix` could not rewrite is printed in `check`'s
+    /// row grammar, after the rewrites.
+    #[test]
+    fn an_unmapped_character_is_a_check_row() {
+        let rewrite = Rewrite {
+            hit: hit(),
+            to: String::from("--"),
+        };
+        let change = Change {
+            path: "a.rs",
+            rewrite,
+        };
+        let said = fix(&[change], &[em_dash()], &[]);
+        assert_eq!(
+            said,
+            "a.rs:2:5 U+2014 -> \"--\"\nsrc/a.rs:2:5 U+2014 ascii"
+        );
     }
 
     #[test]

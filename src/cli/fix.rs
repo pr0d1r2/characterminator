@@ -12,10 +12,14 @@
 use super::check::Checker;
 use super::config::Config;
 use crate::fix::{self as engine, Map};
-use crate::render::{self, Change, Format, Skipped};
-use crate::scan::{Unreadable, decode};
+use crate::lint::{Finding, Level, Lint};
+use crate::render::{self, Change, Format, Skipped, Violation};
+use crate::scan::{Hit, Unreadable, decode};
 use crate::tokens;
 use std::path::Path;
+
+/// The lint an unmapped character is named under: `check`'s, verbatim.
+const OUTSIDE: &str = "outside-set";
 
 /// What a run of `fix` produced.
 pub struct Report {
@@ -42,9 +46,18 @@ struct Found {
     rows: Vec<Row>,
     skips: Vec<Skip>,
     /// Characters that are outside their set and that no map entry
-    /// covers. V4: kept as they are, reported, and the run exits 1 --
-    /// a silent drop is the one thing `fix` may never do.
-    unmapped: usize,
+    /// covers. V4: kept as they are, REPORTED, and the run exits 1 -- a
+    /// silent drop is the one thing `fix` may never do, and an exit 1
+    /// that names nothing drops the reason instead (B23).
+    unmapped: Vec<Kept>,
+}
+
+/// A character `fix` left in place, owned for the borrowed render row:
+/// the row `check` would print for it, so the two verbs name it alike.
+struct Kept {
+    path: String,
+    set: String,
+    finding: Finding,
 }
 
 /// Run `fix` over a repository.
@@ -64,11 +77,7 @@ pub fn run(
     write: bool,
 ) -> Result<Report, String> {
     let root = &config.root;
-    let pass = Pass {
-        checker: Checker::configured(config)?,
-        map: config.map()?,
-        write,
-    };
+    let pass = Pass::new(config, write)?;
     let files = tokens::select(root, paths)
         .map_err(|bad| format!("{}: {}", bad.path.display(), bad.reason))?;
     let mut found = Found::default();
@@ -84,10 +93,22 @@ pub fn run(
 struct Pass {
     checker: Checker,
     map: Map,
+    /// The lint an unmapped character is reported under, as in `check`.
+    outside: Lint,
     write: bool,
 }
 
 impl Pass {
+    fn new(config: &Config, write: bool) -> Result<Self, String> {
+        Ok(Self {
+            checker: Checker::configured(config)?,
+            map: config.map()?,
+            outside: Lint::named(OUTSIDE)
+                .ok_or_else(|| format!("no `{OUTSIDE}` lint"))?,
+            write,
+        })
+    }
+
     /// One file: judge it, rewrite it, write it back when asked.
     fn visit(
         &self,
@@ -105,8 +126,25 @@ impl Pass {
             std::fs::write(full, &fixed.output)
                 .map_err(|e| format!("{}: {e}", full.display()))?;
         }
+        let kept = self.kept(&shown, &set.name, &fixed.report.unmapped);
+        found.unmapped.extend(kept);
         absorb(found, shown, fixed.report);
         Ok(())
+    }
+
+    /// Every unmapped character, as the `outside-set` row `check` gives
+    /// it, at the default `deny`: `fix` judges sets, not levels.
+    fn kept(&self, path: &str, set: &str, hits: &[Hit]) -> Vec<Kept> {
+        let row = |hit: &Hit| Kept {
+            path: path.to_owned(),
+            set: set.to_owned(),
+            finding: Finding {
+                hit: *hit,
+                lint: self.outside,
+                level: Level::Deny,
+            },
+        };
+        hits.iter().map(row).collect()
     }
 }
 
@@ -137,7 +175,6 @@ fn text_of(
 }
 
 fn absorb(found: &mut Found, path: String, report: engine::Report) {
-    found.unmapped = found.unmapped.saturating_add(report.unmapped.len());
     for rewrite in report.rewrites {
         found.rows.push(Row {
             path: path.clone(),
@@ -156,9 +193,10 @@ fn absorb(found: &mut Found, path: String, report: engine::Report) {
 fn report_of(found: &Found, format: Format) -> Report {
     let changes: Vec<Change<'_>> = found.rows.iter().map(change).collect();
     let skipped: Vec<Skipped<'_>> = found.skips.iter().map(skip).collect();
-    let drifted = !found.rows.is_empty() || found.unmapped > 0;
+    let kept: Vec<Violation<'_>> = found.unmapped.iter().map(kept).collect();
+    let drifted = !found.rows.is_empty() || !kept.is_empty();
     Report {
-        text: render::fix(format, &changes, &skipped),
+        text: render::fix(format, &changes, &kept, &skipped),
         code: u8::from(drifted),
     }
 }
@@ -167,6 +205,14 @@ fn change(row: &Row) -> Change<'_> {
     Change {
         path: &row.path,
         rewrite: row.rewrite.clone(),
+    }
+}
+
+fn kept(held: &Kept) -> Violation<'_> {
+    Violation {
+        path: &held.path,
+        finding: held.finding.clone(),
+        set: &held.set,
     }
 }
 
@@ -267,6 +313,8 @@ mod tests {
         let (text, code) = ran(&root, true);
         assert_eq!(read(&root), "a \u{2261} b\n", "{text}");
         assert_eq!(code, 1, "{text}");
+        // B23: and NAMED, in `check`'s row grammar, so exit 1 says why.
+        assert_eq!(text, "notes.md:1:3 U+2261 ascii");
     }
 
     /// B21: a file `check` skips as binary is skipped by `fix` too, and
