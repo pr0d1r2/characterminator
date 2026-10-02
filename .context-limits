@@ -101,7 +101,10 @@ src/rules/SPEC.md    1460
 # ~260 tokens to ~200 before this moved, and compaction ran first: `mth
 # archive` folded the finished T39, worth 65 tokens against the ~195
 # needed. 2110 is ~12% over the measured 1883. The chain stays under 4010.
-src/lint/SPEC.md     2110
+# 2110 -> 2440: B15 (VS16 in emoji sequences) and its V63 clause, the
+# node's first bug row since 2A. Nothing left to archive. 2440 is ~12% over
+# the measured 2186.
+src/lint/SPEC.md     2440
 # RAISED 740 -> 860, reviewed. The node gained a task row for the `fix`
 # verbs, which had NO row at all: the root spec's interface section named
 # `ctrm fix`, `src/fix` built the engine under T10, and nothing in any §T
