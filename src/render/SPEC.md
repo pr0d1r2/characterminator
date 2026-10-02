@@ -26,6 +26,6 @@ V50: `check --format sarif` → SARIF 2.1.0 log (code scanning). ∀ violation =
 ## §T TASKS
 
 id|status|task|cites
-T9|x|`--format json` ∀ verbs|V11
-T43|x|json carries a rule's `default_level` ∴ `explain` json ⊥ silent on it|V11
-T52|x|`--format sarif` for `check`: renderer + cli flag, whole-document tests|V50,`src/lint:V36`
+T9|x|ARCHIVED to SPEC-ARCHIVE.md|V11
+T43|x|ARCHIVED to SPEC-ARCHIVE.md|V11
+T52|x|ARCHIVED to SPEC-ARCHIVE.md|V50,`src/lint:V36`
