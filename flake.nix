@@ -149,6 +149,9 @@
             pkgs.clippy
             pkgs.rustfmt
             pkgs.git
+            # `src/charset/cldr-letters.sh` reads CLDR's JSON with it; pinned
+            # here so a regeneration is byte-identical on every machine.
+            pkgs.jq
             # The gate runner; the ops it runs live in `hk.pkl`. From the
             # nix-hk overlay rather than nixpkgs, whose hk trails the
             # releases `hk.pkl` is written against.
