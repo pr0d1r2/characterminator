@@ -89,7 +89,16 @@ src/rules/SPEC.md    1460
 # rule was cut from ~330 tokens to ~230 before this number moved, and
 # compaction ran first: `mth archive` folded T35, worth 40 tokens against
 # the ~180 needed. 1750 is ~12% over the measured 1563.
-src/lint/SPEC.md     1750
+#
+# 1750 -> 2110: T39's other four lints read Unicode's tables, and the node
+# gains V58 -- the one file that calls the Unicode crates, which character
+# each of the four points at (a finding is still one character in the
+# file), and where they sit in the one-claim order -- plus T58, which
+# carries `locale-literal` out of T39 so T39 can close. V58 was cut from
+# ~260 tokens to ~200 before this moved, and compaction ran first: `mth
+# archive` folded the finished T39, worth 65 tokens against the ~195
+# needed. 2110 is ~12% over the measured 1883. The chain stays under 4010.
+src/lint/SPEC.md     2110
 # RAISED 740 -> 860, reviewed. The node gained a task row for the `fix`
 # verbs, which had NO row at all: the root spec's interface section named
 # `ctrm fix`, `src/fix` built the engine under T10, and nothing in any §T
