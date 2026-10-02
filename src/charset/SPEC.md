@@ -32,6 +32,7 @@ R3|caveman usage|Rust: 180 fit extended `caveman`, 123 fit FORMAT.md list ∴ mi
 R4|fleet extension|227 repos, 73,114 text files: 95.1% pure ASCII. of 3,604 non-ASCII: typography map alone 45.1%; +1 preset → 84.9%; +2 → 89.2%. excl `.nix` (60% of files, 1 repo = 89% of its non-ASCII): 84.1% / 90.0%|fleet scan 2026-09-12, snapshots excluded, repos anonymous
 R5|uncovered & pairs|Rust: `Σ` `≡` `⟺` `≪` `⊇` `⋃`, superscripts, CJK (wenyan-style caveman). fleet: `©` `®` `™`, Cyrillic, Arabic, `−` U+2212. top pair both corpora: `caveman`+`box` (Rust 8, fleet 42)|R1 scan + R4 scan
 R6|CLDR letters|766 locales in `cldr-misc-full`. `exemplarCharacters` = letters in normal use (pl: 32, 9 non-ASCII); `auxiliary` = loan letters; `punctuation` incl. locale quotes (pl `„”`). Unicode License v3|github.com/unicode-org/cldr-json
+R15|CLDR full cost|`locales.ctrm-sets` 12,876 → 176,760 B: 1,563 lines = 481 sets + 1,082 alias lines (766 locales + default-content codes). release binary 7,212,864 → 7,364,064 B (+151,200, +2.1%). `ctrm check` on this repo, 5 rounds × 30 runs: before 19.7–23.8 ms/run, after 20.4–23.2 ∴ delta within noise: lazy parse (V64) costs a run naming ⊥ locale nothing measurable|2026-10-02, macOS arm64, release build, loop timer (hyperfine ∉ dev shell)
 
 ## §V INVARIANTS
 
@@ -54,9 +55,9 @@ T5|x|ARCHIVED to SPEC-ARCHIVE.md|V3,`.:I.file`
 T22|x|ARCHIVED to SPEC-ARCHIVE.md|V22,`.:V13`
 T23|x|ARCHIVED to SPEC-ARCHIVE.md|V22,V23
 T25|x|ARCHIVED to SPEC-ARCHIVE.md|V25
-T32|~|vendor CLDR exemplars; generator → `<code>` & `<code>-aux` preset data files; license notice. done: generator + 30 Latin/Cyrillic/Greek locales (EU official − `en`, + `cy is nb ru sr tr uk`). open: CJK & remaining locales (option A: sets of 1000s)|V30,V22,V59
+T32|x|ARCHIVED to SPEC-ARCHIVE.md|V30,V22,V59
 T46|x|ARCHIVED to SPEC-ARCHIVE.md|V41,`src/rules:V29`
-T60|.|1A: generator: ranges, escapes, parent & script aliases; ∀ `cldr-misc-full` locale incl CJK; lazy locale parse; R row w/ size & time delta; flip T32 → x|V61,V59,V30
+T60|x|ARCHIVED to SPEC-ARCHIVE.md|V61,V59,V30
 
 ## §B BUGS
 

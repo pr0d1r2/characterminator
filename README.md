@@ -257,7 +257,7 @@ plus **one** of these.
 | `box` | box drawing and geometric shapes |
 | `emoji` | emoji as single code points |
 | `cr` | carriage return, alone |
-| `pl`, `de`, `fr`, `ru`, `el`, ... | one language's letters, from CLDR, both cases: `bg cs cy da de el es et fi fr ga hr hu is it lt lv mt nb nl pl pt ro ru sk sl sr sv tr uk`; `<code>-aux` adds its loan letters (none for `hr`, `is`, `mt`) |
+| `pl`, `ja`, `pt-BR`, `sr-Latn`, ... | one locale's letters, from CLDR, both cases: every locale CLDR ships (766, CJK, Indic and RTL included), named by its code; a variant equal to its parent is an alias (`pt-BR` is `pt`). `<code>-aux` adds its loan letters; a locale whose letters are all ASCII (`en`) declares none. Read only when a rule names one, and listed by `ctrm sets` |
 | `latin1`, `latin-ext`, `cyrillic`, `greek`, `arabic` | coarse blocks |
 | `persian`, `hindi` | a script whose spelling needs a zero width joiner: naming one is what lets that joiner through, and nothing else |
 | `any` | everything, for a file you do not own -- hazards still fire |
@@ -465,8 +465,6 @@ list goes stale and that one does not.
 - **The `hazard` exemption for emoji sequences.** A zero width joiner
   inside a declared emoji sequence is meant to pass; sequences arrive with
   emoji sequence compression, so until then every joiner is reported.
-- **Locale letter presets** ship for 30 European languages; CJK and the
-  rest of CLDR's locales are not generated yet.
 - **Emoji ZWJ sequences, keycaps and flags** need data vendored first.
   Presentation selectors and skin tones already compress: the builtin map
   deletes them.
