@@ -16,7 +16,7 @@ use crate::lint::{Finding, Level, Lint};
 use crate::render::{self, Change, Format, Skipped, Violation};
 use crate::scan::{Hit, Unreadable, decode};
 use crate::tokens;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// The lint an unmapped character is named under: `check`'s, verbatim.
 const OUTSIDE: &str = "outside-set";
@@ -50,6 +50,10 @@ struct Found {
     /// silent drop is the one thing `fix` may never do, and an exit 1
     /// that names nothing drops the reason instead (B23).
     unmapped: Vec<Kept>,
+    /// What a bare `fix` will write, held until EVERY file has been judged
+    /// (V72): a refusal or a read error on the tenth file must not leave
+    /// the first nine rewritten behind a run that reports only the error.
+    pending: Vec<(PathBuf, String)>,
 }
 
 /// A character `fix` left in place, owned for the borrowed render row:
@@ -85,7 +89,18 @@ pub fn run(
         let shown = super::check::shown_path(root, full);
         pass.visit(full, shown, &mut found)?;
     }
+    written(&found.pending)?;
     Ok(report_of(&found, format))
+}
+
+/// The second phase (V72): every file was judged and none refused, so
+/// the rewrites go to disk.
+fn written(pending: &[(PathBuf, String)]) -> Result<(), String> {
+    for (full, text) in pending {
+        std::fs::write(full, text)
+            .map_err(|e| format!("{}: {e}", full.display()))?;
+    }
+    Ok(())
 }
 
 /// What one run holds for every file it visits, so a per-file call takes
@@ -109,7 +124,7 @@ impl Pass {
         })
     }
 
-    /// One file: judge it, rewrite it, write it back when asked.
+    /// One file: judge it, rewrite it, queue the write when asked.
     fn visit(
         &self,
         full: &Path,
@@ -123,8 +138,7 @@ impl Pass {
         let fixed = engine::fix(&text, &self.map, &|point| set.contains(point))
             .map_err(|bad| format!("{shown}: {bad}"))?;
         if self.write && fixed.output != text {
-            std::fs::write(full, &fixed.output)
-                .map_err(|e| format!("{}: {e}", full.display()))?;
+            found.pending.push((full.to_owned(), fixed.output));
         }
         let kept = self.kept(&shown, &set.name, &fixed.report.unmapped);
         found.unmapped.extend(kept);
@@ -331,6 +345,34 @@ mod tests {
         assert_eq!(read(&root), blob, "{text}");
         assert_eq!(text, "notes.md: skipped, binary");
         assert_eq!(code, 0, "{text}");
+    }
+
+    /// V72: a run that fails on a later file writes NOTHING, not the files
+    /// it judged before the failure (B25). The failure here is a file the
+    /// run cannot read; as root it can, and then there is no failure.
+    #[cfg(unix)]
+    #[test]
+    fn a_failed_run_writes_no_file_at_all() {
+        let before = "a \u{2014} b\n";
+        let files = [("notes.md", before), ("zz.md", "x\n")];
+        let Some(root) = fixture("ctrm-fix-two-phase", &files) else {
+            return;
+        };
+        let asked = ["notes.md".to_owned(), "zz.md".to_owned()];
+        let config = Config::discovered(&root);
+        mode(&root.join("zz.md"), 0o000);
+        let failed = run(&config, &asked, Format::Human, true).is_err();
+        mode(&root.join("zz.md"), 0o644);
+        if failed {
+            assert_eq!(read(&root), before);
+        }
+    }
+
+    #[cfg(unix)]
+    fn mode(path: &Path, bits: u32) {
+        use std::os::unix::fs::PermissionsExt;
+        let wanted = std::fs::Permissions::from_mode(bits);
+        let _ = std::fs::set_permissions(path, wanted);
     }
 
     /// `.ctrm-map` is discovered beside `.ctrm` and wins over the builtin

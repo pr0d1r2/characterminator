@@ -52,9 +52,14 @@ fn tracked(root: &Path) -> Vec<PathBuf> {
     itok::walk::tracked(root)
         .iter()
         .map(|f| root.join(f))
-        .filter(|full| !is_link(full))
+        .filter(|full| !is_link(full) && full.exists())
         .collect()
 }
+
+// A tracked path that is no longer on disk -- deleted, the deletion not
+// yet staged -- leaves the set too (V70). It has no bytes to judge, and
+// reading it anyway aborted the whole run with exit 2 (B25): one `rm`
+// made every other file in the repository uncheckable.
 
 /// A tracked SYMLINK is left out of the set (V48). Git stores the link's
 /// TEXT, not what it points at, so reading through one scans something
@@ -209,6 +214,48 @@ mod tests {
             .and_then(|()| symlink("real.md", root.join("to-file")))
             .ok()?;
         Some(root)
+    }
+
+    /// B25: a tracked file deleted from the working tree leaves the set,
+    /// rather than aborting the run when it cannot be read (V70).
+    #[test]
+    fn a_tracked_file_deleted_from_the_tree_is_left_out() {
+        let Some(root) = deleted() else {
+            return;
+        };
+        assert_eq!(select(&root, &[]), Ok(vec![root.join("kept.md")]));
+    }
+
+    /// A repository of its own under `target/`: two files tracked, then
+    /// one deleted without staging the deletion. `None` without git.
+    fn deleted() -> Option<PathBuf> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("ctrm-deleted-fixture");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).ok()?;
+        std::fs::write(root.join("kept.md"), "x").ok()?;
+        std::fs::write(root.join("gone.md"), "x").ok()?;
+        git(&root, &["init", "-q"])?;
+        git(&root, &["add", "kept.md", "gone.md"])?;
+        std::fs::remove_file(root.join("gone.md")).ok()?;
+        Some(root)
+    }
+
+    /// `git` in `root`, scrubbed of the variables a hook exports, so the
+    /// fixture's repository is the one it acts on.
+    fn git(root: &Path, args: &[&str]) -> Option<()> {
+        std::process::Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .env_remove("GIT_DIR")
+            .env_remove("GIT_INDEX_FILE")
+            .env_remove("GIT_WORK_TREE")
+            .status()
+            .ok()?
+            .success()
+            .then_some(())
     }
 
     /// A file named twice, once by itself and once inside a directory, is

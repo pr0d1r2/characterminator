@@ -31,6 +31,8 @@ V43: named DIRECTORY → expands to the tracked files under it (prefix over V9 f
 
 V48: tracked SYMLINK ⊥ in V9 fileset nor V43 expansion ∵ git stores link TEXT ⊥ target: reading through scans a dir (abort), or a file twice or outside repo. link NAMED on command line followed (V9).
 
+V70: tracked path ⊥ on disk (deleted, deletion unstaged) ⊥ in V9 fileset nor V43 expansion ∵ ⊥ bytes to judge; reading it aborted the WHOLE run.
+
 ## §T TASKS
 
 id|status|task|cites
@@ -41,3 +43,4 @@ T47|x|ARCHIVED to SPEC-ARCHIVE.md|V43,`src/cli:T44`
 
 id|date|cause|fix
 B4|2026-09-27|V9 fileset took `itok::walk::tracked` as-is, symlinks incl. ∴ tracked link to a dir → `Is a directory`, exit 2, WHOLE run aborted (`.:R7`)|V48
+B25|2026-10-02|tracked file deleted from the tree stayed in V9 fileset ∴ read failed → exit 2, WHOLE run aborted, & bare `fix` had already written the files before it. via review|V70,`src/cli:V72`
