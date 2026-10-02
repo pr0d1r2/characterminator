@@ -66,7 +66,10 @@ src/charset/SPEC.md  2760
 # 35 tokens against the ~290 the rule costs. The invariant was also cut
 # from ~380 tokens to ~270 before this number moved. 1600 is ~12% over the
 # new measured 1426.
-src/fix/SPEC.md      1600
+# 1600 -> 2140: V62 and the 2A rewrite of T33 (emoji sequences, specified
+# for the next build). `mth archive` folded T53 and T59 first. 2140 is ~12%
+# over the measured 1911.
+src/fix/SPEC.md      2140
 # 1160 -> 1460: V56 and B5, the node's first bug row, land with the fix
 # they describe -- a level-only line used to win the set grant. Archiving
 # T49 ran first and bought 15 tokens. 1460 is ~12% over the measured 1305.
@@ -161,13 +164,16 @@ src/render/SPEC.md    630
 # src/charset 3780 -> 4330 on 2026-10-02 for V61 and T60 (the 1A spec):
 # ~12% over the measured 3868 chain.
 #
+# src/fix 3900 -> 4510 and src/lint 4010 -> 4670 on 2026-10-02 for the 2A
+# spec (V62, V63) on top of 3A (V58): ~12% over the measured chains.
+#
 # Set 2026-10-01, ~12% over each chain as measured with every release
 # topic integrated, the band every ceiling here uses.
 src                  2490
 src/charset          4330
 src/cli              3470
-src/fix              3900
-src/lint             4010
+src/fix              4510
+src/lint             4670
 src/render           2890
 src/rules            3650
 src/scan             2700
