@@ -378,7 +378,11 @@ dashes and curly quotes, and spend about what they spend on ASCII. The
 characters that genuinely cost more are the rarer ones -- box drawing,
 emoji, symbols -- and today the builtin map does not rewrite those, so
 `stats` reports no saving for them either, honestly, rather than an
-estimate of one.
+estimate of one. The exception is an emoji SEQUENCE: `fix` turns a
+zero width joiner sequence into one emoji (a family into U+1F46A),
+a keycap into its digit and a flag into its region code (`PL`), from Unicode's RGI
+list. A joiner or tag character inside a listed sequence is no hazard;
+one outside it still is.
 
 **Notation is where the tokens are, and rewriting it is opt-in.** Compressed
 ("caveman") prose spends two or three tokens on a logic symbol where the
@@ -462,12 +466,6 @@ list goes stale and that one does not.
 
 - **`guard` speaks Claude Code only.** Another agent harness is a second
   mapping in one file (`src/cli/hook.rs`), and none is written yet.
-- **The `hazard` exemption for emoji sequences.** A zero width joiner
-  inside a declared emoji sequence is meant to pass; sequences arrive with
-  emoji sequence compression, so until then every joiner is reported.
-- **Emoji ZWJ sequences, keycaps and flags** need data vendored first.
-  Presentation selectors and skin tones already compress: the builtin map
-  deletes them.
 - **One pedantic lint is not built**: `locale-literal` needs a notion of
   which files are code and how each language spells a string literal.
 - **Nothing published**: no crates.io release, no tag. CI
