@@ -119,9 +119,11 @@ fn change(item: &Change<'_>) -> String {
     )
 }
 
-/// `stats`: one row per file.
-pub fn stats(files: &[FileStats<'_>]) -> String {
-    let rows: Vec<String> = order::stats(files).into_iter().map(row).collect();
+/// `stats`: one row per file, then every file that is not text.
+pub fn stats(files: &[FileStats<'_>], skipped: &[Skipped<'_>]) -> String {
+    let mut rows: Vec<String> =
+        order::stats(files).into_iter().map(row).collect();
+    rows.extend(unread_lines(skipped));
     rows.join("\n")
 }
 
@@ -418,7 +420,7 @@ mod tests {
             after: bpe(38),
         };
         let expected = "a.rs outside 3 bytes 120 tokens ~40 -> 38 (o200k)";
-        assert_eq!(stats(&[row]), expected);
+        assert_eq!(stats(&[row], &[]), expected);
     }
 
     #[test]

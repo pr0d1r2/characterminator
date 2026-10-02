@@ -181,11 +181,16 @@ pub fn fix(
     }
 }
 
-/// `stats`: one row per file.
-pub fn stats(format: Format, files: &[FileStats<'_>]) -> String {
+/// `stats`: one row per file, then the files that are not text, named as
+/// `check` names them (`src/scan:V8`).
+pub fn stats(
+    format: Format,
+    files: &[FileStats<'_>],
+    skipped: &[Skipped<'_>],
+) -> String {
     match format {
-        Format::Human => human::stats(files),
-        Format::Json | Format::Sarif => json::stats(files),
+        Format::Human => human::stats(files, skipped),
+        Format::Json | Format::Sarif => json::stats(files, skipped),
     }
 }
 

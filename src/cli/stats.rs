@@ -13,8 +13,8 @@
 use super::check::Checker;
 use super::config::Config;
 use crate::fix::{self as engine, Map};
-use crate::render::{self, FileStats, Format};
-use crate::scan::decode;
+use crate::render::{self, FileStats, Format, Skipped};
+use crate::scan::{Unreadable, decode};
 use crate::tokens::{self, Count, Method};
 use std::path::{Path, PathBuf};
 
@@ -57,9 +57,23 @@ pub fn run(
         map,
         method,
     };
-    let rows = pass.walk(root, &files)?;
+    let (rows, skips) = pass.walk(root, &files)?;
     let listed: Vec<FileStats<'_>> = rows.iter().map(stat).collect();
-    Ok(render::stats(format, &listed))
+    let skipped: Vec<Skipped<'_>> = skips.iter().map(skip).collect();
+    Ok(render::stats(format, &listed, &skipped))
+}
+
+/// A file that is not text, named as `check` names it (B26).
+type Skip = (String, Unreadable);
+
+/// What a walk produced: the rows counted, and the files skipped.
+type Walked = (Vec<Row>, Vec<Skip>);
+
+fn skip((path, reason): &Skip) -> Skipped<'_> {
+    Skipped {
+        path,
+        reason: *reason,
+    }
 }
 
 /// What one run holds for every file, so a per-file call takes the file
@@ -72,52 +86,59 @@ struct Pass {
 
 impl Pass {
     /// Every file in the set, in the order it was given.
-    fn walk(&self, root: &Path, files: &[PathBuf]) -> Result<Vec<Row>, String> {
-        let mut rows = Vec::new();
+    fn walk(&self, root: &Path, files: &[PathBuf]) -> Result<Walked, String> {
+        let (mut rows, mut skips) = (Vec::new(), Vec::new());
         for full in files {
             let shown = super::check::shown_path(root, full);
-            if let Some(row) = self.measure(full, shown)? {
-                rows.push(row);
+            match self.measure(full, &shown)? {
+                Ok(row) => rows.push(row),
+                Err(reason) => skips.push((shown, reason)),
             }
         }
-        Ok(rows)
+        Ok((rows, skips))
     }
 
-    /// One file's numbers, or `None` when it is not text.
+    /// One file's numbers, or why it is not text.
     ///
-    /// A file that is not text is left OUT rather than counted: a token
-    /// figure for a PNG is a number nothing wrote, and `check` is the
-    /// verb that names an unreadable file.
+    /// A file that is not text is left OUT of the counts -- a token figure
+    /// for a PNG is a number nothing wrote -- and NAMED as skipped, the
+    /// way `check` names it (`src/scan:V8`): a total quietly short of a
+    /// file reads as a total over everything (B26).
     fn measure(
         &self,
         full: &Path,
-        shown: String,
-    ) -> Result<Option<Row>, String> {
-        let (set, _) = self.checker.effective(&shown)?;
-        let Some(text) = text_of(full)? else {
-            return Ok(None);
-        };
+        shown: &str,
+    ) -> Result<Result<Row, Unreadable>, String> {
+        match text_of(full)? {
+            Ok(text) => self.counted(shown, &text).map(Ok),
+            Err(reason) => Ok(Err(reason)),
+        }
+    }
+
+    /// One text's numbers: outside its set, and the cost before and after.
+    fn counted(&self, shown: &str, text: &str) -> Result<Row, String> {
+        let (set, _) = self.checker.effective(shown)?;
         let allowed = |point: char| set.contains(point);
-        let fixed = engine::fix(&text, &self.map, &allowed)
+        let fixed = engine::fix(text, &self.map, &allowed)
             .map_err(|bad| format!("{shown}: {bad}"))?;
         let outside = text.chars().filter(|point| !allowed(*point)).count();
-        Ok(Some(Row {
-            path: shown,
+        Ok(Row {
+            path: shown.to_owned(),
             outside: outside as u64,
             bytes: text.len() as u64,
-            now: tokens::of_text(&text, self.method),
+            now: tokens::of_text(text, self.method),
             after: tokens::of_text(&fixed.output, self.method),
-        }))
+        })
     }
 }
 
-/// A file's text, or `None` when `check` would skip it: binary first,
-/// then not UTF-8, by the one decode every verb shares (`src/scan:V8`).
-/// A NUL-laden blob that happens to decode is still not text (B21).
-fn text_of(full: &Path) -> Result<Option<String>, String> {
+/// A file's text, or why `check` would skip it: binary first, then not
+/// UTF-8, by the one decode every verb shares (`src/scan:V8`). A
+/// NUL-laden blob that happens to decode is still not text (B21).
+fn text_of(full: &Path) -> Result<Result<String, Unreadable>, String> {
     let bytes =
         std::fs::read(full).map_err(|e| format!("{}: {e}", full.display()))?;
-    Ok(decode(&bytes).ok().map(str::to_owned))
+    Ok(decode(&bytes).map(str::to_owned))
 }
 
 fn stat(row: &Row) -> FileStats<'_> {
@@ -183,15 +204,29 @@ mod tests {
         assert!(ran(&root, true).contains("o200k"), "bpe names its encoding");
     }
 
-    /// B21: a file `check` skips as binary is not counted either.
+    /// B21: a file `check` skips as binary is not counted either -- and,
+    /// B26, it is NAMED, as `check` names it.
     #[test]
     fn a_binary_file_is_not_counted() {
         let files = [("notes.md", "\0\u{2014}data\0")];
         let Some(root) = fixture("ctrm-stats-binary-fixture", &files) else {
             return;
         };
+        assert_eq!(ran(&root, false), "notes.md: skipped, binary");
+    }
+
+    /// B26: a file that is not UTF-8 was dropped from `stats` without a
+    /// word. It is named, with the byte where decoding failed.
+    #[test]
+    fn a_file_that_is_not_utf8_is_named() {
+        let Some(root) = fixture("ctrm-stats-not-utf8-fixture", &[]) else {
+            return;
+        };
+        if std::fs::write(root.join("notes.md"), b"ab\xffcd\n").is_err() {
+            return;
+        }
         let said = ran(&root, false);
-        assert!(!said.contains("outside"), "{said}");
+        assert_eq!(said, "notes.md: invalid UTF-8 at byte 2");
     }
 
     /// A file already inside its set costs the same before and after:

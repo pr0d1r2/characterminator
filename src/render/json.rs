@@ -113,12 +113,13 @@ fn change(item: &Change<'_>) -> String {
     object(&fields)
 }
 
-/// `stats`: one row per file.
-pub fn stats(files: &[FileStats<'_>]) -> String {
+/// `stats`: one row per file, and every file that is not text.
+pub fn stats(files: &[FileStats<'_>], skipped: &[Skipped<'_>]) -> String {
     let rows: Vec<String> = order::stats(files).into_iter().map(row).collect();
     object(&[
         field("verb", &string("stats")),
         field("files", &array(&rows)),
+        field("skipped", &unread(skipped)),
     ])
 }
 
@@ -474,9 +475,21 @@ mod tests {
             r#"{"verb":"stats","files":[{"path":"a.rs","outside":3,"#,
             r#""bytes":120,"tokens_now":{"tokens":40,"#,
             r#""method":"estimate"},"tokens_after":{"tokens":38,"#,
-            r#""method":"bpe"}}]}"#
+            r#""method":"bpe"}}],"skipped":[]}"#
         );
-        assert_eq!(stats(&[row]), expected);
+        assert_eq!(stats(&[row], &[]), expected);
+    }
+
+    /// B26: a file that is not text is named in `skipped`, as in `check`.
+    #[test]
+    fn a_stats_document_names_the_files_it_skipped() {
+        let expected = concat!(
+            r#"{"verb":"stats","files":[],"skipped":["#,
+            r#"{"path":"a.txt","reason":"not-utf8","byte":17},"#,
+            r#"{"path":"b.bin","reason":"binary"}]}"#
+        );
+        let items = [skip("b.bin"), broken("a.txt", 17)];
+        assert_eq!(stats(&[], &items), expected);
     }
 
     #[test]
