@@ -53,7 +53,10 @@ src/SPEC.md           420
 # moved to SPEC-ARCHIVE.md, which bought 48 tokens against the 154 needed.
 # The rest is content, so the number moves rather than the words. 2240 is
 # ~12% over the new measured 1994.
-src/charset/SPEC.md  2240
+# 2240 -> 2760: V61 and T60 specify option 1A (every CLDR locale, lazy
+# parse) for the next build. `mth archive` folded T23 and T46 first.
+# 2760 is ~12% over the measured 2465.
+src/charset/SPEC.md  2760
 # RAISED 1240 -> 1600, reviewed. The node gains V51, the opt-in `words`
 # map: the one rewrite in the crate that measurably saves tokens (`.:R11`),
 # and a rule with three parts nothing else states -- how it is switched on,
@@ -146,10 +149,13 @@ src/render/SPEC.md    630
 # the `sherd-budget` step, not by `context-limits`. If itok starts
 # refusing directory rows, move these to a file of sherd's own.
 #
+# src/charset 3780 -> 4330 on 2026-10-02 for V61 and T60 (the 1A spec):
+# ~12% over the measured 3868 chain.
+#
 # Set 2026-10-01, ~12% over each chain as measured with every release
 # topic integrated, the band every ceiling here uses.
 src                  2490
-src/charset          3780
+src/charset          4330
 src/cli              3470
 src/fix              3900
 src/lint             4010
