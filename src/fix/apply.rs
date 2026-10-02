@@ -917,6 +917,37 @@ mod tests {
             }
         }
 
+        /// B34: mixed-tone holding hands and handshake land on their one
+        /// code point (UTS #51 section 2.6), as the same-tone forms do via
+        /// V60; people holding hands has none, so keeps its first emoji.
+        const HANDS: [(&str, &str); 5] = [
+            (
+                "\u{1F468}\u{1F3FB}\u{200D}\u{1F91D}\u{200D}\u{1F468}\u{1F3FC}",
+                "\u{1F46C}",
+            ),
+            (
+                "\u{1F469}\u{1F3FB}\u{200D}\u{1F91D}\u{200D}\u{1F469}\u{1F3FC}",
+                "\u{1F46D}",
+            ),
+            (
+                "\u{1F469}\u{1F3FB}\u{200D}\u{1F91D}\u{200D}\u{1F468}\u{1F3FC}",
+                "\u{1F46B}",
+            ),
+            ("\u{1FAF1}\u{1F3FB}\u{200D}\u{1FAF2}\u{1F3FC}", "\u{1F91D}"),
+            (
+                "\u{1F9D1}\u{1F3FB}\u{200D}\u{1F91D}\u{200D}\u{1F9D1}\u{1F3FC}",
+                "\u{1F9D1}",
+            ),
+        ];
+
+        #[test]
+        fn holding_hands_lands_on_its_grouping() {
+            for (text, want) in HANDS {
+                assert_eq!(fixed(text, true), want, "{text:?}");
+            }
+            assert_eq!(fixed("\u{1F46C}\u{1F3FB}", true), "\u{1F46C}");
+        }
+
         /// Under `ascii` a ZWJ sequence still compresses: one finding is
         /// left where there were several, since the target has no ASCII.
         #[test]

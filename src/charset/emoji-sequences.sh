@@ -91,16 +91,27 @@ map_header() {
 #   tag     U+1F3F4 + tag letters + U+E007F -> `GB-ENG`, `GB-SCT`, `GB-WLS`
 #   zwj     the curated single code point below, else the first code point
 #
-# THE CURATED TABLE, by the upstream name's prefix. UTS #51 section 2.3.1
-# (Multi-Person Groupings) names these three code points as the generic
-# forms the ZWJ sequences make specific, by gender and by skin tone.
-# EVERY variant of a grouping maps to its generic form, gendered and
+# THE CURATED TABLE, by the upstream name's prefix. UTS #51 revision 31
+# (Emoji 18.0), section 2.6 Multi-Person Groupings, lists the single code
+# points whose ZWJ sequences make them specific by gender and by skin
+# tone; family is the "similar case" it names beside them (2.6.1). EVERY
+# variant of a grouping maps to its generic form, gendered and
 # skin-toned alike: the code point says "a couple with heart", and a
 # writer whose file withholds the sequence is told so by the target.
 #
-#   family:              -> U+1F46A FAMILY
-#   couple with heart:   -> U+1F491 COUPLE WITH HEART
-#   kiss:                -> U+1F48F KISS
+#   family:                      -> U+1F46A FAMILY
+#   couple with heart:           -> U+1F491 COUPLE WITH HEART
+#   kiss:                        -> U+1F48F KISS
+#   men holding hands:           -> U+1F46C TWO MEN HOLDING HANDS
+#   women holding hands:         -> U+1F46D TWO WOMEN HOLDING HANDS
+#   woman and man holding hands: -> U+1F46B MAN AND WOMAN HOLDING HANDS
+#   handshake:                   -> U+1F91D HANDSHAKE
+#
+# The section's other two, people with bunny ears and people wrestling,
+# need no row: their ZWJ forms already open with that code point.
+# `people holding hands` (U+1F9D1 ZWJ U+1F91D ZWJ U+1F9D1) has NO single
+# code point and is not in the section's list, so it keeps its first
+# emoji, U+1F9D1, like any other sequence.
 #
 # Nothing is guessed beyond it: any other ZWJ sequence keeps its first
 # code point, the emoji it was built on (`U+1F468+U+200D+U+1F4BB` -> man).
@@ -140,6 +151,10 @@ map() {
       if (name ~ /^family:/) to = "U+1F46A"
       else if (name ~ /^couple with heart:/) to = "U+1F491"
       else if (name ~ /^kiss:/) to = "U+1F48F"
+      else if (name ~ /^men holding hands:/) to = "U+1F46C"
+      else if (name ~ /^women holding hands:/) to = "U+1F46D"
+      else if (name ~ /^woman and man holding hands:/) to = "U+1F46B"
+      else if (name ~ /^handshake:/) to = "U+1F91D"
       else { split($2, p, "+"); to = "U+" p[2] }
       print $2, to
     }' "$here/emoji-sequences.txt"
