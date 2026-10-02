@@ -100,6 +100,13 @@ pub const SETS: &str = concat!(
 /// run without the builtin sets can empty the set that forbids.
 pub const HAZARD: &str = include_str!("hazard.ctrm-sets");
 
+/// The RGI emoji sequences, vendored from Unicode emoji data
+/// (`src/fix:V62`): one `<kind> <sequence> [name]` line each. Not a set
+/// file -- a set holds code points and a sequence is not one -- so it is
+/// TEXT the lint node reads for its exemption (`src/lint:V63`), compiled
+/// in so no configuration can widen it.
+pub const EMOJI_SEQUENCES: &str = include_str!("emoji-sequences.txt");
+
 /// The hazard file's sets, and nothing else.
 ///
 /// # Errors
