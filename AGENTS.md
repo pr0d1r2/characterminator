@@ -47,6 +47,9 @@ The steps, and what each is for:
 | `context-limits` | no spec is over the token ceiling it declared |
 | `sherd-check`, `sherd-sync`, `sherd-budget` | the node tree resolves, `NAV` is not stale, and no node chain is over its ceiling |
 | `flake-tags` | every flake input pins a `vX.Y.Z` tag, not a branch (V44) |
+| `coverage-badge` | the README coverage badge says what `.coverage` claims, copied rather than typed |
+| `coverage` | line coverage under the floor, or a `.coverage` claim this run does not reproduce (V46); `hk check` and pre-push, not pre-commit |
+| `no-commit-to-branch` | a commit to `main`; pre-commit only |
 
 The cargo steps are chained on purpose. Cargo locks the target directory, so
 two cargo jobs launched in parallel do not run in parallel -- the second
