@@ -185,7 +185,7 @@ src/render/SPEC.md    630
 # topic integrated, the band every ceiling here uses.
 src                  2490
 src/charset          4330
-src/cli              3470
+src/cli              3920
 src/fix              4510
 src/lint             4670
 src/render           2890
