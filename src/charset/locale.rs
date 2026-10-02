@@ -10,7 +10,8 @@
 //! Only a MISS is looked up, so a set a user declares under a locale's
 //! name still wins (`src/rules:V19`), exactly as it would over a preset.
 
-use super::{ParseError, SetCatalog, SetMember, parse_line};
+use super::builtin::{ASCII, ascii_definition};
+use super::{ParseError, SetCatalog, SetDefinition, SetMember, parse_line};
 use std::collections::BTreeSet;
 
 /// The generated locale data, compiled in (V22) but not parsed up front.
@@ -24,6 +25,45 @@ fn line_of(name: &str) -> Option<&'static str> {
         .find(|line| line.split_once(' ').is_some_and(|(head, _)| head == name))
 }
 
+/// The locale line declaring `name`, parsed, with every name it composes
+/// in replaced by that name's members from THIS file (V64).
+///
+/// An alias line (`pt-BR pt`, `en ascii`) names its parent, and resolving
+/// that name through the run's catalog would let a user set called `pt`
+/// stand in for the CLDR parent: `--set 'pt U+0161'` would turn `pt-BR`
+/// into a grant of U+0161. So the parent is read here, from the
+/// compiled-in data, and `ascii` is the intrinsic one.
+fn compiled(name: &str) -> Result<Option<SetDefinition>, ParseError> {
+    match line_of(name).map(parse_line).transpose()?.flatten() {
+        Some(definition) => inlined(definition).map(Some),
+        None => Ok(None),
+    }
+}
+
+/// `definition` with each named member swapped for its compiled-in one.
+fn inlined(definition: SetDefinition) -> Result<SetDefinition, ParseError> {
+    let mut members = Vec::new();
+    for member in definition.members {
+        members.extend(parent_of(member)?);
+    }
+    Ok(SetDefinition {
+        name: definition.name,
+        members,
+    })
+}
+
+/// One member, a named one replaced by its compiled-in members.
+fn parent_of(member: SetMember) -> Result<Vec<SetMember>, ParseError> {
+    Ok(match member {
+        SetMember::Named(name) if name == ASCII => ascii_definition().members,
+        SetMember::Named(name) => match compiled(&name)? {
+            Some(found) => found.members,
+            None => vec![SetMember::Named(name)],
+        },
+        other => vec![other],
+    })
+}
+
 /// The name a member composes in, through a fidelity label too.
 fn named(member: &SetMember) -> Option<&String> {
     match member {
@@ -35,9 +75,9 @@ fn named(member: &SetMember) -> Option<&String> {
 
 /// Declare every locale set `wanted` reaches that `catalog` lacks.
 ///
-/// Walks the names, and the names their definitions compose in, so an
-/// alias line (`pt-BR pt`) brings its parent and a user set naming `pl`
-/// brings `pl`. A name neither declared nor a locale stays missing, for
+/// Walks the names, and the names their definitions compose in, so a user
+/// set naming `pl` brings `pl`. An alias line (`pt-BR pt`) brings no
+/// second name: its parent's members are read from this file into it. A name neither declared nor a locale stays missing, for
 /// resolution to report as unknown exactly as before.
 ///
 /// # Errors
@@ -52,9 +92,9 @@ where
     let mut seen = BTreeSet::new();
     while let Some(name) = queue.pop() {
         if catalog.get(&name).is_none()
-            && let Some(parsed) = line_of(&name).map(parse_line)
+            && let Some(definition) = compiled(&name)?
         {
-            parsed?.into_iter().for_each(|d| catalog.insert(d));
+            catalog.insert(definition);
         }
         let members = catalog.get(&name).map(|d| d.members.iter());
         let reached = members.into_iter().flatten().filter_map(named);
@@ -75,7 +115,7 @@ pub fn adopt_all(catalog: &mut SetCatalog) -> Result<(), ParseError> {
         if let Some(definition) = parse_line(line)?
             && catalog.get(&definition.name).is_none()
         {
-            catalog.insert(definition);
+            catalog.insert(inlined(definition)?);
         }
     }
     Ok(())
@@ -136,14 +176,14 @@ mod tests {
         assert_eq!(before, after);
     }
 
-    /// An alias brings its parent and nothing else.
+    /// An alias brings itself and nothing else: its parent is inlined.
     #[test]
-    fn a_named_locale_brings_only_its_chain() {
+    fn a_named_locale_brings_only_itself() {
         let before = builtin().names().count();
         let sets = adopted(&["pt-BR"]);
-        assert!(sets.get("pt-BR").is_some() && sets.get("pt").is_some());
+        assert!(sets.get("pt-BR").is_some() && sets.get("pt").is_none());
         assert!(sets.get("pl").is_none());
-        assert_eq!(sets.names().count(), before.saturating_add(2));
+        assert_eq!(sets.names().count(), before.saturating_add(1));
     }
 
     #[test]
@@ -165,6 +205,23 @@ mod tests {
         assert!(adopt(&mut sets, ["pl".to_owned()]).is_ok());
         assert!(resolved(&sets, "pl").contains('\u{2261}'));
         assert!(!resolved(&sets, "pl").contains('\u{0105}'));
+    }
+
+    /// B33: a user set named like an alias's parent does not stand in for
+    /// it. `pt-BR` stays CLDR's `pt` and `en` stays the intrinsic `ascii`.
+    #[test]
+    fn an_alias_reads_its_parent_from_the_compiled_in_data() {
+        let mut sets = builtin();
+        for line in ["pt U+0161", "ascii U+0161"] {
+            let mine = parse_line(line).ok().flatten();
+            mine.into_iter().for_each(|d| sets.insert(d));
+        }
+        let names = ["pt-BR".to_owned(), "en".to_owned()];
+        assert!(adopt(&mut sets, names).is_ok());
+        assert!(resolved(&sets, "pt-BR").contains('\u{00E7}'));
+        assert!(!resolved(&sets, "pt-BR").contains('\u{0161}'));
+        assert_eq!(resolved(&sets, "en").ranges, ascii().ranges);
+        assert!(resolved(&sets, "pt").contains('\u{0161}'));
     }
 
     /// V61: CJK, Indic and RTL are in, as are the 1B Latin locales; and a
