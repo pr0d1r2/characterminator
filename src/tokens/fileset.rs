@@ -30,6 +30,7 @@ const EMPTY: &str = "holds no git-tracked file -- name a file inside it, \
 /// When a named path is not readable, or is a directory holding nothing
 /// git tracks.
 pub fn select(root: &Path, paths: &[String]) -> Result<Vec<PathBuf>, Error> {
+    rooted(root, paths.is_empty())?;
     if paths.is_empty() {
         return Ok(tracked(root));
     }
@@ -43,6 +44,38 @@ pub fn select(root: &Path, paths: &[String]) -> Result<Vec<PathBuf>, Error> {
         }
     }
     Ok(chosen)
+}
+
+/// The run root can answer the question asked of it (V69), or the run is
+/// an ERROR naming it. A root that is not a directory -- `-C` misspelt, or
+/// pointed at a file -- and a bare run whose root is in no git work tree
+/// both used to yield an empty set, and an empty set is a clean report:
+/// exit 0 about files nobody looked at (B27).
+fn rooted(root: &Path, bare: bool) -> Result<(), Error> {
+    let refused = |reason: &str| Error {
+        path: root.to_owned(),
+        reason: reason.to_owned(),
+    };
+    if !root.is_dir() {
+        return Err(refused(NOT_A_DIR));
+    }
+    if bare && !in_work_tree(root) {
+        return Err(refused(NO_GIT));
+    }
+    Ok(())
+}
+
+const NOT_A_DIR: &str = "is not a directory";
+
+const NO_GIT: &str = "is not inside a git work tree, so there is no \
+                      tracked fileset -- name the files to check";
+
+/// Whether `root` or a directory above it holds `.git` (a directory, or
+/// the file a linked worktree or submodule has). Read off the filesystem,
+/// lexically, so no git process is spawned to ask.
+fn in_work_tree(root: &Path) -> bool {
+    let full = root.canonicalize().unwrap_or_else(|_| root.to_owned());
+    full.ancestors().any(|dir| dir.join(".git").exists())
 }
 
 /// The git index, via itok. An empty answer where `root` is not a
@@ -214,6 +247,33 @@ mod tests {
             .and_then(|()| symlink("real.md", root.join("to-file")))
             .ok()?;
         Some(root)
+    }
+
+    /// B27: a root that is no directory, or a bare run outside any git
+    /// work tree, is an error naming the root -- never an empty, clean set.
+    #[test]
+    fn a_root_that_cannot_answer_is_refused_by_name() {
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+        for root in [Path::new("/no/such/ctrm/root"), manifest.as_path()] {
+            let said = select(root, &[]).err().map(|e| (e.path, e.reason));
+            assert_eq!(said, Some((root.to_owned(), NOT_A_DIR.to_owned())));
+        }
+        let Some(bare) = outside_git() else {
+            return;
+        };
+        let said = select(&bare, &[]).err().map(|e| e.reason);
+        assert_eq!(said.as_deref(), Some(NO_GIT));
+        // V9: a NAMED file is still reached without git.
+        assert!(select(&bare, &["a.md".to_owned()]).is_ok());
+    }
+
+    /// A directory with a file in it and no `.git` above it, or `None`
+    /// when the temp dir happens to sit inside a work tree.
+    fn outside_git() -> Option<PathBuf> {
+        let root = std::env::temp_dir().join("ctrm-outside-git-fixture");
+        std::fs::create_dir_all(&root).ok()?;
+        std::fs::write(root.join("a.md"), "x").ok()?;
+        (!in_work_tree(&root)).then_some(root)
     }
 
     /// B25: a tracked file deleted from the working tree leaves the set,
