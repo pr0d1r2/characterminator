@@ -450,8 +450,19 @@ pub fn run(
         found.rows.iter().map(|r| r.finding.clone()).collect();
     Ok(Report {
         text: render::check(format, &violations, &skipped),
-        code: exit_code(&findings),
+        code: exit_code(&findings).max(unreadable_code(&found.skips)),
     })
+}
+
+/// Invalid UTF-8 is an ERROR, exit 1 (`src/scan:V8`): the file claims to
+/// be text and is not, so no verdict about its characters was reached
+/// (B22). A binary skip is not: the file never claimed to be text, and
+/// failing on every tracked PNG would make the gate unusable. One code for
+/// every format, since json and SARIF report the same run.
+fn unreadable_code(skips: &[Skip]) -> u8 {
+    let broken =
+        |skip: &Skip| matches!(skip.reason, Unreadable::NotUtf8 { .. });
+    u8::from(skips.iter().any(broken))
 }
 
 fn row(source: &Row) -> Violation<'_> {
@@ -615,6 +626,30 @@ mod tests {
             std::fs::write(root.join(file), text).ok()?;
         }
         Some(root)
+    }
+
+    /// The exit code `check` gives one file of raw `bytes`, per format.
+    fn code_for(name: &str, bytes: &[u8]) -> Vec<u8> {
+        let Some(root) = fixture(name, &[]) else {
+            return vec![];
+        };
+        if std::fs::write(root.join("f.txt"), bytes).is_err() {
+            return vec![];
+        }
+        let config = Config::discovered(&root);
+        let asked = [String::from("f.txt")];
+        [Format::Human, Format::Json, Format::Sarif]
+            .into_iter()
+            .map(|form| run(&config, &asked, form).map_or(9, |r| r.code))
+            .collect()
+    }
+
+    /// B22: invalid UTF-8 is an error, exit 1, in every format
+    /// (`src/scan:V8`); a binary skip is named and stays exit 0.
+    #[test]
+    fn invalid_utf8_fails_and_a_binary_skip_does_not() {
+        assert_eq!(code_for("ctrm-not-utf8", b"ab\xffcd\n"), vec![1, 1, 1]);
+        assert_eq!(code_for("ctrm-binary-exit", b"ab\0cd\n"), vec![0, 0, 0]);
     }
 
     fn preset_fixture() -> Option<PathBuf> {
