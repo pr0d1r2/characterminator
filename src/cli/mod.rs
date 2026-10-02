@@ -120,6 +120,7 @@ fn prepared(
     argv: &[String],
 ) -> Result<(Args, Config, Format), String> {
     let parsed = args::parse(argv)?;
+    arity(verb, &parsed.paths)?;
     let format = format_of(&parsed)?;
     if sarif_misused(verb, format) {
         return Err(sarif_refused(verb));
@@ -152,6 +153,23 @@ fn format_of(args: &Args) -> Result<Format, String> {
         Some("json") => Ok(Format::Json),
         Some("sarif") => Ok(Format::Sarif),
         Some(other) => Err(format!("unknown format `{other}`")),
+    }
+}
+
+/// How many paths a verb takes (V73): `sets` none, `explain` at most one,
+/// the rest any number. A path past that is REFUSED: `explain a.md b.txt`
+/// used to answer for `a.md` alone, which reads as an answer about both.
+fn arity(verb: &str, paths: &[String]) -> Result<(), String> {
+    let most = match verb {
+        "sets" => 0,
+        "explain" => 1,
+        _ => return Ok(()),
+    };
+    match paths.get(most) {
+        Some(extra) => Err(format!(
+            "`{verb}` takes at most {most} path(s); `{extra}` is one too many"
+        )),
+        None => Ok(()),
     }
 }
 
@@ -400,6 +418,21 @@ mod tests {
         let asked = argv(&["check", "--stirct"]);
         let why = prepared("check", &asked).err().unwrap_or_default();
         assert!(why.contains("--stirct"), "{why}");
+    }
+
+    /// V73: a path a verb would ignore is refused, not dropped.
+    #[test]
+    fn a_path_the_verb_would_ignore_is_refused() {
+        let refused = |words: &[&str]| {
+            let verb = words.first().copied().unwrap_or_default();
+            prepared(verb, &argv(words)).err().unwrap_or_default()
+        };
+        assert!(refused(&["sets", "a.md"]).contains("`a.md`"));
+        assert!(refused(&["explain", "a.md", "b.txt"]).contains("`b.txt`"));
+        let as_args = ["explain", "--as", "args", "a.md", "b.txt"];
+        assert!(refused(&as_args).contains("`b.txt`"));
+        assert!(prepared("explain", &argv(&["explain", "a.md"])).is_ok());
+        assert!(prepared("check", &argv(&["check", "a", "b"])).is_ok());
     }
 
     /// B29: a configuration that does not parse stops EVERY verb, not
