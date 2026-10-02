@@ -6,7 +6,7 @@
 [![MSRV 1.95](https://img.shields.io/badge/MSRV-1.95-000000?logo=rust&logoColor=white)](Cargo.toml)
 [![direct dependencies 3](https://img.shields.io/badge/direct_dependencies-3-brightgreen)](docs/THIRD-PARTY-NOTICES.md)
 [![runtime closure 26](https://img.shields.io/badge/runtime_closure-26-brightgreen)](docs/THIRD-PARTY-NOTICES.md)
-[![coverage 95.8%](https://img.shields.io/badge/coverage-95.8%25-brightgreen)](.coverage)
+[![coverage 96.6%](https://img.shields.io/badge/coverage-96.6%25-brightgreen)](.coverage)
 [![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-brightgreen)](Cargo.toml)
 [![gate hk](https://img.shields.io/badge/gate-hk-6E4AFF)](hk.pkl)
 [![nix flake](https://img.shields.io/badge/nix-flake-5277C3?logo=nixos&logoColor=white)](flake.nix)
