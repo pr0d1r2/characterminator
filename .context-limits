@@ -128,7 +128,13 @@ src/lint/SPEC.md     2440
 # (1180 was ~12% over 1048 alone.) Merged with the T55 raise above,
 # built in parallel: both rows together set the band. 1290 is ~12% over
 # the measured 1142 with T55 and V53 in place.
-src/cli/SPEC.md      1290
+# 1290 -> 1600 on 2026-10-02 for the release review's guard findings: two
+# invariants WITH their runners (V66, a pre-read of a file that is not
+# text judges its lossy decode; V67, a PostToolUse payload too deep to
+# parse is raw-scanned) and their bug rows B16-B18. `mth archive` ran
+# first and folded T34, T37 and T55, worth 82 tokens against the ~260
+# needed. 1600 is ~12% over the ~1430 projected with all of it in place.
+src/cli/SPEC.md      1600
 src/scan/SPEC.md      400
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
 # every other node already had, recording work that had invariants but no
