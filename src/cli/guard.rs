@@ -20,7 +20,7 @@
 use super::check::{Checker, shown_path};
 use super::config::Config;
 use super::hook::{self, Call, Event, Verdict};
-use crate::lint::{Finding, Group, Hazards};
+use crate::lint::{Finding, Group, Hazards, Lint};
 use crate::render::codepoint;
 use crate::scan::{Hit, scan_bytes, scan_str};
 use std::path::{Path, PathBuf};
@@ -115,7 +115,8 @@ fn unconfigured(
         return Verdict::Pass;
     };
     let text = std::str::from_utf8(bytes).unwrap_or_default();
-    let found = hazards_in(hits, hazards, &hazards.exempt(text));
+    let exempt = hazards.exempt(text);
+    let found = hazards_in(hits, |hit| hazards.lint_at(hit, &exempt));
     match found.first() {
         Some(first) => Verdict::Block(denied(shown, first, found.len())),
         None => Verdict::Note(format!(
@@ -125,16 +126,17 @@ fn unconfigured(
     }
 }
 
-/// The hazards among `hits`, each as the finding the lint node names,
-/// less a joiner or tag inside an RGI emoji sequence (`src/lint:V63`).
+/// The hazards among `hits`, each as the finding the lint node names.
+/// `lint` is the lint node's answer for one hit: less a joiner or tag
+/// inside an RGI emoji sequence (`src/lint:V63`) always, and less a BOM
+/// at byte 0 only where the text has a file start (V53).
 fn hazards_in(
     hits: Vec<Hit>,
-    hazards: &Hazards,
-    exempt: &[usize],
+    lint: impl Fn(Hit) -> Option<Lint>,
 ) -> Vec<Finding> {
     hits.into_iter()
         .filter_map(|hit| {
-            let lint = hazards.lint_at(hit, exempt)?;
+            let lint = lint(hit)?;
             let level = lint.default_level();
             Some(Finding { hit, lint, level })
         })
@@ -201,7 +203,7 @@ fn output(
     let mut found = texts.iter().flat_map(|(at, text)| {
         let hits = scan_str(text, |c| !hazards.contains(c));
         let exempt = hazards.exempt(text);
-        hazards_in(hits, hazards, &exempt)
+        hazards_in(hits, |hit| hazards.lint_unsigned(hit, &exempt))
             .into_iter()
             .map(move |f| (at, f))
     });
@@ -430,6 +432,17 @@ mod tests {
         assert_eq!(answer(&output_payload("Bash", plain)), "");
         let none = r#"{"hook_event_name":"PostToolUse","tool_name":"X"}"#;
         assert_eq!(answer(none), "");
+    }
+
+    /// B16: tool output has no file start, so a BOM opening a string of it
+    /// is a stray, not an encoding signature (V53).
+    #[test]
+    fn a_bom_opening_a_string_of_output_is_tainted() {
+        for result in [r#"{"result":"\ufeffhi"}"#, "\"\u{FEFF}hi\""] {
+            let got = answer(&output_payload("WebFetch", result));
+            assert!(got.starts_with(r#"{"decision":"block""#), "{got}");
+            assert!(got.contains("U+FEFF stray-bom"), "{got}");
+        }
     }
 
     /// A hazard in a member NAME is still in front of the model.

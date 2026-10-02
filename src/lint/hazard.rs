@@ -112,12 +112,27 @@ impl Hazards {
     /// to `invisible`, which holds it too, because the exemption is for
     /// the CHARACTER at that place rather than for one class's name.
     pub fn lint_for(&self, hit: Hit) -> Option<Lint> {
+        let lint = self.class_of(hit.character)?;
+        let signature = lint.name == STRAY_BOM && hit.position.byte == 0;
+        (!signature).then_some(lint)
+    }
+
+    /// [`Hazards::lint_at`] for text with NO file start: tool output
+    /// (`src/cli:V53`). Each string of it begins at byte 0 of its own,
+    /// and none of them is a file an encoder signed, so a BOM there is a
+    /// stray like any other.
+    pub fn lint_unsigned(&self, hit: Hit, exempt: &[usize]) -> Option<Lint> {
+        let inside = exempt.binary_search(&hit.position.byte).is_ok();
+        self.class_of(hit.character).filter(|_| !inside)
+    }
+
+    /// The lint of the first class holding `character`, wherever it sits.
+    fn class_of(&self, character: char) -> Option<Lint> {
         let (lint, _) = self
             .classes
             .iter()
-            .find(|(_, set)| set.contains(hit.character))?;
-        let signature = lint.name == STRAY_BOM && hit.position.byte == 0;
-        (!signature).then_some(*lint)
+            .find(|(_, set)| set.contains(character))?;
+        Some(*lint)
     }
 }
 
@@ -269,6 +284,13 @@ mod tests {
         let stray = found.lint_for(at(3, '\u{FEFF}')).map(|l| l.name);
         assert_eq!(stray, Some("stray-bom"));
         assert!(found.contains('\u{FEFF}'));
+    }
+
+    /// Tool output has no file start, so byte 0 of it signs nothing.
+    #[test]
+    fn unsigned_text_lets_no_bom_off() {
+        let lint = hazards().lint_unsigned(at(0, '\u{FEFF}'), &[]);
+        assert_eq!(lint.map(|l| l.name), Some("stray-bom"));
     }
 
     /// Only byte 0 is exempt, and only for the BOM: another hazard at the
