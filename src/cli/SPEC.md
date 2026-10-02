@@ -25,6 +25,7 @@ V32: `explain --as args|lines|prompt` renders effective config (per path | whole
 V35: `guard` = hook adapter (itok `guard` shape): harness hook JSON stdin → decision JSON stdout; signal in JSON ⊥ exit code. before file read (`tool_name` = `Read` only; `Edit`, `Write` & co → pass, ⊥ judged): hazard (`src/lint:V34`) → block, naming path, line, code point. after tool output (web fetch, web search, shell): hazard → blocking decision w/ reason = content tainted. ⊥ daemon, ⊥ silent strip. non-hazard violation → PASS + note naming lint & count ∴ hook stays usable; only hazard blocks. a hook that blocks on every stray char is one people switch off, & a switched-off hook gates ⊥.
 V47: stdout closed by reader (EPIPE, `ctrm check | head`) → stop writing, keep verdict, ⊥ panic. other write error → named, exit 2 ∵ lost output ⊥ silent. ∀ verb.
 V53: `guard` exit ⊥ verdict: 0 = decided (decision JSON | silence = pass). adapter failure (stdin ⊥ JSON, ⊥ `hook_event_name`, lost write) → named on stderr, exit 1 (overrides V47's 2). exit 2 ⊥ EVER ∵ Claude Code reads 2 as block ∴ a broken adapter would brick the session; 1 = non-blocking error. hazards ⊥ depend on config: `.ctrm` unusable → hazards still judged (`src/lint:V49`) + note. tool output judged for hazard ONLY ∵ ⊥ path for `.ctrm` & `ascii` default ⇒ note on every non-ASCII page. tool output has ⊥ file start ∴ BOM at a string's byte 0 = `stray-bom`, ⊥ signature exemption (`src/lint:V34`). reason quotes data ∴ its non-ASCII → `<U+XXXX>` ∵ a reason ⊥ smuggles what it warns of.
+V66: pre-read of a file ⊥ text (`src/scan:V8`): harness decodes it LOSSILY ∴ guard judges the lossy decode for hazard ONLY ∖ `control-character` (C0 = every binary) → hazard = deny, else pass + note. `check` stays ⊥ lossy: guard judges what the model is SHOWN.
 
 ## §T TASKS
 
@@ -43,3 +44,4 @@ T55|x|ARCHIVED to SPEC-ARCHIVE.md|`src/rules:V18`,`src/rules:V19`,`src/lint:V36`
 id|date|cause|fix
 B3|2026-09-27|report via `println!` → PANIC on closed stdout ∴ `ctrm check \| head` crashed ∀ verb. via wave 1 (`.:R7`)|V47
 B16|2026-10-02|guard output scan reused the FILE byte-0 BOM exemption per string ∴ `"\ufeff..."` in tool output passed. via release review|V53
+B17|2026-10-02|pre-read PASSED a file ⊥ text ∴ U+202E + a `\xff` byte read in silence; the harness showed the model the override. via release review|V66

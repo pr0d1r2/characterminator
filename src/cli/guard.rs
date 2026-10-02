@@ -75,8 +75,8 @@ fn spelled(text: &str) -> String {
 /// A file about to be read, judged against `.ctrm` from `cwd`.
 ///
 /// A file that cannot be read passes: the harness reports a missing file
-/// itself, and there are no characters to judge. So does one that is not
-/// text, which `check` names as a skip rather than a finding.
+/// itself, and there are no characters to judge. One that is not text is
+/// judged as the harness will SHOW it (V66): see [`not_text`].
 fn read(cwd: &Path, path: &str, hazards: &Hazards) -> Verdict {
     let full = cwd.join(path);
     let Ok(bytes) = std::fs::read(&full) else {
@@ -88,10 +88,42 @@ fn read(cwd: &Path, path: &str, hazards: &Hazards) -> Verdict {
     let judged = checker.and_then(|c| c.findings(&shown, &bytes));
     match judged {
         Ok(Some(found)) => judged_file(&shown, &found),
-        Ok(None) => Verdict::Pass,
+        Ok(None) => not_text(&shown, &bytes, hazards),
         Err(why) => unconfigured(&shown, &bytes, hazards, &why),
     }
 }
+
+/// A file `check` skips as not text -- invalid UTF-8, or a NUL -- is
+/// still READ: the harness decodes it lossily and the model sees every
+/// character that survives, a bidi override after a stray `\xff` included
+/// (V66). So the same lossy decode is judged, for hazards only, since no
+/// set means anything to bytes that are not text.
+///
+/// Less `control-character`: a NUL is what makes a file binary, and C0
+/// bytes are what every binary is made of, so judging them would deny the
+/// read of every image -- a hook people switch off (V35). What smuggles
+/// text past a reader -- bidi, tags, invisibles, a stray BOM -- still
+/// denies.
+fn not_text(shown: &str, bytes: &[u8], hazards: &Hazards) -> Verdict {
+    let text = String::from_utf8_lossy(bytes);
+    let hits = scan_str(&text, |c| !hazards.contains(c));
+    let exempt = hazards.exempt(&text);
+    let found: Vec<Finding> =
+        hazards_in(hits, |hit| hazards.lint_at(hit, &exempt))
+            .into_iter()
+            .filter(|f| f.lint.name != CONTROL)
+            .collect();
+    match found.first() {
+        Some(first) => Verdict::Block(denied(shown, first, found.len())),
+        None => Verdict::Note(format!(
+            "ctrm: {shown} is not text (invalid UTF-8 or a NUL byte), so no \
+             rule applies; it was judged for hazards only, and holds none."
+        )),
+    }
+}
+
+/// The hazard lint a binary is made of, so [`not_text`] does not judge it.
+const CONTROL: &str = "control-character";
 
 fn judged_file(shown: &str, found: &[Finding]) -> Verdict {
     let (hazards, rest): (Vec<&Finding>, Vec<&Finding>) =
@@ -112,7 +144,7 @@ fn unconfigured(
     why: &str,
 ) -> Verdict {
     let Ok(hits) = scan_bytes(bytes, |c| !hazards.contains(c)) else {
-        return Verdict::Pass;
+        return not_text(shown, bytes, hazards);
     };
     let text = std::str::from_utf8(bytes).unwrap_or_default();
     let exempt = hazards.exempt(text);
@@ -350,12 +382,51 @@ mod tests {
     }
 
     #[test]
-    fn a_read_of_a_missing_or_binary_file_passes() {
+    fn a_read_of_a_missing_file_passes() {
         let got = read_of("ctrm-guard-missing", &[], "absent.md");
         assert_eq!(got, "");
-        let files = [("b.bin", "a\0\u{202E}")];
-        let got = read_of("ctrm-guard-binary", &files, "b.bin");
-        assert_eq!(got, "");
+    }
+
+    /// The answer to a `Read` of one file holding raw `bytes`.
+    fn read_of_bytes(name: &str, ctrm: &str, bytes: &[u8]) -> String {
+        let Some(root) = tree(name, &[(".ctrm", ctrm)]) else {
+            return String::from("(disk refused)");
+        };
+        let full = root.join("f.rs");
+        if std::fs::write(&full, bytes).is_err() {
+            return String::from("(disk refused)");
+        }
+        answer_in(&read_payload(&root, &full.to_string_lossy()), &root)
+    }
+
+    /// B17: a file that is not text is still shown to the model, lossily
+    /// decoded, so a hazard in it denies the read (V66) -- after a stray
+    /// `\xff`, after a NUL, and under a `.ctrm` that cannot be applied.
+    #[test]
+    fn a_hazard_in_a_file_that_is_not_text_is_denied() {
+        let utf8 = b"ok\nlet x = \"\xe2\x80\xae\";\n\xff\n";
+        let got = read_of_bytes("ctrm-guard-notutf8", "", utf8);
+        assert!(got.contains("f.rs:2:10 U+202E bidi-control"), "{got}");
+        let nul = b"a\0\xe2\x80\xae";
+        let broken = "*.rs nosuchset";
+        for (name, ctrm) in [("ctrm-guard-nul", ""), ("ctrm-guard-bad", broken)]
+        {
+            let got = read_of_bytes(name, ctrm, nul);
+            assert!(got.contains("f.rs:1:3 U+202E bidi-control"), "{got}");
+        }
+    }
+
+    /// No hazard but the NUL and the bytes a binary is made of: the read
+    /// goes ahead, with a note that no rule could apply.
+    #[test]
+    fn a_binary_file_without_a_smuggling_hazard_passes_with_a_note() {
+        let got = read_of_bytes(
+            "ctrm-guard-binary",
+            "",
+            b"\x89PNG\r\n\x1a\n\0\0\xff",
+        );
+        assert!(got.contains("is not text"), "{got}");
+        assert!(!got.contains("permissionDecision"), "{got}");
     }
 
     /// No `cwd` in the payload: the process directory stands in, and a
