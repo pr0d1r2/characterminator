@@ -557,6 +557,21 @@ mod tests {
         assert_eq!(config.rules.lines(), vec!["* box"]);
     }
 
+    /// `src/rules:V45`: a `--*-file` path resolves against the run root,
+    /// not the working directory, and a second `-C` replaces the first.
+    #[test]
+    fn a_named_file_resolves_against_the_last_directory_flag() {
+        let files = [("own.ctrm", "* caveman\n")];
+        let Some(root) = fixture("ctrm-dash-c-twice-fixture/b", &files) else {
+            return;
+        };
+        let parent = root.parent().map(Path::to_path_buf).unwrap_or_default();
+        let words = ["check", "-C", "a", "-C", "b", "--rules-file", "own.ctrm"];
+        let config = from_argv(&parent, &argv(&words)).unwrap_or_default();
+        assert_eq!(config.root, root);
+        assert_eq!(config.rules.lines(), vec!["* caveman"]);
+    }
+
     fn refusal(words: &[&str]) -> String {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
         let loaded = from_argv(root, &argv(words)).and_then(|c| c.map());

@@ -35,7 +35,7 @@ V24: `ascii` = implicit base ∀ rule: effective set = `ascii` ∪ named sets �
 V56: a rule naming ⊥ set (`docs/** !warn`) moves levels ONLY, ⊥ competes for the grant: the grant = last matching rule that NAMES a set, as fidelity = last that names a family (V29). `explain` winner = that rule. a level line that won the grant REJECTED ∵ it narrowed the path back to `ascii` & a line written to RELAX a lint made more chars fail (B5).
 V29: fidelity = family name, default `text`; per rule `@<family>` suffix (`docs/** marks @emoji`); last matching rule naming one wins. `--fidelity <f>` ≡ `--rule '* @<f>'` (V19 order). presets w/ classes grant only resolved family's members ∴ other families compress into it; `src/fix:V6` holds. mix → grant variants explicitly. family ∉ map tree (`src/fix:V27`) → config error, exit 2 ∀ verb (`src/cli:V74`) ∵ a typo resolved to unlabelled members only (B30). `sets` lists at the whole-repo family ∴ both spellings ≡.
 
-V45: DISCOVERED dotfile = `.ctrm`, `.ctrm-sets`, `.ctrm-map` @ the RUN ROOT only (`-C <dir>` | cwd). ⊥ per-dir & ⊥ ancestor walk ∵ a law that ? sit in any ancestor is one ⊥ reader resolves by looking.
+V45: DISCOVERED dotfile = `.ctrm`, `.ctrm-sets`, `.ctrm-map` @ the RUN ROOT only (`-C <dir>` | cwd). ⊥ per-dir & ⊥ ancestor walk ∵ a law that ? sit in any ancestor is one ⊥ reader resolves by looking. `--*-file <f>` resolves against the run root too; `-C` repeated → last wins (V19).
 V75: rule line ! name ≥ 1 of set | `@<family>` | `!<level>`. pattern only (`a.md`) → parse error at its origin, exit 2 ∵ a line that grants & levels ⊥ reads like a rule that worked.
 
 ## §T TASKS
