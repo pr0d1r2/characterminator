@@ -12,7 +12,7 @@
 //! text: a caller asks [`Hazards::exempt`] once per text and hands the
 //! offsets to [`Hazards::lint_at`]. The list lives in `sequence`.
 
-use crate::charset::{CharSet, builtin};
+use crate::charset::{CharSet, SetCatalog, builtin};
 use crate::lint::Lint;
 use crate::lint::sequence::Sequences;
 use crate::scan::Hit;
@@ -92,10 +92,24 @@ impl Hazards {
     /// `persian` excuses ZWNJ, `any` excuses nothing.
     pub fn excuses(&self, granted: &str, character: char) -> bool {
         granted.split('+').any(|name| {
-            self.excusing.iter().any(|(set, joiners)| {
+            self.excusing.iter().any(|(set, joiners, _)| {
                 set == name && joiners.contains(&character)
             })
         })
+    }
+
+    /// These hazards, excusing only through the presets `catalog` -- the
+    /// run's -- resolves EXACTLY as the build ships them (V57). A NAME is
+    /// not provenance: a `.ctrm-sets` line, or `--no-builtin-sets` with a
+    /// `--set`, can call anything `hindi`, and such a set excuses nothing.
+    #[must_use]
+    pub fn vouched_by(mut self, catalog: &SetCatalog) -> Self {
+        self.excusing.retain(|(name, _, shipped)| {
+            catalog
+                .resolve(name, FAMILY)
+                .is_ok_and(|run| run == *shipped)
+        });
+        self
     }
 
     /// Whether a character is in ANY class, wherever it sits.
@@ -159,8 +173,8 @@ fn classes() -> Result<Vec<Class>, String> {
 /// character or a C0 control is never anybody's spelling.
 const JOINERS: [char; 2] = ['\u{200C}', '\u{200D}'];
 
-/// A preset name and the joiners it excuses.
-type Excuse = (String, Vec<char>);
+/// A preset name, the joiners it excuses, and the set as it ships.
+type Excuse = (String, Vec<char>, CharSet);
 
 /// The compiled-in presets that grant a joiner and NO other hazard, with
 /// the joiners each grants. Read from the builtin catalog, never the
@@ -173,7 +187,7 @@ fn excusing(classes: &[(Lint, CharSet)]) -> Result<Vec<Excuse>, String> {
         let joiners: Vec<char> =
             JOINERS.into_iter().filter(|j| set.contains(*j)).collect();
         if !joiners.is_empty() && !grants_other_hazard(&set, classes) {
-            found.push((name.to_owned(), joiners));
+            found.push((name.to_owned(), joiners, set));
         }
     }
     Ok(found)
@@ -284,6 +298,24 @@ mod tests {
         let stray = found.lint_for(at(3, '\u{FEFF}')).map(|l| l.name);
         assert_eq!(stray, Some("stray-bom"));
         assert!(found.contains('\u{FEFF}'));
+    }
+
+    /// B19: the excuse follows the SET, not its name. The shipped catalog
+    /// keeps `hindi`'s; a redeclared `hindi`, or none at all, loses it.
+    #[test]
+    fn only_the_shipped_preset_vouches_for_a_joiner() {
+        use crate::charset::{SetCatalog, builtin, parse_line};
+        let zwnj = '\u{200C}';
+        let shipped = builtin::catalog().unwrap_or_else(|_| SetCatalog::new());
+        assert!(hazards().vouched_by(&shipped).excuses("hindi", zwnj));
+        let mut redeclared = shipped;
+        let line = parse_line("hindi ascii U+200C U+200D");
+        if let Ok(Some(definition)) = line {
+            redeclared.insert(definition);
+        }
+        assert!(!hazards().vouched_by(&redeclared).excuses("hindi", zwnj));
+        let none = SetCatalog::new();
+        assert!(!hazards().vouched_by(&none).excuses("hindi", zwnj));
     }
 
     /// Tool output has no file start, so byte 0 of it signs nothing.

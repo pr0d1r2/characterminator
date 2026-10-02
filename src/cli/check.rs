@@ -159,10 +159,12 @@ impl Checker {
     /// preset that cannot be -- the second is a defect in this crate
     /// rather than in the tree being checked, and it says so.
     pub fn configured(config: &Config) -> Result<Self, String> {
+        let rules = config.rules()?;
+        let catalog = config.catalog()?;
         Ok(Self {
-            rules: config.rules()?,
-            catalog: config.catalog()?,
-            hazards: Hazards::builtin()?,
+            rules,
+            hazards: Hazards::builtin()?.vouched_by(&catalog),
+            catalog,
             outside: Lint::named(OUTSIDE)
                 .ok_or_else(|| String::from("no `outside-set` lint"))?,
             strict: config.strict,
@@ -946,6 +948,16 @@ mod tests {
         assert_eq!(hi, "");
         let fa = report("ctrm-joiner-zwj", "* ascii+persian\n", &conjunct);
         assert!(fa.contains("U+200D"), "{fa}");
+    }
+
+    /// B19: a `.ctrm-sets` line NAMED `hindi` is not the preset, so the
+    /// ZWNJ it grants is still a hazard (`src/lint:V57`).
+    #[test]
+    fn a_redeclared_preset_excuses_no_joiner() {
+        let sets = (".ctrm-sets", "hindi ascii U+200C U+200D\n");
+        let files = [sets, ("a.md", "a\u{200C}b\n")];
+        let got = report("ctrm-joiner-redeclared", "* hindi\n", &files);
+        assert!(got.contains("U+200C"), "{got}");
     }
 
     fn report(name: &str, ctrm: &str, files: &[(&str, &str)]) -> String {
