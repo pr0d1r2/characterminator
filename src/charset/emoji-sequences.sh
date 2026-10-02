@@ -21,7 +21,7 @@ here=$(dirname "$0")
 fetch() {
   mkdir -p "$1"
   for file in $FILES; do
-    curl -sfL -o "$1/$file" "$URL/$file"
+    curl -sSfL -o "$1/$file" "$URL/$file"
   done
 }
 

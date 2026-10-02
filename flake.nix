@@ -152,6 +152,10 @@
             # `src/charset/cldr-letters.sh` reads CLDR's JSON with it; pinned
             # here so a regeneration is byte-identical on every machine.
             pkgs.jq
+            # The `fetch` step of both generators in `src/charset` downloads
+            # their pinned inputs with it (`src/charset:V77`), so the step
+            # does not depend on whatever curl the host happens to have.
+            pkgs.curl
             # The gate runner; the ops it runs live in `hk.pkl`. From the
             # nix-hk overlay rather than nixpkgs, whose hk trails the
             # releases `hk.pkl` is written against.

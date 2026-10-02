@@ -7,8 +7,9 @@
 #   sh src/charset/cldr-letters.sh generate <dir> > src/charset/locales.ctrm-sets
 #
 # `generate` reads only <dir> and `hazard.ctrm-sets` beside this script, so
-# the same inputs give the same bytes. Needs `jq` (the dev shell has it),
-# `curl` and `xargs` for `fetch`, and `sha256sum`.
+# the same inputs give the same bytes. Needs `jq`, `curl` and `xargs` for
+# `fetch`, and `sha256sum`; the dev shell has them all. `fetch` creates
+# <dir> if it is not there.
 set -eu
 
 TAG=48.2.3
@@ -31,13 +32,14 @@ locales() {
 }
 
 fetch() {
+  mkdir -p "$1"
   for file in $CORE; do
-    curl -sfL -o "$1/$(basename "$file")" "$CLDR/cldr-core/$file"
+    curl -sSfL -o "$1/$(basename "$file")" "$CLDR/cldr-core/$file"
   done
   locales "$1" | xargs -P 16 -I{} sh -c 'mkdir -p "$1/main/$2" &&
-    curl -sfL -o "$1/main/$2/characters.json" "$3/$2/characters.json"' \
+    curl -sSfL -o "$1/main/$2/characters.json" "$3/$2/characters.json"' \
     sh "$1" {} "$CLDR_URL"
-  curl -sfL -o "$1/UnicodeData.txt" "$UCD_URL"
+  curl -sSfL -o "$1/UnicodeData.txt" "$UCD_URL"
 }
 
 # The sha256 of every input: the core files one by one, and the

@@ -305,6 +305,25 @@ mod tests {
         }
     }
 
+    /// V77, B36: each generator's `fetch` makes its directory before it
+    /// writes there, and a failed download says why instead of exiting
+    /// with curl's bare code.
+    const GENERATORS: [&str; 2] = [
+        include_str!("cldr-letters.sh"),
+        include_str!("emoji-sequences.sh"),
+    ];
+
+    #[test]
+    fn every_generator_fetch_makes_its_dir_and_reports_failure() {
+        for script in GENERATORS {
+            let body = script.split_once("\nfetch() {\n").map(|(_, b)| b);
+            assert!(body.is_some_and(|b| b.starts_with("  mkdir -p \"$1\"\n")));
+            assert!(
+                script.contains("curl -sSfL") && !script.contains("curl -sfL")
+            );
+        }
+    }
+
     #[test]
     fn the_locale_file_is_ascii_and_out_of_the_eager_text() {
         assert!(LOCALES.is_ascii());
