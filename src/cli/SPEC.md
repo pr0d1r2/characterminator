@@ -18,6 +18,18 @@ sib|src/lint|lint names, groups, levels, hazard, pedantic
 sib|src/tokens|`itok` facade: counts w/ method label, git-tracked fileset
 sib|src/render|human & json output, stable json contract
 
+## §I INTERFACES
+
+- cmd: `ctrm check [paths]` → violations `path:line:col U+XXXX <set>`, 1 per line. 0 clean / 1 violation / 2 usage.
+- cmd: `ctrm fix [--check] [paths]` → rewrite disallowed chars via transliteration map. `--check` reports & writes ⊥, exit 1 on drift (`rustfmt` grammar). bare: exit 1 only on unmapped char left (`src/cli:V7`).
+- cmd: `ctrm stats [--bpe] [paths]` → per file: chars outside set, bytes, tokens now vs after `fix`, via `itok`. report-only.
+- cmd: `ctrm explain [<path>] [--as args|lines|prompt]` → effective set + winning rule + its config line; `--as` renders effective config as flags, data-file lines, or agent prompt (`src/cli:V32`).
+- cmd: `ctrm sets` → builtin sets & members.
+- cmd: `ctrm guard` → hook adapter: harness hook JSON stdin → decision JSON stdout; fuse on hazard (`src/cli:V35`).
+- flag: `--format human|json` ∀ verbs; `sarif` `check` only (`src/render:V50`) · `-C <dir>`.
+- flag (file twins, repeatable, `src/rules:V18`): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (`src/rules:V29`) · `--strict` (`src/lint:V36`) · `--pedantic` (`src/lint:V37`) · `--no-color` (∀ verb, no-op: output ⊥ ever coloured; accepted ∵ unknown flags exit 2).
+- flag: unknown | another verb's (`check --bpe`) → exit 2 ∵ a typo'd flag silently ignored reads as one that worked. `--` ends flags.
+
 ## §V INVARIANTS
 
 V7: only `check` & `fix --check` gate. bare `fix` rewrites only on explicit call; exit 1 only if an unmapped char is LEFT (`src/fix:V4`), ⊥ for what it repaired. `stats`/`explain`/`sets` report-only, exit 0.
