@@ -14,7 +14,7 @@
 
 use crate::fix::map::{Map, Match};
 use crate::fix::{Error, Rewrite};
-use crate::scan::{Hit, Position};
+use crate::scan::{Hit, Position, located};
 
 /// What `fix` found, with no text to write: the `fix --check` answer.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -46,28 +46,112 @@ pub struct Fixed {
 /// what it gets back cannot write a file that failed either.
 ///
 /// Passes repeat until one changes nothing (V65), each guarded by V6 on
-/// its own input. A text that settles in one pass -- every text before
-/// the sequence map -- is reported exactly as before. One that needed
-/// more reports a later pass's rewrites at their place in the text that
-/// pass read, and its unmapped characters at their place in the output.
+/// its own input. Every row is reported in the ORIGINAL text's
+/// coordinates: a later pass read text an earlier one rewrote, so its
+/// positions are mapped back through each earlier pass (B24). A text that
+/// settles in one pass -- every text before the sequence map -- maps
+/// through nothing and is reported exactly as before.
 pub fn fix(
     text: &str,
     map: &Map,
     allowed: &dyn Fn(char) -> bool,
 ) -> Result<Fixed, Error> {
+    let mut seen = History::new(text);
     let mut pass = guarded(text, map, allowed)?;
-    for later in 0..SETTLE {
+    for _ in 0..SETTLE {
         let again = guarded(&pass.output, map, allowed)?;
         if again.output == pass.output {
-            if later > 0 {
-                pass.unmapped = again.unmapped;
-            }
-            return Ok(pass.finish());
+            return Ok(seen.settled(pass));
         }
-        pass.spans.extend(again.spans);
-        pass.output = again.output;
+        seen.record(pass);
+        pass = again;
     }
     Err(Error::NotIdempotent)
+}
+
+/// The passes so far: what they reported, already in the original text's
+/// coordinates, and each one's own spans, in the coordinates it read.
+#[derive(Debug)]
+struct History<'t> {
+    original: &'t str,
+    report: Report,
+    layers: Vec<Vec<Span>>,
+}
+
+impl<'t> History<'t> {
+    const fn new(original: &'t str) -> Self {
+        Self {
+            original,
+            report: Report {
+                rewrites: Vec::new(),
+                unmapped: Vec::new(),
+            },
+            layers: Vec::new(),
+        }
+    }
+
+    /// A pass that changed its input: its rewrites join the report, and
+    /// its spans become the layer later positions are mapped through.
+    fn record(&mut self, pass: Pass) {
+        let rewrites: Vec<Rewrite> = pass
+            .spans
+            .iter()
+            .map(|span| span.rewrite_at(self.origin(span.hit)))
+            .collect();
+        self.report.rewrites.extend(rewrites);
+        self.layers.push(pass.spans);
+    }
+
+    /// The pass whose output is the fixed point. Its unmapped characters
+    /// are the ones left, located where they sit in the original.
+    fn settled(mut self, pass: Pass) -> Fixed {
+        let unmapped = pass.unmapped.iter().map(|hit| self.origin(*hit));
+        self.report.unmapped = unmapped.collect();
+        let output = pass.output.clone();
+        self.record(pass);
+        self.report.rewrites.sort_by_key(|r| r.hit.position.byte);
+        Fixed {
+            output,
+            report: self.report,
+        }
+    }
+
+    /// Where a hit read by the NEXT pass sits in the original: back through
+    /// every recorded layer, newest first, then re-located in the original
+    /// so line and column agree with the byte.
+    fn origin(&self, hit: Hit) -> Hit {
+        if self.layers.is_empty() {
+            return hit;
+        }
+        let byte = self
+            .layers
+            .iter()
+            .rev()
+            .fold(hit.position.byte, |at, layer| back(at, layer));
+        let position = located(self.original)
+            .find(|at| at.position.byte == byte)
+            .map_or(hit.position, |at| at.position);
+        Hit { position, ..hit }
+    }
+}
+
+/// A byte of one pass's OUTPUT, as a byte of that pass's input. Outside
+/// every span, the offset shifts by what the spans before it changed; in a
+/// span's replacement, it is that span's start, the nearest place in the
+/// input the text came from.
+fn back(byte: usize, layer: &[Span]) -> usize {
+    let mut cut = Cut::default();
+    for span in layer {
+        let start = cut.start_of(span);
+        if byte < start {
+            break;
+        }
+        if byte < start.saturating_add(span.to.len()) {
+            return span.hit.position.byte;
+        }
+        cut.skip(span);
+    }
+    cut.input.saturating_add(byte.saturating_sub(cut.output))
 }
 
 /// How many passes past the first `fix` may take to settle (V65). One
@@ -110,17 +194,6 @@ struct Pass {
     unmapped: Vec<Hit>,
 }
 
-impl Pass {
-    fn finish(self) -> Fixed {
-        let rewrites = self.spans.into_iter().map(Span::into_rewrite).collect();
-        let unmapped = self.unmapped;
-        Fixed {
-            output: self.output,
-            report: Report { rewrites, unmapped },
-        }
-    }
-}
-
 /// A rewritten span. The public `Rewrite` names the first character; the
 /// byte length stays here, because it is what the V6 guard needs.
 #[derive(Debug)]
@@ -131,10 +204,11 @@ struct Span {
 }
 
 impl Span {
-    fn into_rewrite(self) -> Rewrite {
+    /// This span as the public row, at `hit` rather than its own.
+    fn rewrite_at(&self, hit: Hit) -> Rewrite {
         Rewrite {
-            hit: self.hit,
-            to: self.to,
+            hit,
+            to: self.to.clone(),
         }
     }
 }
@@ -345,6 +419,12 @@ impl Cut {
         let end = self.output.checked_add(next.saturating_sub(self.input));
         let after = end.and_then(|stop| out.get(self.output..stop));
         before.is_some() && before == after
+    }
+
+    /// Where `span`'s replacement begins in the output.
+    fn start_of(&self, span: &Span) -> usize {
+        let gap = span.hit.position.byte.saturating_sub(self.input);
+        self.output.saturating_add(gap)
     }
 
     fn skip(&mut self, span: &Span) {
@@ -771,7 +851,7 @@ mod tests {
 
     /// The builtin map's emoji sequences (V62), run through the engine.
     mod sequences {
-        use super::{Map, Origin, fix};
+        use super::{Hit, Map, Origin, fix};
         use crate::charset::{CharSet, builtin};
         use std::sync::LazyLock;
 
@@ -884,6 +964,27 @@ mod tests {
             let toned = "\u{1F468}\u{1F3FB}\u{200D}\u{1F469}\u{1F3FB}\
                 \u{200D}\u{1F467}";
             assert_eq!(fixed(toned, true), "\u{1F46A}");
+        }
+
+        /// B24: a later pass reads text an earlier one shortened, and its
+        /// rows are still reported where they sit in the ORIGINAL: every
+        /// rewrite and every kept character resolves in the file on disk,
+        /// at its byte, line and column, in one byte-ordered list.
+        #[test]
+        fn every_row_of_a_multi_pass_fix_resolves_in_the_original() {
+            let text = "ab\u{2014}\u{1F469}\u{FE0F}\u{200D}\u{1F4BB}\u{2014}\
+                \u{1F1F5}\u{FE0F}\u{1F1F1} z\n";
+            let done = fix(text, &MAP, &|c: char| c.is_ascii());
+            assert!(done.is_ok());
+            let report = done.unwrap_or_default().report;
+            let rows = report.rewrites.iter().map(|r| r.hit);
+            assert!(rows.clone().is_sorted_by_key(|h| h.position.byte));
+            let hits: Vec<Hit> = rows.chain(report.unmapped).collect();
+            assert!(hits.len() > 4, "{hits:?}");
+            let truth: Vec<Hit> = crate::scan::located(text).collect();
+            for hit in &hits {
+                assert!(truth.contains(hit), "{hit:?} is not in the file");
+            }
         }
 
         /// Every listed sequence, under `ascii` and under `emoji`: `fix`
