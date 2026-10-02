@@ -43,7 +43,7 @@ T10|x|ARCHIVED to SPEC-ARCHIVE.md|V4,V5,V6
 T26|x|ARCHIVED to SPEC-ARCHIVE.md|V26,`src/charset:V22`
 T29|x|ARCHIVED to SPEC-ARCHIVE.md|V27
 T30|x|ARCHIVED to SPEC-ARCHIVE.md|V28,V27
-T33|x|2A: vendor emoji 18.0 sequence data; generator → `emoji-seq.ctrm-map`; curated ZWJ table; fixtures ∀ target kind & a non-RGI ZWJ that stays reported; lint exemption per `src/lint:V63`|V62,V31,`src/charset:V22`,`src/lint:V34`
+T33|x|ARCHIVED to SPEC-ARCHIVE.md|V62,V31,`src/charset:V22`,`src/lint:V34`
 T53|x|ARCHIVED to SPEC-ARCHIVE.md|V51,V5,V6,`.:R11`
 T59|x|ARCHIVED to SPEC-ARCHIVE.md|V60,V31
 

@@ -13,5 +13,6 @@ T10|x|transliteration map + `fix` & `fix --check`; property tests: idempotency, 
 T26|x|builtin map: typography defaults|V26,`src/charset:V22`
 T29|x|family lines: parse, tree validation, fallback path|V27
 T30|x|class lines: parse, family-labelled members, resolution along fallback path|V28,V27
+T33|x|2A: vendor emoji 18.0 sequence data; generator → `emoji-seq.ctrm-map`; curated ZWJ table; fixtures ∀ target kind & a non-RGI ZWJ that stays reported; lint exemption per `src/lint:V63`|V62,V31,`src/charset:V22`,`src/lint:V34`
 T53|x|`words` map: `use` & `word` lines, word-boundary space, measured entries, property tests|V51,V5,V6,`.:R11`
 T59|x|builtin map: VS15, VS16 & skin-tone deletes + test|V60,V31
