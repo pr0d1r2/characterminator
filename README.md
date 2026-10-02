@@ -472,6 +472,13 @@ list goes stale and that one does not.
   mapping in one file (`src/cli/hook.rs`), and none is written yet.
 - **One pedantic lint is not built**: `locale-literal` needs a notion of
   which files are code and how each language spells a string literal.
+- **No per-locale typography yet.** `typography-<code>` -- a locale's own
+  quotes and punctuation from CLDR (Polish `U+201E` and `U+201D`) -- is
+  task T61 in `src/fix/SPEC.md`. CLDR is vendored for the letter presets;
+  the punctuation is not generated from it yet.
+- **Dogfooding has one wave.** The presets were sized from a scan of many
+  repositories, but `ctrm` gates only this one; rolling it out across the
+  rest is T28 in `SPEC.md`.
 - **Nothing published**: no crates.io release, no tag. CI
   (`.github/workflows/ci.yml`) runs the gate on three platforms and the
   action on one, and has not yet run on GitHub.
