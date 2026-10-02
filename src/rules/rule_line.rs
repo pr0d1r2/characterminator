@@ -42,6 +42,21 @@ pub fn parse_rule(text: &str, origin: Origin) -> Result<Rule, ParseError> {
     for field in fields {
         add_field(&mut rule, field, &origin)?;
     }
+    says_something(rule)
+}
+
+/// A rule must grant, name a family or set a level (V75). `--rule 'a.md'`
+/// used to parse as a rule that matched and changed nothing, which reads
+/// exactly like a rule that worked.
+fn says_something(rule: Rule) -> Result<Rule, ParseError> {
+    let silent = rule.sets.is_empty()
+        && rule.family.is_none()
+        && rule.levels.is_empty()
+        && rule.default_level.is_none();
+    if silent {
+        let why = "a rule names a set, an `@family` or a `!level`";
+        return Err(error(rule.origin, why));
+    }
     Ok(rule)
 }
 
@@ -162,10 +177,19 @@ mod tests {
         parse_rule(text, origin()).ok()
     }
 
+    /// V75: a pattern alone grants and levels nothing, so it is refused at
+    /// its origin rather than accepted as a rule that did nothing.
     #[test]
-    fn a_pattern_alone_is_a_rule() {
-        let rule = parse("docs/**");
-        assert_eq!(rule.map(|rule| rule.pattern), Some("docs/**".to_string()));
+    fn a_pattern_alone_is_refused() {
+        let failure = parse_rule("docs/**", Origin::Argument { index: 3 });
+        let failure = failure.err().map(|bad| bad.to_string());
+        let said = failure.unwrap_or_default();
+        assert!(
+            said.contains("argv[3]") && said.contains("@family"),
+            "{said}"
+        );
+        assert!(parse("docs/** @text").is_some());
+        assert!(parse("docs/** !warn").is_some());
     }
 
     #[test]
