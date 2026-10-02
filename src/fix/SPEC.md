@@ -42,5 +42,5 @@ T26|x|ARCHIVED to SPEC-ARCHIVE.md|V26,`src/charset:V22`
 T29|x|ARCHIVED to SPEC-ARCHIVE.md|V27
 T30|x|ARCHIVED to SPEC-ARCHIVE.md|V28,V27
 T33|.|vendor Unicode emoji data; sequence map generator; longest-match scan|V31,`src/charset:V22`,`src/lint:V34`
-T53|x|`words` map: `use` & `word` lines, word-boundary space, measured entries, property tests|V51,V5,V6,`.:R11`
-T59|x|builtin map: VS15, VS16 & skin-tone deletes + test|V60,V31
+T53|x|ARCHIVED to SPEC-ARCHIVE.md|V51,V5,V6,`.:R11`
+T59|x|ARCHIVED to SPEC-ARCHIVE.md|V60,V31
