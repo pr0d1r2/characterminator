@@ -134,7 +134,12 @@ src/lint/SPEC.md     2440
 # parse is raw-scanned) and their bug rows B16-B18. `mth archive` ran
 # first and folded T34, T37 and T55, worth 82 tokens against the ~260
 # needed. 1600 is ~12% over the ~1430 projected with all of it in place.
-src/cli/SPEC.md      1600
+# 1600 -> 2250 for the rest of the release review wave, built in parallel
+# and merged here: path arity (V73), whole-config validation (V74, B29),
+# the run-path fixes (V69-V72, B21-B27). One raise for the merged wave
+# rather than three that each assumed the others absent; re-measured after
+# the merge and corrected if the band is off.
+src/cli/SPEC.md      2250
 src/scan/SPEC.md      400
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
 # every other node already had, recording work that had invariants but no
