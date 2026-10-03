@@ -104,18 +104,31 @@ The words the rest of this page uses, each in a line or two.
 
 ## Install
 
-```bash
-cargo install characterminator   # installs the `ctrm` binary
-```
+| how | command | needs |
+|---|---|---|
+| crates.io | `cargo install --locked characterminator` | Rust 1.95 or later |
+| nix, run once | `nix run github:pr0d1r2/characterminator -- check` | nix with flakes |
+| nix, install | `nix profile install github:pr0d1r2/characterminator` | nix with flakes |
+| a clone | `cargo install --locked --path .` | Rust 1.95 or later |
 
-From a clone:
+Every route installs one binary, `ctrm`, and compiles it: there are no
+prebuilt binaries, Homebrew formula or `cargo binstall` metadata yet, so
+the first install takes a minute of compiling. The pre-commit hook and the
+GitHub Action below compile it the same way.
 
-```bash
-cargo install --path .           # or
-nix develop                      # the dev shell, with the gate's tooling
-```
+Linux (x86_64 and aarch64) and macOS (aarch64) are gated in CI on every
+change. Windows is not tested.
 
-Working on `ctrm` itself: [CONTRIBUTING.md](CONTRIBUTING.md).
+The minimum Rust version follows the `rustc` the flake pins, so the gate
+and a `cargo install` build with the same compiler. It moves only in a
+commit of its own, recorded in the [changelog](CHANGELOG.md); before 1.0,
+a raise is not treated as a breaking change.
+
+`ctrm` reads no environment variables. `NO_COLOR` is accepted and changes
+nothing, because `ctrm` never prints colour.
+
+Working on `ctrm` itself: [CONTRIBUTING.md](CONTRIBUTING.md); `nix
+develop` gives the dev shell with the gate's tooling.
 
 ### As a pre-commit hook
 
