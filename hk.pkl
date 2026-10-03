@@ -178,6 +178,29 @@ local fast = new Mapping<String, Step> {
       diff -u src/fix/emoji-seq.ctrm-map target/emoji-seq.ctrm-map >&2 || { echo 'hk: src/fix/emoji-seq.ctrm-map is not what `sh src/charset/emoji-sequences.sh map > src/fix/emoji-seq.ctrm-map` writes from the vendored sequences. Regenerate it; never edit it by hand (src/charset:V97).' >&2; exit 1; }
       """
   }
+  // THE HOOK INSTALL IS GUARDED (V40, B1). The dev shell may be entered
+  // from a sibling repo to borrow a tool, and once installed our hooks over
+  // its tracked ones. The shellHook's two guards -- the crate-name marker
+  // at the worktree root, and the refusal of a TRACKED hooks dir -- must
+  // both appear, in that order, before any `install` of a hook.
+  //
+  // A text check, and the cheapest honest one: running the shellHook in a
+  // scratch sibling repo would need nix inside the gate. It catches a
+  // guard deleted or moved below the installs, which is how B1 happened;
+  // it cannot prove the guards' shell logic right.
+  ["hook-guard"] {
+    glob = List("flake.nix")
+    check = """
+      marker='^name = "characterminator"$'
+      tracked='ls-files --error-unmatch "$ctrm_hooks"'
+      awk -v m="$marker" -v t="$tracked" '
+        index($0, m) && !lm { lm = NR }
+        index($0, t) && !lt { lt = NR }
+        index($0, "install -m 755") { n++; if (!li) li = NR }
+        END { exit !(lm && lt && li && lm < lt && lt < li && n == 2) }
+      ' flake.nix || { echo 'hk: flake.nix shellHook must check the crate-name marker, then refuse a tracked hooks dir, BEFORE it installs either hook (V40, B1). One of the guards is missing or sits below an install.' >&2; exit 1; }
+      """
+  }
   // THE BADGE READS THE CLAIM (V46). The coverage figure in README.md is
   // copied from `.coverage`, never typed, so a badge cannot say one number
   // while the file the gate keeps honest says another.

@@ -45,7 +45,7 @@ V13: dogfood: `ctrm check` gates own tree (`hk.pkl` step `ctrm`). `.ctrm` grants
 V14: SPEC.md form gated by `mth fmt --check SPEC.md` & `mth check --records .spec-records SPEC.md`. `mth` absent → gate FAILS hard, ⊥ skip. ∀ node SPEC.md, ⊥ root only.
 V15: SPEC.md capped from commit one: `.context-limits` row gated by `itok check`; ceiling ~12% over measured.
 V16: `sherd check`, `sherd budget` & `sherd sync --check` gate; federation live since the split ∴ ⊥ deferred.
-V40: dev shell installs a hook ONLY into its OWN repo (crate-name marker @ worktree root) & ONLY into an UNTRACKED hooks dir ∵ `core.hooksPath` ? be tracked. refusal LOUD.
+V40: dev shell installs a hook ONLY into its OWN repo (crate-name marker @ worktree root) & ONLY into an UNTRACKED hooks dir ∵ `core.hooksPath` ? be tracked. refusal LOUD. runner: hk step `hook-guard` (text: both guards precede every `install`).
 
 V44: ∀ flake input pins a TAG, bumped in its OWN reviewed commit. FOLLOWING a branch REJECTED ∵ what the gate enforces ? then change w/ ⊥ diff to read, & a gate whose rules move unreviewed gates ⊥. `nixpkgs-lock` & `nix-hk` = the fleet authorities, pinned by their own lock ∴ exempt.
 
