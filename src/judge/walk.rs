@@ -37,8 +37,7 @@ pub(crate) fn files(
     paths: &[String],
 ) -> Result<impl Iterator<Item = Result<File, String>>, String> {
     let selected = tokens::select(root, paths).map_err(|bad| {
-        let shown = shown_path(root, &bad.path);
-        format!("{shown}: {}", plain(&bad.reason))
+        format!("{}: {}", refused_path(root, &bad.path), plain(&bad.reason))
     })?;
     if paths.is_empty() && selected.is_empty() {
         return Err(NOTHING_TRACKED.to_owned());
@@ -84,6 +83,18 @@ pub(crate) fn shown_path(root: &Path, full: &Path) -> String {
         .into_owned()
 }
 
+/// The path a refusal names. Root-relative like every other path, except
+/// the root itself, which relative to itself is empty and would print as
+/// a bare `: is not a directory` (B78): it is named as given.
+fn refused_path(root: &Path, bad: &Path) -> String {
+    let shown = shown_path(root, bad);
+    if shown.is_empty() {
+        root.display().to_string()
+    } else {
+        shown
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{NOTHING_TRACKED, files, shown_path};
@@ -117,6 +128,16 @@ mod tests {
         }
         let refused = files(&root, &[]).err();
         assert_eq!(refused.as_deref(), Some(NOTHING_TRACKED));
+    }
+
+    /// B78 / V130: a refusal about the root names the root, never an empty
+    /// path before the colon.
+    #[test]
+    fn a_refused_root_is_named() {
+        let root = std::env::temp_dir().join("ctrm-no-such-root-b78");
+        let said = files(&root, &[]).err().unwrap_or_default();
+        let want = format!("{}: is not a directory", root.display());
+        assert_eq!(said, want);
     }
 
     #[test]
