@@ -59,7 +59,7 @@ local fast = new Mapping<String, Step> {
   }
   // THE SPEC FORM, checked by its OWNER. The format has one implementation
   // and this repo calls it rather than porting it. Every node's SPEC.md is
-  // checked, not only the root: the federation put rules in nine other
+  // checked, not only the root: the federation put rules in eleven other
   // files and a rule nothing checks is decoration.
   //
   // It fails HARD when `mth` is absent rather than skipping: nothing else

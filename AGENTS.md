@@ -10,9 +10,12 @@ not a description written afterwards: it holds the invariants that must stay
 true, the tasks that remain, and a record of every bug found so far paired
 with the rule that now catches it.
 
-Ten files, not one, because a session should load the chain it needs -- root
-plus hub plus the node it is working in -- rather than everything. Each node
-owns its own rules and cites its siblings by name.
+Twelve files, not one -- the root, the `src` hub, eight nodes, and two
+sub-nodes under `src/cli` (`guard`, `explain`); `find src -name SPEC.md`
+lists them -- because a session should load the chain it needs -- root
+plus hub plus the node it is working in, plus the parent for a sub-node --
+rather than everything. Each node owns its own rules and cites its
+siblings by name.
 
 `mth tasks SPEC.md` prints the backlog in id order. A row carrying `~` is
 work somebody started. Only `/spec` edits the spec; `/build` flips a status
@@ -43,10 +46,12 @@ The steps, and what each is for:
 |---|---|
 | `fmt`, `clippy`, `test` | the usual, with clippy at `-D warnings` |
 | `ctrm` | this tool, run on this repository's own tree |
-| `mth`, `mth-check` | every `SPEC.md` is well formed and still correct |
+| `mth`, `mth-check` | every `SPEC.md` is well formed and still correct, and no closed option recorded in a `.spec-records` (the root's, or one beside a node's spec) has gone missing |
 | `context-limits` | no spec is over the token ceiling it declared |
 | `sherd-check`, `sherd-sync`, `sherd-budget` | the node tree resolves, `NAV` is not stale, and no node chain is over its ceiling |
 | `flake-tags` | every flake input pins a `vX.Y.Z` tag, not a branch (V44) |
+| `hook-guard` | a `flake.nix` shellHook that installs a hook before both of its guards (V40) |
+| `emoji-seq-map` | an emoji sequence map that is not what its generator writes from the vendored data (`src/charset:V97`) |
 | `coverage-badge` | the README coverage badge says what `.coverage` claims, copied rather than typed |
 | `coverage` | line coverage under the floor, or a `.coverage` claim this run does not reproduce (V46); `hk check` and pre-push, not pre-commit |
 | `no-commit-to-branch` | a commit to `main`; pre-commit only |
