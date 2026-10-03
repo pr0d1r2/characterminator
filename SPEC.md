@@ -18,7 +18,7 @@ self|.|-
 ## §C CONSTRAINTS
 
 - Rust **edition 2024**, stable, MSRV **1.95** = fleet pin (`nixpkgs-lock` → nixos-26.05). One crate: lib + bin. MIT. `unsafe_code` FORBID.
-- crate `characterminator`, bin `ctrm` (`rg`/`mth` shape: crate carries meaning, bin carries muscle memory). `ctr` REJECTED: containerd ships `cmd/ctr`. `ctrm` free on crates.io, ⊥ found on PATH.
+- crate `characterminator`, bin `ctrm` (V92).
 - CPU only, offline, deterministic. ⊥ network, ⊥ model.
 - SPEC.md FORMAT = cavekit **4.1.0** as vendored by `microlith` (upstream rev `c322f0b`) + its `FORMAT-EXTENSIONS.md` (`§F`/`§N`). Form gated by `mth`, ⊥ restated here (V14).
 - token counting = `itok` lib dep (crates.io 0.3, `default-features = false`, `features = ["bpe"]`). ⊥ own tokenizer, ⊥ own bytes/4.
@@ -41,7 +41,7 @@ self|.|-
 
 ## §V INVARIANTS
 
-V13: dogfood: `ctrm check` gates own tree in `hk.pkl`; `.ctrm` grants `SPEC.md` `ascii+caveman`, rest `ascii`.
+V13: dogfood: `ctrm check` gates own tree (`hk.pkl` step `ctrm`). `.ctrm` grants, last match wins: `*` `ascii` · `*.md` `ascii+spec` (custom set, `.ctrm-sets`) ∵ specs DOCUMENT the chars they govern · `README.md` `AGENTS.md` `LICENSE` `docs/**/*.md` back to `ascii` ∵ the front page argues plain text · `.context-limits` `ascii+caveman` ∵ it cites `§` · `pkl/Config.pkl` `any` ∵ vendored upstream schema, ⊥ ours to rewrite.
 V14: SPEC.md form gated by `mth fmt --check SPEC.md` & `mth check --records .spec-records SPEC.md`. `mth` absent → gate FAILS hard, ⊥ skip. ∀ node SPEC.md, ⊥ root only.
 V15: SPEC.md capped from commit one: `.context-limits` row gated by `itok check`; ceiling ~12% over measured.
 V16: `sherd check`, `sherd budget` & `sherd sync --check` gate; federation live since the split ∴ ⊥ deferred.
@@ -52,6 +52,8 @@ V44: ∀ flake input pins a TAG, bumped in its OWN reviewed commit. FOLLOWING a 
 V46: line coverage GATED, ⊥ reported. FLOOR = hard min; `.coverage` = CEILING, the figure the badge CLAIMS. measured < floor → FAIL. measured < claim → FAIL ∵ badge OVERSTATES. measured − claim > 0.5 → FAIL ∵ badge stale. `cargo llvm-cov` needs llvm tools matching `rustc`s LLVM ∴ gate asserts the majors agree: a mismatch reads as a crash, ⊥ as a pin.
 
 V52: adoption surfaces (pre-commit hook, GitHub Action) WRAP the `ctrm` binary, built from the consumer-pinned rev; ⊥ own rule logic ∵ a wrapper that judged files itself drifts from the tool it is named after. action: inputs reach the shell via `env` ONLY, ⊥ `${{ }}` in `run:` ∵ template injection; exit status preserved when `output` redirects. CI runs the action via `uses: ./` ∵ a wrapper nothing exercises ? rot unseen.
+
+V92: crate `characterminator`, bin `ctrm` (`rg`/`mth` shape: crate carries meaning, bin carries muscle memory). `ctr` REJECTED ∵ containerd ships `cmd/ctr`. `ctrm` free on crates.io, ⊥ found on PATH. runner: hk step `ctrm` = `cargo run --bin ctrm` ∴ a rename fails the gate; the record → `.spec-records`.
 
 ## §T TASKS
 

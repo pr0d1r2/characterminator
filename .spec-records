@@ -28,7 +28,12 @@
 # The binary name. Without this, a later reader re-proposes `ctr` -- it is the
 # obvious short form, and nothing in the spec would say it was already tried
 # and dropped because containerd ships that command on most Linux hosts.
-V13  ctrm
+#
+# Keyed on V92, which holds the decision. It used to read `V13  ctrm`, but
+# V13 is the dogfood rule and only MENTIONS `ctrm check`; the rejection sat
+# in a constraint line, which `mth` cannot key (records name ids, and a
+# constraint has none). So that record passed while protecting nothing.
+V92  `ctr` REJECTED
 
 # The PIN POLICY. Without this, a later reader proposes following a branch --
 # it removes the bump commits, which look like pure overhead until you ask
