@@ -10,13 +10,11 @@ not a description written afterwards: it holds the invariants that must stay
 true, the tasks that remain, and a record of every bug found so far paired
 with the rule that now catches it.
 
-Eighteen files, not one -- the root, the `src` hub, nine nodes, and seven
-sub-nodes (`guard` and `explain` under `src/cli`, `emoji` and `words`
-under `src/fix`, `locale` under `src/charset`, `hazard` and `pedantic`
-under `src/lint`); `find src -name SPEC.md` lists them -- because a
-session should load the chain it needs -- root plus hub plus the node
-it is working in, plus the parent for a sub-node -- rather than
-everything. Each node owns its own rules and cites its siblings by
+One file per node, not one file -- the root, the `src` hub, each node
+under it and each sub-node under those; `find . -name SPEC.md` lists
+them -- because a session should load the chain it needs -- root plus
+hub plus the node it is working in, plus the parent for a sub-node --
+rather than everything. Each node owns its own rules and cites its siblings by
 name.
 
 `mth tasks SPEC.md` prints the backlog in id order. A row carrying `~` is

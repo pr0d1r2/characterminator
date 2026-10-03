@@ -204,7 +204,7 @@ Four sibling tools appear in the dev shell and in the gate, and are **not**
 linked into this crate. A consumer installing the binary never sees them.
 
 - [`microlith`](https://github.com/pr0d1r2/microlith) (`mth`) -- owns the
-  `SPEC.md` format and checks all ten spec files.
+  `SPEC.md` format and checks every spec file.
 - [`itok`](https://github.com/pr0d1r2/itok) -- also called as a binary, to
   enforce the per-spec token ceilings. The same tool as the dependency
   above, in a second role.

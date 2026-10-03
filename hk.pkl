@@ -59,8 +59,8 @@ local fast = new Mapping<String, Step> {
   }
   // THE SPEC FORM, checked by its OWNER. The format has one implementation
   // and this repo calls it rather than porting it. Every node's SPEC.md is
-  // checked, not only the root: the federation put rules in eleven other
-  // files and a rule nothing checks is decoration.
+  // checked, not only the root: the federation put rules in one file per
+  // node, and a rule nothing checks is decoration.
   //
   // It fails HARD when `mth` is absent rather than skipping: nothing else
   // checks SPEC.md structure, so a skip would read exactly like a pass.
@@ -325,8 +325,8 @@ hooks {
   /// giving a verdict about code you are not committing.
   ///
   /// Installed by `flake.nix`'s shellHook, BY HAND rather than by
-  /// `hk install`, so a shell without hk SKIPS loudly instead of making
-  /// every git command fail.
+  /// `hk install`, so a shell without hk REFUSES with an instruction --
+  /// enter the dev shell -- instead of failing with "command not found".
   ["pre-commit"] {
     fix = true
     stash = "git"

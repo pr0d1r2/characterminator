@@ -29,7 +29,7 @@ attempt to make the provenance checkable instead of merely disclosed.
 ## The method is spec-driven development
 
 [`SPEC.md`](../SPEC.md) is the law rather than a description written
-afterwards, and there are ten of them: one at the root and one per node
+afterwards, and there is one at the root and one per node and sub-node
 under `src/`. Each holds the invariants that must stay true, the tasks that
 remain, and the bugs found so far paired with the rule that now catches
 each one.
@@ -42,7 +42,7 @@ arrived beside it rather than later.
 ## What the gate proves, and what it does not
 
 Every commit runs `fmt`, `clippy -D warnings`, the test suite, this tool on
-its own tree, the spec format checker on all ten spec files, a token
+its own tree, the spec format checker on every spec file, a token
 ceiling per spec, and the federation checker. `hk.pkl` defines all of it,
 and each step is a command a human can paste into a shell -- so a verdict
 never rests on the runner's own logic.
@@ -81,7 +81,7 @@ except the one nobody was standing at.
 
 - `git log` -- the reasoning is in the commit bodies, including what was
   **rejected**. That is where this project keeps its closed options.
-- [`SPEC.md`](../SPEC.md) and the nine node specs -- what must hold, and
+- [`SPEC.md`](../SPEC.md) and the one beside each node under `src/` -- what must hold, and
   every bug paired with the invariant that now catches it.
 - [`.spec-records`](../.spec-records) -- decisions that must survive a
   later edit, enforced by the gate.

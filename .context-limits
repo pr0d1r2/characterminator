@@ -3,8 +3,8 @@
 #
 # WHAT THIS CEILING IS: a cap on ENTRY COST -- what a session loads before any
 # work begins. A spec is re-read every turn, so its size is a recurring bill,
-# not a one-off. The federation split this repo's law into ten files exactly
-# so a session can load one chain (root + hub + node) instead of everything.
+# not a one-off. The federation split this repo's law into one file per node
+# exactly so a session can load one chain (root + hub + node) instead of everything.
 #
 # It forces a REVIEW, not a shrink. Set with real slack (~12% over measured),
 # because a ceiling a hair above current turns every legitimate sentence into
@@ -13,11 +13,11 @@
 # with the reason.
 #
 # MEASURED 2026-09-17 with `itok estimate --bpe` (o200k), at the commit that
-# wrote this file: 8,548 tokens across ten files. The chain a node actually
+# wrote this file: 8,548 tokens across the spec files of that day. The chain a node actually
 # costs is root + hub + that node, which is what `sherd budget` reports.
 
 # The root: goal, constraints, the command surface, the repo gate. Loaded on
-# EVERY chain, so it is the one number that is paid ten times over.
+# EVERY chain, so it is the one number paid once per node.
 #
 # RAISED 2000 -> 2280, reviewed. Four things landed at the root since this
 # number was set: V44 and T48 (flake inputs pin tags, and the step that
