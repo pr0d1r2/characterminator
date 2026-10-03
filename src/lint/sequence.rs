@@ -27,7 +27,7 @@ const VS16: char = '\u{FE0F}';
 
 /// The RGI ZWJ and tag sequences, by first character, longest first.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Sequences {
+pub(super) struct Sequences {
     by_first: BTreeMap<char, Vec<String>>,
     /// The longest listed sequence, in bytes: how far before a joinable
     /// character a sequence holding it can start.
@@ -45,7 +45,7 @@ impl Sequences {
     /// The compiled-in list, as [`Sequences::builtin`] reads it, but read
     /// only when a text first needs it. Parsing it costs about half a
     /// millisecond, which every run paid before a byte was looked at.
-    pub fn deferred() -> Self {
+    pub(super) fn deferred() -> Self {
         Self {
             deferred: true,
             ..Self::default()
@@ -55,7 +55,7 @@ impl Sequences {
     /// The `zwj` and `tag` lines of the compiled-in list. A line this
     /// cannot read is skipped rather than guessed at: the test below
     /// counts every one, so a skipped line cannot ship.
-    pub fn builtin() -> Self {
+    pub(super) fn builtin() -> Self {
         let by_first = listed();
         let widest = by_first.values().flatten().map(String::len).max();
         Self {
@@ -76,7 +76,7 @@ impl Sequences {
     /// position skipped is one the walk would have stepped past one character
     /// at a time, so the matches -- longest first, left to right, a match
     /// consuming what it covers -- are exactly those of trying every position.
-    pub fn exempt(&self, text: &str) -> Vec<usize> {
+    pub(super) fn exempt(&self, text: &str) -> Vec<usize> {
         if self.deferred {
             let wanted = next_joined(text, 0).is_some();
             return if wanted {

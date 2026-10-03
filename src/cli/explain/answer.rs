@@ -32,7 +32,7 @@ use crate::rules::{self, Resolution, Sourced};
 /// # Errors
 ///
 /// As [`Checker::configured`], plus a rule naming a set nothing declares.
-pub fn run(
+pub(crate) fn run(
     config: &Config,
     paths: &[String],
     format: Format,
@@ -83,7 +83,7 @@ fn in_force<'a>(found: &'a Resolution<'a>) -> InForce<'a> {
 ///
 /// An unknown form, a `--format` alongside it, or a configuration that
 /// does not parse.
-pub fn exported(
+pub(crate) fn exported(
     config: &Config,
     paths: &[String],
     format: Format,
@@ -115,7 +115,7 @@ pub fn exported(
 ///
 /// As [`Checker::configured`], plus a declared set that cannot be resolved --
 /// a cycle, or a member naming a set nothing declares.
-pub fn sets(config: &Config, format: Format) -> Result<String, String> {
+pub(crate) fn sets(config: &Config, format: Format) -> Result<String, String> {
     let checker = Checker::listing(config)?;
     let rules = config.rules()?;
     let family = rules::resolve("", &rules, &rules::matches).family;
@@ -197,7 +197,7 @@ mod tests {
     fn argued(root: &Path, flags: &str) -> Config {
         let words = std::iter::once("explain").chain(flags.split('|'));
         let argv: Vec<String> = words.map(str::to_owned).collect();
-        crate::cli::from_argv(root, &argv).unwrap_or_default()
+        crate::cli::config::from_argv(root, &argv).unwrap_or_default()
     }
 
     #[test]

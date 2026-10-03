@@ -40,7 +40,7 @@ struct Row {
 /// counted. A file that cannot be counted is an ERROR rather than a
 /// zero: zero is the honest count of an empty file, and reusing it for
 /// "unknown" understates a total while looking like a measurement.
-pub fn run(
+pub(super) fn run(
     config: &Config,
     paths: &[String],
     format: Format,

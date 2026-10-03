@@ -28,7 +28,7 @@
 
 /// Whether `path` matches `pattern`, under V2's gitignore semantics.
 #[must_use]
-pub fn matches(pattern: &str, path: &str) -> bool {
+pub(crate) fn matches(pattern: &str, path: &str) -> bool {
     starred(Glob::of(pattern), Segments(Some(path)))
 }
 

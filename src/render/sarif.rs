@@ -24,12 +24,14 @@
 //! file reads the same either way.
 
 use crate::lint::{LINTS, Level, Lint};
+use crate::render::Skipped;
+#[cfg(test)]
+use crate::render::Violation;
 use crate::render::escape::{inner, string};
 use crate::render::line::{Line, Spelled};
 use crate::render::name::Codepoint;
 use crate::render::order;
 use crate::render::value::{Fields, array, field, list, number, object};
-use crate::render::{Skipped, Violation};
 use crate::scan::{Position, Unreadable};
 use std::borrow::Cow;
 use std::fmt::Write;
@@ -46,12 +48,16 @@ const NAME: &str = "ctrm";
 
 /// `check`: one run, every violation a result, every unread file a
 /// notification.
-pub fn check(items: &[Violation<'_>], skipped: &[Skipped<'_>]) -> String {
+#[cfg(test)]
+pub(super) fn check(
+    items: &[Violation<'_>],
+    skipped: &[Skipped<'_>],
+) -> String {
     check_lines(order::lines(items), skipped)
 }
 
 /// [`check`] over violations ALREADY in report order.
-pub fn check_lines<'a>(
+pub(super) fn check_lines<'a>(
     lines: impl IntoIterator<Item = Line<'a>>,
     skipped: &[Skipped<'_>],
 ) -> String {

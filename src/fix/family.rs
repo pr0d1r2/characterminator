@@ -11,12 +11,12 @@ use crate::fix::{Error, Family};
 
 /// The intrinsic root. It is code rather than data, so a zero-file run
 /// still has somewhere for every chain to end (`src/rules:V21`).
-pub const ROOT: &str = "ascii";
+pub(crate) const ROOT: &str = "ascii";
 
 /// The declared families. `ascii` is not among them: it is intrinsic, and
 /// declaring a parent for it is refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Tree {
+pub(crate) struct Tree {
     families: Vec<Family>,
 }
 
@@ -32,7 +32,7 @@ impl Default for Tree {
 impl Tree {
     /// `ascii` then `text` then `emoji`, the tree V27 names.
     #[must_use]
-    pub fn builtin() -> Self {
+    pub(crate) fn builtin() -> Self {
         let mut tree = Self::empty();
         tree.families.push(child("text", ROOT));
         tree.families.push(child("emoji", "text"));
@@ -41,21 +41,22 @@ impl Tree {
 
     /// No families at all, for a caller assembling its own.
     #[must_use]
-    pub fn empty() -> Self {
+    pub(crate) fn empty() -> Self {
         Self {
             families: Vec::new(),
         }
     }
 
     /// Every declared family, in declaration order.
+    #[cfg(test)]
     #[must_use]
-    pub fn families(&self) -> &[Family] {
+    pub(crate) fn families(&self) -> &[Family] {
         &self.families
     }
 
     /// Add a family. A later declaration wins over an earlier one for the
     /// same name, as a later map line does (`src/rules:V19`).
-    pub fn declare(&mut self, family: Family) -> Result<(), Error> {
+    pub(crate) fn declare(&mut self, family: Family) -> Result<(), Error> {
         if family.name == ROOT && family.parent.is_some() {
             return Err(Error::RootReparented);
         }
@@ -69,7 +70,7 @@ impl Tree {
     /// This is the order V28 resolves in, and building it is also how the
     /// tree is validated: an unknown parent, a chain that never reaches the
     /// root, and a cycle are all reported here.
-    pub fn path(&self, name: &str) -> Result<Vec<&str>, Error> {
+    pub(crate) fn path(&self, name: &str) -> Result<Vec<&str>, Error> {
         let mut chain: Vec<&str> = Vec::new();
         let mut at = name;
         while at != ROOT {
@@ -83,7 +84,7 @@ impl Tree {
     }
 
     /// Every declared family reaches the root, with no cycle on the way.
-    pub fn validate(&self) -> Result<(), Error> {
+    pub(crate) fn validate(&self) -> Result<(), Error> {
         for family in &self.families {
             self.path(&family.name)?;
         }

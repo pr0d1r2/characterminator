@@ -9,15 +9,15 @@ mod count;
 mod fileset;
 mod label;
 
-pub use count::{of_file, of_text};
-pub use fileset::{lexical, select};
+pub(crate) use count::of_text;
+pub(crate) use fileset::{lexical, select};
 
 use std::path::PathBuf;
 
 /// How a count was arrived at. It travels WITH the number because a figure
 /// that does not say how it was measured invites being read as exact.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Method {
+pub(crate) enum Method {
     /// The cheap proxy, printed with a tilde.
     Estimate,
     /// A real tokenizer's count.
@@ -26,7 +26,7 @@ pub enum Method {
 
 /// A token count and the method behind it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Count {
+pub(crate) struct Count {
     pub tokens: u64,
     pub method: Method,
 }
@@ -37,7 +37,7 @@ pub struct Count {
 /// number: zero is the honest count of an empty file, and reusing it for
 /// "unknown" understates a total while looking like a measurement.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Error {
+pub(crate) struct Error {
     /// The path as this crate tried to read it.
     pub path: PathBuf,
     /// Why it could not be counted, in the reader's words.

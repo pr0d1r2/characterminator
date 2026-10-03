@@ -31,3 +31,4 @@ self|src|the tool: charset presets, rule resolution, scan, fix, lint levels, tok
 
 V38: `main.rs` & `lib.rs` dispatch & re-export only, ⊥ logic.
 V39: node ⊥ dep sibling node except through its public surface ∴ a rule moves w/ its node.
+V98: lib API = `lib.rs` re-exports ONLY, ∀ node `mod` private; exported error enums & growable structs `#[non_exhaustive]` (0.1.0 semver). runner: `unreachable_pub = deny`.

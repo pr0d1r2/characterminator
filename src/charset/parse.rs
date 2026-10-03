@@ -15,7 +15,7 @@ use std::fmt;
 
 /// What a set is built from.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SetMember {
+pub(crate) enum SetMember {
     /// A single character, written as itself.
     Literal(char),
     /// A span, written `U+XXXX` or `U+XXXX-U+YYYY`.
@@ -37,14 +37,14 @@ pub enum SetMember {
 /// the same file, or in a file loaded after it, so resolving at parse time
 /// would make a definition's meaning depend on the order lines are read.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SetDefinition {
+pub(crate) struct SetDefinition {
     pub name: String,
     pub members: Vec<SetMember>,
 }
 
 /// Why a line could not be read.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ParseError {
+pub(crate) enum ParseError {
     /// A name with no members: an empty set is almost always a typo.
     NoMembers { name: String },
     /// A name that could never be referenced as a member, because it would
@@ -120,7 +120,9 @@ impl std::error::Error for ParseError {}
 /// # Errors
 ///
 /// Returns a [`ParseError`] naming the offending token.
-pub fn parse_line(line: &str) -> Result<Option<SetDefinition>, ParseError> {
+pub(crate) fn parse_line(
+    line: &str,
+) -> Result<Option<SetDefinition>, ParseError> {
     let content = line.trim();
     if content.is_empty() || content.starts_with(COMMENT) {
         return Ok(None);

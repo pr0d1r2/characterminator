@@ -7,7 +7,7 @@ use crate::scan::Hit;
 /// One reportable finding: what was found, which lint found it, and how
 /// loudly it is being said.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Finding {
+pub(crate) struct Finding {
     pub hit: Hit,
     pub lint: Lint,
     pub level: Level,
@@ -17,7 +17,7 @@ impl Finding {
     /// Whether this finding fails the run: its level decides, and nothing
     /// about the character does. A hazard is loud because its group
     /// forbids, not because this asks what it is.
-    pub fn is_failure(&self) -> bool {
+    pub(crate) fn is_failure(&self) -> bool {
         self.level.is_failure()
     }
 }
@@ -29,7 +29,7 @@ impl Finding {
 /// The three walks that find them each know only their own lints, so
 /// this is the one place that sees a trailing space ALSO being the last
 /// character of the file, or that last character ALSO mixing scripts.
-pub fn one_claim(mut found: Vec<Finding>) -> Vec<Finding> {
+pub(crate) fn one_claim(mut found: Vec<Finding>) -> Vec<Finding> {
     found.sort_by_key(|f| (f.hit.position.byte, claim_rank(f.lint)));
     found.dedup_by_key(|f| f.hit.position.byte);
     found
@@ -54,7 +54,7 @@ fn claim_rank(lint: Lint) -> usize {
 /// to weigh. Warned and allowed findings are reported and still exit 0:
 /// that is what makes `warn` different from `deny` rather than a second
 /// spelling of it, and `--strict` is how a run asks for warnings to count.
-pub fn exit_code(findings: &[Finding]) -> u8 {
+pub(crate) fn exit_code(findings: &[Finding]) -> u8 {
     u8::from(findings.iter().any(Finding::is_failure))
 }
 

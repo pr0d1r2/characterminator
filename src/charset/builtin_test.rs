@@ -383,3 +383,15 @@ fn each_hazard_class_holds_its_own_members() {
     assert_eq!(size(&hazard_class("hazard-bom")), 1);
     assert_eq!(size(&hazard_class("hazard-control")), 62);
 }
+
+/// `SetCatalog::builtin` is infallible only because both halves of it
+/// parse: the presets and every locale. Its fallback is never taken.
+#[test]
+fn the_library_catalog_holds_presets_and_locales() {
+    let mut built = catalog().unwrap_or_default();
+    assert!(super::super::locale::adopt_all(&mut built).is_ok());
+    let library = super::SetCatalog::builtin();
+    assert_eq!(library, built);
+    assert!(library.resolve("caveman", "text").is_ok());
+    assert!(library.resolve("pl", "text").is_ok());
+}

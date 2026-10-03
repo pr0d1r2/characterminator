@@ -33,7 +33,7 @@ pub(super) enum Looked {
 
 /// The rules and the sets a run resolves against, read once, and the
 /// lints `check` reports under.
-pub struct Checker {
+pub(super) struct Checker {
     rules: Vec<Rule>,
     catalog: SetCatalog,
     /// The hazard classes, from the COMPILED-IN data (`src/lint:V34`) and
@@ -146,7 +146,7 @@ impl Checker {
     /// A line that cannot be parsed, named at its origin, or a compiled-in
     /// preset that cannot be -- the second is a defect in this crate
     /// rather than in the tree being checked, and it says so.
-    pub fn configured(config: &Config) -> Result<Self, String> {
+    pub(super) fn configured(config: &Config) -> Result<Self, String> {
         let rules = config.rules()?;
         let catalog = config.catalog()?;
         Ok(Self {
@@ -166,7 +166,7 @@ impl Checker {
     /// # Errors
     ///
     /// As [`Checker::configured`].
-    pub fn listing(config: &Config) -> Result<Self, String> {
+    pub(super) fn listing(config: &Config) -> Result<Self, String> {
         let catalog = config.listing()?;
         Ok(Self {
             catalog,
@@ -229,7 +229,7 @@ impl Checker {
     /// # Errors
     ///
     /// A rule naming a set nothing declares, or one that cycles.
-    pub fn effective(
+    pub(super) fn effective(
         &self,
         shown: &str,
     ) -> Result<(CharSet, Option<Rule>), String> {
@@ -244,7 +244,10 @@ impl Checker {
     ///
     /// A declared set that cannot be resolved: a cycle, or a member
     /// naming a set nothing declares.
-    pub fn declared(&self, family: &str) -> Result<Vec<CharSet>, String> {
+    pub(super) fn declared(
+        &self,
+        family: &str,
+    ) -> Result<Vec<CharSet>, String> {
         self.catalog
             .names()
             .map(|name| self.catalog.resolve(name, family))

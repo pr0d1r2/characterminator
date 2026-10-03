@@ -76,12 +76,12 @@ impl Hazards {
 
     /// The byte offsets in `text` of every joiner and tag character that
     /// sits inside an RGI emoji sequence (V63), ascending.
-    pub fn exempt(&self, text: &str) -> Vec<usize> {
+    pub(crate) fn exempt(&self, text: &str) -> Vec<usize> {
         self.sequences.exempt(text)
     }
 
     /// [`Hazards::lint_for`], less a hit at an `exempt` offset.
-    pub fn lint_at(&self, hit: Hit, exempt: &[usize]) -> Option<Lint> {
+    pub(crate) fn lint_at(&self, hit: Hit, exempt: &[usize]) -> Option<Lint> {
         let inside = exempt.binary_search(&hit.position.byte).is_ok();
         self.lint_for(hit).filter(|_| !inside)
     }
@@ -90,7 +90,7 @@ impl Hazards {
     /// names a union) is excused `character` (V57). Only a joiner can be,
     /// and only by a COMPILED-IN preset that grants it and no other hazard:
     /// `persian` excuses ZWNJ, `any` excuses nothing.
-    pub fn excuses(&self, granted: &str, character: char) -> bool {
+    pub(crate) fn excuses(&self, granted: &str, character: char) -> bool {
         granted.split('+').any(|name| {
             self.excusing.iter().any(|(set, joiners, _)| {
                 set == name && joiners.contains(&character)
@@ -103,7 +103,7 @@ impl Hazards {
     /// not provenance: a `.ctrm-sets` line, or `--no-builtin-sets` with a
     /// `--set`, can call anything `hindi`, and such a set excuses nothing.
     #[must_use]
-    pub fn vouched_by(mut self, catalog: &SetCatalog) -> Self {
+    pub(crate) fn vouched_by(mut self, catalog: &SetCatalog) -> Self {
         self.excusing.retain(|(name, _, shipped)| {
             catalog
                 .resolve(name, FAMILY)
@@ -135,7 +135,11 @@ impl Hazards {
     /// (`src/cli/guard:V53`). Each string of it begins at byte 0 of its own,
     /// and none of them is a file an encoder signed, so a BOM there is a
     /// stray like any other.
-    pub fn lint_unsigned(&self, hit: Hit, exempt: &[usize]) -> Option<Lint> {
+    pub(crate) fn lint_unsigned(
+        &self,
+        hit: Hit,
+        exempt: &[usize],
+    ) -> Option<Lint> {
         let inside = exempt.binary_search(&hit.position.byte).is_ok();
         self.class_of(hit.character).filter(|_| !inside)
     }

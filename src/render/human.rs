@@ -31,12 +31,16 @@ use std::fmt::Write;
 const LINE_BYTES: usize = 40;
 
 /// `check`: every violation, then every file that could not be read.
-pub fn check(items: &[Violation<'_>], skipped: &[Skipped<'_>]) -> String {
+#[cfg(test)]
+pub(super) fn check(
+    items: &[Violation<'_>],
+    skipped: &[Skipped<'_>],
+) -> String {
     check_lines(order::lines(items), skipped)
 }
 
 /// [`check`] over violations ALREADY in report order.
-pub fn check_lines<'a>(
+pub(super) fn check_lines<'a>(
     lines: impl IntoIterator<Item = Line<'a>>,
     skipped: &[Skipped<'_>],
 ) -> String {
@@ -137,7 +141,7 @@ fn unread(item: &Skipped<'_>) -> String {
 /// `fix`: what was rewritten, and what it became; then what no map entry
 /// covers, as `check` would print it, since that is what a reader goes to
 /// look at next (`src/fix:V4`).
-pub fn fix(
+pub(super) fn fix(
     items: &[Change<'_>],
     unmapped: &[Violation<'_>],
     skipped: &[Skipped<'_>],
@@ -162,7 +166,10 @@ fn change(out: &mut String, path: &str, item: &Change<'_>) {
 }
 
 /// `stats`: one row per file, then every file that is not text.
-pub fn stats(files: &[FileStats<'_>], skipped: &[Skipped<'_>]) -> String {
+pub(super) fn stats(
+    files: &[FileStats<'_>],
+    skipped: &[Skipped<'_>],
+) -> String {
     let rows: Vec<String> = order::stats(files).into_iter().map(row).collect();
     let mut out = rows.join("\n");
     unread_lines(&mut out, skipped);
@@ -191,7 +198,7 @@ fn count(value: Count) -> String {
 }
 
 /// `explain`: the effective set, and the rule that won.
-pub fn explain(item: &Explanation<'_>) -> String {
+pub(super) fn explain(item: &Explanation<'_>) -> String {
     let mut lines = vec![
         format!(
             "path {}",
@@ -268,7 +275,7 @@ fn origin(item: &Origin) -> String {
 }
 
 /// `sets`: each set and the ranges it is built from.
-pub fn sets(items: &[CharSet]) -> String {
+pub(super) fn sets(items: &[CharSet]) -> String {
     let lines: Vec<String> = items.iter().map(set).collect();
     lines.join("\n")
 }

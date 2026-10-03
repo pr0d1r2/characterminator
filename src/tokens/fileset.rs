@@ -32,7 +32,10 @@ const EMPTY: &str = "holds no git-tracked file -- name a file inside it, \
 /// # Errors
 /// When a named path is not readable, or is a directory holding nothing
 /// git tracks.
-pub fn select(root: &Path, paths: &[String]) -> Result<Vec<PathBuf>, Error> {
+pub(crate) fn select(
+    root: &Path,
+    paths: &[String],
+) -> Result<Vec<PathBuf>, Error> {
     rooted(root, paths.is_empty())?;
     if paths.is_empty() {
         return Ok(tracked(root));
@@ -182,7 +185,7 @@ const OUTSIDE: &str = "resolves outside the run root, where nothing is \
 /// a path stays the one typed. The crate's one folding, so the fileset
 /// and the path a report shows cannot disagree about a spelling (V83).
 #[must_use]
-pub fn lexical(path: &Path) -> PathBuf {
+pub(crate) fn lexical(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for part in path.components() {
         let named =

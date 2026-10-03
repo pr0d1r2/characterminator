@@ -11,16 +11,14 @@ mod property;
 mod resolve;
 mod rule_line;
 
-pub use config::{Place, Sources};
-pub use glob::matches;
-pub use line::{
-    ParseError, describe, error, parse_builtin, parse_file, parse_flag,
-    parse_lines,
-};
+pub(crate) use config::{Place, Sources};
+pub(crate) use glob::matches;
+pub(crate) use line::{ParseError, describe, error, parse_flag};
 #[cfg(test)]
 pub(crate) use property::corpus;
-pub use resolve::{PathMatcher, Resolution, resolve};
-pub use rule_line::parse_rule;
+pub(crate) use resolve::{Resolution, resolve};
+#[cfg(test)]
+pub(crate) use rule_line::parse_rule;
 
 use crate::lint::Level;
 use std::path::PathBuf;
@@ -31,7 +29,7 @@ use std::path::PathBuf;
 /// run given no files at all (V21) must still be able to say what a path
 /// may contain. A default that lives in a file is not a default; it is a
 /// file that is usually present.
-pub const ASCII: &str = "ascii";
+pub(crate) const ASCII: &str = "ascii";
 
 /// The fidelity family a rule gets when none is named (V29).
 ///
@@ -40,7 +38,7 @@ pub const ASCII: &str = "ascii";
 /// answer cannot live in data that may be absent. What the name MEANS --
 /// which members a family holds, which one it prefers -- is the fix
 /// node's question (`src/fix:V27`); this node only carries the name.
-pub const TEXT: &str = "text";
+pub(crate) const TEXT: &str = "text";
 
 /// Where an effective entry came from.
 ///
@@ -48,7 +46,7 @@ pub const TEXT: &str = "text";
 /// and flags all contributing, "why is this character allowed here" has no
 /// answer without it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Origin {
+pub(crate) enum Origin {
     /// A line of a data file.
     File { path: PathBuf, line: usize },
     /// An inline flag, by its position in argv.
@@ -64,14 +62,14 @@ pub enum Origin {
 /// and another line may name the family (V29). Each carries its own
 /// origin here, so the report names every line that decided something.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Sourced<'a, T> {
+pub(crate) struct Sourced<'a, T> {
     pub value: T,
     pub origin: &'a Origin,
 }
 
 /// A level set for one lint or group by a rule, as in `!pedantic=warn`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LevelChoice {
+pub(crate) struct LevelChoice {
     pub target: String,
     pub level: Level,
 }
@@ -82,7 +80,7 @@ pub struct LevelChoice {
 /// stays independent of where families are declared; resolving it is the
 /// fix node's job.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Rule {
+pub(crate) struct Rule {
     pub pattern: String,
     pub sets: Vec<String>,
     pub family: Option<String>,

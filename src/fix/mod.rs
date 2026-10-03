@@ -11,10 +11,9 @@ mod codepoint;
 mod family;
 mod map;
 
-pub use apply::{Fixed, Report, check, fix};
-pub use class::resolve;
-pub use family::{ROOT, Tree};
-pub use map::{BUILTIN, Map};
+pub use apply::{Fixed, Report, fix};
+pub(crate) use map::BUILTIN;
+pub use map::Map;
 
 use crate::rules::Origin;
 use crate::scan::Hit;
@@ -22,7 +21,7 @@ use crate::scan::Hit;
 /// A character family, declared as a name and its fallback parent. The
 /// chain ends at `ascii`, so resolution always terminates.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Family {
+pub(crate) struct Family {
     pub name: String,
     pub parent: Option<String>,
 }
@@ -31,7 +30,7 @@ pub struct Family {
 /// text it is written as. Text rather than char, because a member may be a
 /// sequence of code points.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Member {
+pub(crate) struct Member {
     pub family: String,
     pub text: String,
 }
@@ -39,7 +38,7 @@ pub struct Member {
 /// An equivalence class: characters that mean the same thing, grouped by
 /// family so each project can say which family it wants.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Class {
+pub(crate) struct Class {
     pub name: String,
     pub members: Vec<Member>,
 }
@@ -51,7 +50,7 @@ pub struct Class {
 /// a word, so where it would land against a letter or a digit `fix` puts
 /// a space between the two rather than fusing them into one (`notowns`).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MapEntry {
+pub(crate) struct MapEntry {
     pub from: String,
     pub to: String,
     pub word: bool,
@@ -60,6 +59,7 @@ pub struct MapEntry {
 
 /// A rewrite that `fix` would apply: what was found, and what replaces it.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Rewrite {
     pub hit: Hit,
     pub to: String,
@@ -71,6 +71,7 @@ pub struct Rewrite {
 /// config error the caller turns into exit 2, or an invariant this node
 /// checked on itself before anything could be written.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Error {
     /// A map line that is not one of the declared forms, by 1-based number.
     Syntax { line: usize },

@@ -14,13 +14,13 @@ use std::fmt::{self, Display, Formatter};
 /// Uppercase and the four-digit floor are the Unicode convention, and this
 /// is the spelling the root spec's interface section prints and that
 /// `src/scan:V12` requires of a violation.
-pub fn codepoint(character: char) -> String {
+pub(crate) fn codepoint(character: char) -> String {
     Codepoint(character).to_string()
 }
 
 /// [`codepoint`], written straight into a report rather than allocated.
 #[derive(Debug, Clone, Copy)]
-pub struct Codepoint(pub char);
+pub(super) struct Codepoint(pub char);
 
 impl Display for Codepoint {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -32,7 +32,7 @@ impl Display for Codepoint {
 ///
 /// These are the STABLE identifiers: the json contract carries them, so they
 /// track the level names a rule line writes rather than any message text.
-pub const fn level_name(level: Level) -> &'static str {
+pub(super) const fn level_name(level: Level) -> &'static str {
     match level {
         Level::Allow => "allow",
         Level::Warn => "warn",
@@ -45,7 +45,7 @@ pub const fn level_name(level: Level) -> &'static str {
 ///
 /// The json form spells the method out; the human form writes a tilde
 /// instead, because a person reads a tilde faster than a word.
-pub const fn method_name(method: Method) -> &'static str {
+pub(super) const fn method_name(method: Method) -> &'static str {
     match method {
         Method::Estimate => "estimate",
         Method::Bpe => "bpe",

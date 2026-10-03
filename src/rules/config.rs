@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 /// line of the same source may use, so it layers texts rather than
 /// entries (`src/fix` `Map::layer`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Place<'a> {
+pub(crate) enum Place<'a> {
     /// The compiled-in data file.
     Builtin,
     /// A discovered dotfile or a `--*-file`.
@@ -37,7 +37,7 @@ impl Place<'_> {
     /// The origin of 1-based line `line` of a source sitting here. A flag
     /// is one line, so its origin ignores the number.
     #[must_use]
-    pub fn origin(self, line: usize) -> Origin {
+    pub(crate) fn origin(self, line: usize) -> Origin {
         match self {
             Self::Builtin => Origin::Builtin { line },
             Self::File(path) => Origin::File {
@@ -60,7 +60,7 @@ impl Place<'_> {
 /// caller walks the arguments once, in order, which is what the CLI does
 /// anyway.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Sources {
+pub(crate) struct Sources {
     builtin: Option<String>,
     dotfiles: Vec<(PathBuf, String)>,
     files: Vec<(PathBuf, String)>,
@@ -73,18 +73,18 @@ impl Sources {
     /// This is the zero-file starting point (V21): `--no-files` and the
     /// `--no-builtin-*` flags are not a mode this type has to know
     /// about, they are sources the caller does not add.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
     /// The compiled-in data file, lowest of all.
-    pub fn builtin(mut self, text: impl Into<String>) -> Self {
+    pub(crate) fn builtin(mut self, text: impl Into<String>) -> Self {
         self.builtin = Some(text.into());
         self
     }
 
     /// A dotfile found by discovery.
-    pub fn dotfile(
+    pub(crate) fn dotfile(
         mut self,
         path: impl Into<PathBuf>,
         text: impl Into<String>,
@@ -94,7 +94,7 @@ impl Sources {
     }
 
     /// A file named by a `--*-file` flag.
-    pub fn file(
+    pub(crate) fn file(
         mut self,
         path: impl Into<PathBuf>,
         text: impl Into<String>,
@@ -104,7 +104,11 @@ impl Sources {
     }
 
     /// One inline flag, at its position in argv.
-    pub fn flag(mut self, index: usize, value: impl Into<String>) -> Self {
+    pub(crate) fn flag(
+        mut self,
+        index: usize,
+        value: impl Into<String>,
+    ) -> Self {
         self.flags.push((index, value.into()));
         self
     }
@@ -116,7 +120,7 @@ impl Sources {
     /// carrying a separate field keeps one precedence chain, one parser
     /// and one kind of origin: `explain` names the argument that set the
     /// family the same way it names any other rule.
-    pub fn fidelity(self, index: usize, family: &str) -> Self {
+    pub(crate) fn fidelity(self, index: usize, family: &str) -> Self {
         self.flag(index, format!("* @{family}"))
     }
 
@@ -130,7 +134,8 @@ impl Sources {
     ///
     /// V1 survives the emptiness because the fallback set is a constant
     /// in code: `ascii` is not a line of a file that is not there.
-    pub fn from_argv<I>(flags: I) -> Self
+    #[cfg(test)]
+    pub(crate) fn from_argv<I>(flags: I) -> Self
     where
         I: IntoIterator<Item = (usize, String)>,
     {
@@ -144,7 +149,7 @@ impl Sources {
     /// The kind's line parser is a parameter, so one chain serves rules,
     /// map and sets alike (V18) and this node still calls into no
     /// sibling.
-    pub fn assemble<T, P>(&self, parse: P) -> Result<Vec<T>, ParseError>
+    pub(crate) fn assemble<T, P>(&self, parse: P) -> Result<Vec<T>, ParseError>
     where
         P: Fn(&str, Origin) -> Result<T, ParseError> + Copy,
     {
@@ -162,7 +167,7 @@ impl Sources {
     }
 
     /// The rules kind, the one whose parser lives in this node.
-    pub fn rules(&self) -> Result<Vec<Rule>, ParseError> {
+    pub(crate) fn rules(&self) -> Result<Vec<Rule>, ParseError> {
         self.assemble(parse_rule)
     }
 
@@ -170,7 +175,7 @@ impl Sources {
     /// what a `--no-builtin-*` flag removes and what an export of the
     /// chain has to say back (`src/cli/explain:V32`).
     #[must_use]
-    pub fn has_builtin(&self) -> bool {
+    pub(crate) fn has_builtin(&self) -> bool {
         self.builtin.is_some()
     }
 
@@ -180,7 +185,7 @@ impl Sources {
     /// `parse_flag`'s, and a caller layering texts runs each flag value
     /// through it first rather than restating it.
     #[must_use]
-    pub fn layers(&self) -> Vec<(Place<'_>, &str)> {
+    pub(crate) fn layers(&self) -> Vec<(Place<'_>, &str)> {
         let builtin = self.builtin.iter().map(|t| (Place::Builtin, t.as_str()));
         let files = self.dotfiles.iter().chain(&self.files);
         let files = files.map(|(path, t)| (Place::File(path), t.as_str()));
@@ -198,7 +203,7 @@ impl Sources {
     /// it gets it back without being told, and whether it was kept is
     /// [`Sources::has_builtin`]'s answer rather than a hundred lines.
     #[must_use]
-    pub fn lines(&self) -> Vec<String> {
+    pub(crate) fn lines(&self) -> Vec<String> {
         let layers = self.layers().into_iter();
         let added = layers.filter(|(place, _)| *place != Place::Builtin);
         added

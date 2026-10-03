@@ -5,7 +5,7 @@ use crate::lint::{Group, Lint};
 /// The thing a rule's level suffix addresses: a whole group, or one named
 /// lint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Target {
+pub(crate) enum Target {
     Group(Group),
     Lint(Lint),
 }
@@ -16,11 +16,11 @@ impl Target {
     /// It lives here rather than in the rules node so that the shorthand
     /// and the lints it moves are stated in one place; the parser hands
     /// over the level and does not have to know which group is meant.
-    pub const BARE: Self = Self::Group(Group::Charset);
+    pub(crate) const BARE: Self = Self::Group(Group::Charset);
 
     /// The token in `!<lint|group>=<level>`. Groups are tried first, which
     /// costs nothing because no lint may share a group's name.
-    pub fn named(word: &str) -> Option<Self> {
+    pub(crate) fn named(word: &str) -> Option<Self> {
         Group::named(word)
             .map(Self::Group)
             .or_else(|| Lint::named(word).map(Self::Lint))
@@ -29,7 +29,7 @@ impl Target {
     /// Whether a directive aimed here speaks about this lint. A group
     /// directive covers every lint in it, including lints registered
     /// later; a lint directive covers exactly one.
-    pub fn covers(self, lint: Lint) -> bool {
+    pub(crate) fn covers(self, lint: Lint) -> bool {
         match self {
             Self::Group(group) => group == lint.group,
             Self::Lint(named) => named.name == lint.name,

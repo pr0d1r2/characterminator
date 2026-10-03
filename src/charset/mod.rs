@@ -4,15 +4,15 @@
 //! vocabulary; the behaviour lives in the submodules. The preset DATA is
 //! still to come with T22, T23 and T32.
 
-pub mod builtin;
-pub mod compose;
-pub mod locale;
-pub mod parse;
-pub mod range;
-pub mod set;
+pub(crate) mod builtin;
+pub(crate) mod compose;
+pub(crate) mod locale;
+pub(crate) mod parse;
+pub(crate) mod range;
+pub(crate) mod set;
 
 pub use compose::{ComposeError, SetCatalog};
-pub use parse::{ParseError, SetDefinition, SetMember, parse_line};
+pub(crate) use parse::{ParseError, SetDefinition, SetMember, parse_line};
 
 /// An inclusive range of code points, the unit a set is built from.
 ///
@@ -31,6 +31,7 @@ pub struct CharRange {
 /// `explain` prints back, so it travels with the ranges rather than being
 /// looked up again at the point of use.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct CharSet {
     pub name: String,
     pub ranges: Vec<CharRange>,

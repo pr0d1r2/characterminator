@@ -60,7 +60,7 @@ impl Cursor {
 /// second cursor keeps one definition of where a line ends and what a
 /// column counts, so a line-shaped finding and a character finding at
 /// the same place always agree on its position.
-pub fn located(text: &str) -> impl Iterator<Item = Hit> + '_ {
+pub(crate) fn located(text: &str) -> impl Iterator<Item = Hit> + '_ {
     text.char_indices()
         .scan(Cursor::start(), |cursor, (byte, character)| {
             let position = cursor.position(byte);
@@ -77,7 +77,7 @@ pub fn located(text: &str) -> impl Iterator<Item = Hit> + '_ {
 /// `allowed` is the caller's rule and the only opinion in the call: a
 /// `false` makes a hit, a `true` makes nothing. Hits come out in byte
 /// order, which is the within-a-file half of V12's sort order; ordering
-/// ACROSS files is `super::sort_hits`.
+/// ACROSS files is `src/render`'s.
 pub fn scan_str<F>(text: &str, allowed: F) -> Vec<Hit>
 where
     F: Fn(char) -> bool,

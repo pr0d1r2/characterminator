@@ -33,7 +33,10 @@ impl Rule {
 ///
 /// The line is taken already trimmed and known not to be blank or a
 /// comment: finding the entry-bearing lines is the shared skeleton's job.
-pub fn parse_rule(text: &str, origin: Origin) -> Result<Rule, ParseError> {
+pub(crate) fn parse_rule(
+    text: &str,
+    origin: Origin,
+) -> Result<Rule, ParseError> {
     let mut fields = text.split_ascii_whitespace();
     let Some(pattern) = fields.next() else {
         return Err(error(origin, "a rule line needs a path or a glob"));

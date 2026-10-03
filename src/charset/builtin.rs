@@ -19,7 +19,7 @@ use super::{
 };
 
 /// The name of the intrinsic set.
-pub const ASCII: &str = "ascii";
+pub(crate) const ASCII: &str = "ascii";
 
 /// Tab and newline: the two control characters ASCII text is made of.
 const WHITESPACE: CharRange = CharRange {
@@ -39,7 +39,7 @@ const PRINTABLE: CharRange = CharRange {
 /// naming `ascii` alongside a file-declared set takes one path through
 /// resolution rather than two.
 #[must_use]
-pub fn ascii_definition() -> SetDefinition {
+pub(crate) fn ascii_definition() -> SetDefinition {
     SetDefinition {
         name: ASCII.to_owned(),
         members: vec![
@@ -55,7 +55,7 @@ pub fn ascii_definition() -> SetDefinition {
 /// that grants it is making a decision about line endings rather than about
 /// characters.
 #[must_use]
-pub fn ascii() -> CharSet {
+pub(crate) fn ascii() -> CharSet {
     CharSet::new(ASCII.to_owned(), vec![WHITESPACE, PRINTABLE])
 }
 
@@ -66,7 +66,7 @@ pub fn ascii() -> CharSet {
 /// replacing a name the last one declared. Starting from `ascii` rather
 /// than from nothing is what makes `--no-builtin-sets` survivable.
 #[must_use]
-pub fn intrinsic_catalog() -> SetCatalog {
+pub(crate) fn intrinsic_catalog() -> SetCatalog {
     let mut catalog = SetCatalog::new();
     catalog.insert(ascii_definition());
     catalog
@@ -87,7 +87,7 @@ pub fn intrinsic_catalog() -> SetCatalog {
 /// chain's shape; the cost is that a builtin line number counts from the
 /// top of the joined text, which only a defect in this crate would ever
 /// show and which the parse test below keeps from shipping.
-pub const SETS: &str = concat!(
+pub(crate) const SETS: &str = concat!(
     include_str!("sets.ctrm-sets"),
     include_str!("hazard.ctrm-sets")
 );
@@ -98,21 +98,21 @@ pub const SETS: &str = concat!(
 /// hazard fires from these compiled-in bytes, never from the catalog a run
 /// assembled, so neither a `.ctrm-sets` redeclaring a hazard name nor a
 /// run without the builtin sets can empty the set that forbids.
-pub const HAZARD: &str = include_str!("hazard.ctrm-sets");
+pub(crate) const HAZARD: &str = include_str!("hazard.ctrm-sets");
 
 /// The RGI emoji sequences, vendored from Unicode emoji data
 /// (`src/fix:V62`): one `<kind> <sequence> [name]` line each. Not a set
 /// file -- a set holds code points and a sequence is not one -- so it is
 /// TEXT the lint node reads for its exemption (`src/lint:V63`), compiled
 /// in so no configuration can widen it.
-pub const EMOJI_SEQUENCES: &str = include_str!("emoji-sequences.txt");
+pub(crate) const EMOJI_SEQUENCES: &str = include_str!("emoji-sequences.txt");
 
 /// The hazard file's sets, and nothing else.
 ///
 /// # Errors
 ///
 /// As [`definitions`]: only a defect in the compiled-in file.
-pub fn hazard_catalog() -> Result<SetCatalog, ParseError> {
+pub(crate) fn hazard_catalog() -> Result<SetCatalog, ParseError> {
     let mut catalog = SetCatalog::new();
     for line in HAZARD.lines() {
         if let Some(definition) = parse_line(line)? {
@@ -135,7 +135,7 @@ pub fn hazard_catalog() -> Result<SetCatalog, ParseError> {
 /// the test below is what keeps it from shipping -- but it is returned
 /// rather than panicked, because a library that kills the process leaves
 /// its caller no way to say which set was wrong.
-pub fn definitions() -> Result<Vec<SetDefinition>, ParseError> {
+pub(crate) fn definitions() -> Result<Vec<SetDefinition>, ParseError> {
     SETS.lines()
         .map(parse_line)
         .filter_map(Result::transpose)
@@ -152,12 +152,29 @@ pub fn definitions() -> Result<Vec<SetDefinition>, ParseError> {
 /// # Errors
 ///
 /// As [`definitions`].
-pub fn catalog() -> Result<SetCatalog, ParseError> {
+pub(crate) fn catalog() -> Result<SetCatalog, ParseError> {
     let mut catalog = intrinsic_catalog();
     for definition in definitions()? {
         catalog.insert(definition);
     }
     Ok(catalog)
+}
+
+impl SetCatalog {
+    /// Every set this build ships: `ascii`, the presets, the hazard classes
+    /// and every CLDR locale (V30). What a library caller resolves names
+    /// against; the binary assembles its own, layered with configuration.
+    ///
+    /// INFALLIBLE because the data is compiled in. A defect in it is this
+    /// crate's, never the caller's, and `builtin_test` keeps it from
+    /// shipping; were one to slip through, `ascii` alone still resolves.
+    #[must_use]
+    pub fn builtin() -> Self {
+        let all = catalog().and_then(|mut built| {
+            super::locale::adopt_all(&mut built).map(|()| built)
+        });
+        all.unwrap_or_else(|_| intrinsic_catalog())
+    }
 }
 
 #[cfg(test)]

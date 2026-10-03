@@ -20,7 +20,7 @@ use crate::rules;
 
 /// The three forms V32 names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Shape {
+pub(super) enum Shape {
     Args,
     Lines,
     Prompt,
@@ -34,7 +34,7 @@ impl Shape {
     /// Any other word. A form the tool does not have is refused rather
     /// than answered with the plain report, which a script would then try
     /// to parse as the form it asked for.
-    pub fn named(word: &str) -> Result<Self, String> {
+    pub(super) fn named(word: &str) -> Result<Self, String> {
         match word {
             "args" => Ok(Self::Args),
             "lines" => Ok(Self::Lines),
@@ -73,7 +73,7 @@ fn switches(config: &Config) -> Vec<&'static str> {
 /// # Errors
 ///
 /// A rule line that does not parse, named at its origin.
-pub fn rule_lines(
+pub(super) fn rule_lines(
     config: &Config,
     path: Option<&str>,
 ) -> Result<Vec<String>, String> {
@@ -98,7 +98,10 @@ fn quoted(word: &str) -> String {
 /// # Errors
 ///
 /// As [`rule_lines`].
-pub fn args(config: &Config, path: Option<&str>) -> Result<String, String> {
+pub(super) fn args(
+    config: &Config,
+    path: Option<&str>,
+) -> Result<String, String> {
     let mut words = vec![String::from("--no-files")];
     words.extend(switches(config).into_iter().map(String::from));
     let flagged = |flag: &str, lines: Vec<String>| -> Vec<String> {
@@ -122,7 +125,10 @@ pub fn args(config: &Config, path: Option<&str>) -> Result<String, String> {
 /// # Errors
 ///
 /// As [`rule_lines`].
-pub fn lines(config: &Config, path: Option<&str>) -> Result<String, String> {
+pub(super) fn lines(
+    config: &Config,
+    path: Option<&str>,
+) -> Result<String, String> {
     let mut out = Vec::new();
     let flags = switches(config);
     if !flags.is_empty() {

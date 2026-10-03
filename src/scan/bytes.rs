@@ -17,7 +17,7 @@ use super::{Hit, Unreadable};
 /// first few kilobytes rather than the whole file (cost), a ratio of
 /// control bytes, or a byte order mark naming UTF-16, which this rule
 /// calls binary today because UTF-16 ASCII text is half NUL bytes.
-pub fn looks_binary(bytes: &[u8]) -> bool {
+pub(crate) fn looks_binary(bytes: &[u8]) -> bool {
     bytes.contains(&0)
 }
 
@@ -48,7 +48,7 @@ where
 ///
 /// [`Unreadable::Binary`] first, then [`Unreadable::NotUtf8`], in the
 /// order and for the reasons [`scan_bytes`] gives.
-pub fn decode(bytes: &[u8]) -> Result<&str, Unreadable> {
+pub(crate) fn decode(bytes: &[u8]) -> Result<&str, Unreadable> {
     if looks_binary(bytes) {
         return Err(Unreadable::Binary);
     }

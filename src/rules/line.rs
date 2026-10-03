@@ -21,7 +21,7 @@ use std::path::Path;
 /// because "line 3" names nothing when two files and four flags all
 /// contributed lines to the same configuration.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseError {
+pub(crate) struct ParseError {
     pub origin: Origin,
     pub message: String,
 }
@@ -37,7 +37,7 @@ impl std::error::Error for ParseError {}
 /// Spell an origin the one way V20 fixes: `<file>:<line>`, `argv[<n>]` or
 /// `builtin:<line>`. One spelling serves both a parse error and what
 /// `explain` prints, so the two can never drift apart.
-pub fn describe(origin: &Origin) -> String {
+pub(crate) fn describe(origin: &Origin) -> String {
     match origin {
         Origin::File { path, line } => format!("{}:{line}", path.display()),
         Origin::Argument { index } => format!("argv[{index}]"),
@@ -46,7 +46,7 @@ pub fn describe(origin: &Origin) -> String {
 }
 
 /// Build a parse error at an origin.
-pub fn error(origin: Origin, message: impl Into<String>) -> ParseError {
+pub(crate) fn error(origin: Origin, message: impl Into<String>) -> ParseError {
     ParseError {
         origin,
         message: message.into(),
@@ -76,7 +76,7 @@ pub(crate) fn is_skippable(line: &str) -> bool {
 /// that is meant to be EMPTY cannot be written as trailing blanks, so a
 /// grammar wanting one -- the map's empty replacement, which is its
 /// explicit delete -- needs a spelling of its own.
-pub fn parse_lines<T, O, P>(
+pub(crate) fn parse_lines<T, O, P>(
     text: &str,
     origin: O,
     parse: P,
@@ -96,7 +96,7 @@ where
 }
 
 /// A whole data file of one kind, read from `path`.
-pub fn parse_file<T, P>(
+pub(crate) fn parse_file<T, P>(
     text: &str,
     path: &Path,
     parse: P,
@@ -112,7 +112,10 @@ where
 }
 
 /// A compiled-in data file, in the same grammar as a user's file.
-pub fn parse_builtin<T, P>(text: &str, parse: P) -> Result<Vec<T>, ParseError>
+pub(crate) fn parse_builtin<T, P>(
+    text: &str,
+    parse: P,
+) -> Result<Vec<T>, ParseError>
 where
     P: Fn(&str, Origin) -> Result<T, ParseError>,
 {
@@ -130,7 +133,7 @@ where
 /// file yields none. That is what makes V18's property hold for a file
 /// carrying comments: one flag per line, comments included, still equals
 /// the file.
-pub fn parse_flag<T, P>(
+pub(crate) fn parse_flag<T, P>(
     value: &str,
     index: usize,
     parse: P,

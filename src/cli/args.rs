@@ -55,7 +55,7 @@ const END: &str = "--";
 /// One flag as given: its name, its value if it takes one, and the argv
 /// position that IS its origin (`src/rules:V20`).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Flag {
+pub(super) struct Flag {
     pub name: &'static str,
     pub value: Option<String>,
     /// The position in the PROCESS argv, program name at 0, of the word
@@ -67,7 +67,7 @@ pub struct Flag {
 
 /// A whole command line, verb excluded.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Args {
+pub(super) struct Args {
     pub flags: Vec<Flag>,
     pub paths: Vec<String>,
 }
@@ -76,14 +76,14 @@ impl Args {
     /// The value of the LAST occurrence of a valued flag. Later wins, as it
     /// does for every other repeated setting in this tool (`src/rules:V19`).
     #[must_use]
-    pub fn value(&self, name: &str) -> Option<&str> {
+    pub(super) fn value(&self, name: &str) -> Option<&str> {
         let named = self.flags.iter().rev().find(|flag| flag.name == name);
         named.and_then(|flag| flag.value.as_deref())
     }
 
     /// Whether a flag was given at all.
     #[must_use]
-    pub fn has(&self, name: &str) -> bool {
+    pub(super) fn has(&self, name: &str) -> bool {
         self.flags.iter().any(|flag| flag.name == name)
     }
 }
@@ -95,7 +95,7 @@ impl Args {
 ///
 /// A word that looks like a flag and is not one, a valued flag with no
 /// word after it, or a flag that belongs to another verb.
-pub fn parse(args: &[String]) -> Result<Args, String> {
+pub(super) fn parse(args: &[String]) -> Result<Args, String> {
     let verb = args.first().map_or("", String::as_str);
     let mut parsed = Args::default();
     let mut words = args.iter().enumerate().skip(1);

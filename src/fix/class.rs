@@ -35,7 +35,7 @@ pub(crate) fn parse_line(rest: &str) -> Option<Class> {
 ///
 /// An unknown or unrooted fidelity family is an error rather than a quiet
 /// fallback: the caller asked for a family that cannot be resolved.
-pub fn resolve(
+pub(crate) fn resolve(
     class: &Class,
     tree: &Tree,
     fidelity: &str,

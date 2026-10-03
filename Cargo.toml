@@ -59,6 +59,10 @@ unicode-security = { version = "0.1.2", default-features = false }
 
 [lints.rust]
 unsafe_code = "forbid"
+# The library surface is the root re-export list and nothing else
+# (`src:V98`). A `pub` inside a private node is a promise nobody can
+# reach, and it hides the dead code a narrower visibility surfaces.
+unreachable_pub = "deny"
 
 # Deny rather than warn: a warning in a gate that runs with `-D warnings` is
 # a denial with extra steps, and spelling it here keeps `cargo clippy` honest

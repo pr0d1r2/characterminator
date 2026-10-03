@@ -16,7 +16,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::sync::LazyLock;
 
 /// The generated locale data, compiled in (V22) but not parsed up front.
-pub const LOCALES: &str = include_str!("locales.ctrm-sets");
+pub(crate) const LOCALES: &str = include_str!("locales.ctrm-sets");
 
 /// Each line of [`LOCALES`] by its first token, built once per process on
 /// first use (V88), so a lookup no longer walks 180 KB of text. A run
@@ -98,7 +98,10 @@ fn named(member: &SetMember) -> Option<&String> {
 ///
 /// A locale line that does not parse: a defect in this crate, which the
 /// tests below keep from shipping.
-pub fn adopt<I>(catalog: &mut SetCatalog, wanted: I) -> Result<(), ParseError>
+pub(crate) fn adopt<I>(
+    catalog: &mut SetCatalog,
+    wanted: I,
+) -> Result<(), ParseError>
 where
     I: IntoIterator<Item = String>,
 {
@@ -124,7 +127,7 @@ where
 /// # Errors
 ///
 /// As [`adopt`].
-pub fn adopt_all(catalog: &mut SetCatalog) -> Result<(), ParseError> {
+pub(crate) fn adopt_all(catalog: &mut SetCatalog) -> Result<(), ParseError> {
     for line in LOCALES.lines() {
         if let Some(definition) = parse_line(line)?
             && catalog.get(&definition.name).is_none()

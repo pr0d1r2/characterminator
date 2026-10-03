@@ -13,6 +13,7 @@ use std::fmt;
 
 /// Why a name could not be resolved into a set.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ComposeError {
     /// A member named a set nothing declares.
     ///
@@ -97,7 +98,7 @@ impl<'a> Walk<'a> {
 impl SetCatalog {
     /// A catalog declaring nothing.
     #[must_use]
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
@@ -106,13 +107,13 @@ impl SetCatalog {
     /// Replacing is what `src/rules:V19` means by "set per name, later
     /// wins": the caller inserts in precedence order, lowest first, and
     /// this node holds no opinion about what that order is.
-    pub fn insert(&mut self, definition: SetDefinition) {
+    pub(crate) fn insert(&mut self, definition: SetDefinition) {
         self.defs.insert(definition.name.clone(), definition);
     }
 
     /// The declaration behind a name, unresolved.
     #[must_use]
-    pub fn get(&self, name: &str) -> Option<&SetDefinition> {
+    pub(crate) fn get(&self, name: &str) -> Option<&SetDefinition> {
         self.defs.get(name)
     }
 

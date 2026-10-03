@@ -35,7 +35,7 @@ use std::collections::{BTreeMap, HashSet};
 /// typography and modifier map (V26, V60), then the GENERATED emoji
 /// sequence map (V62), which a regeneration rewrites whole. A builtin
 /// line number counts from the top of the joined text.
-pub const BUILTIN: &str = concat!(
+pub(crate) const BUILTIN: &str = concat!(
     include_str!("map.ctrm-map"),
     include_str!("emoji-seq.ctrm-map")
 );
@@ -97,9 +97,18 @@ pub struct Map {
 }
 
 impl Map {
+    /// The builtin map (V26) at the default fidelity: what `ctrm fix` runs
+    /// with no `.ctrm-map`. INFALLIBLE because the text is compiled in; a
+    /// defect in it is this crate's, and `map_test` keeps it from shipping.
+    #[must_use]
+    pub fn builtin() -> Self {
+        Self::parse(BUILTIN, &|line| Origin::Builtin { line })
+            .unwrap_or_default()
+    }
+
     /// Parse map lines. `origin` labels a 1-based line number, so the same
     /// parser serves a file, a builtin and a `--map` flag (`src/rules:V18`).
-    pub fn parse(
+    pub(crate) fn parse(
         source: &str,
         origin: &dyn Fn(usize) -> Origin,
     ) -> Result<Self, Error> {
@@ -120,7 +129,7 @@ impl Map {
     ///
     /// As [`Map::parse`]: a malformed line, a cyclic family tree, or a
     /// class naming a family nothing declared.
-    pub fn layer(
+    pub(crate) fn layer(
         mut self,
         source: &str,
         origin: &dyn Fn(usize) -> Origin,
@@ -138,13 +147,13 @@ impl Map {
 
     /// The family tree these lines declared, on top of the builtin one.
     #[must_use]
-    pub fn tree(&self) -> &Tree {
+    pub(crate) fn tree(&self) -> &Tree {
         &self.tree
     }
 
     /// The equivalence classes these lines declared.
     #[must_use]
-    pub fn classes(&self) -> &[Class] {
+    pub(crate) fn classes(&self) -> &[Class] {
         &self.classes
     }
 
@@ -152,7 +161,7 @@ impl Map {
     /// otherwise, which is the strict default `src/rules:V1` asks for; the
     /// rules node supplies `text` and any `@<family>` per `src/rules:V29`.
     #[must_use]
-    pub fn fidelity(&self) -> &str {
+    pub(crate) fn fidelity(&self) -> &str {
         self.fidelity.as_deref().unwrap_or(ROOT)
     }
 
@@ -167,7 +176,7 @@ impl Map {
     /// The effective entries, longest source first. Each carries its origin,
     /// which is how `explain` answers "why" (`src/rules:V20`).
     #[must_use]
-    pub fn entries(&self) -> &[MapEntry] {
+    pub(crate) fn entries(&self) -> &[MapEntry] {
         &self.entries
     }
 

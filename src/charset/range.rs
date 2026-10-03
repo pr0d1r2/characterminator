@@ -56,7 +56,7 @@ impl CharRange {
 /// spelled but equal grants compare equal, and so `explain` prints one row
 /// per span rather than one per line of config that contributed to it.
 #[must_use]
-pub fn normalize(mut ranges: Vec<CharRange>) -> Vec<CharRange> {
+pub(crate) fn normalize(mut ranges: Vec<CharRange>) -> Vec<CharRange> {
     ranges.sort_unstable_by_key(|range| (range.start, range.end));
     let mut merged: Vec<CharRange> = Vec::with_capacity(ranges.len());
     for next in ranges {

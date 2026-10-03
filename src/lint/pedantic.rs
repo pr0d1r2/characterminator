@@ -33,44 +33,49 @@ use crate::lint::{Group, Lint, ucd};
 use crate::scan::{Hit, located};
 
 /// A space that is not U+0020.
-pub const UNICODE_SPACE: Lint = Lint::new("unicode-space", Group::Pedantic);
+pub(super) const UNICODE_SPACE: Lint =
+    Lint::new("unicode-space", Group::Pedantic);
 
 /// A line ended by CR LF rather than LF.
-pub const CRLF: Lint = Lint::new("crlf", Group::Pedantic);
+pub(crate) const CRLF: Lint = Lint::new("crlf", Group::Pedantic);
 
 /// Whitespace between a line's last visible character and its end.
-pub const TRAILING_WHITESPACE: Lint =
+pub(super) const TRAILING_WHITESPACE: Lint =
     Lint::new("trailing-whitespace", Group::Pedantic);
 
 /// A non-empty file whose last character is not a line feed.
-pub const FINAL_NEWLINE: Lint = Lint::new("final-newline", Group::Pedantic);
+pub(super) const FINAL_NEWLINE: Lint =
+    Lint::new("final-newline", Group::Pedantic);
 
 /// Text NFC would change.
-pub const NOT_NFC: Lint = Lint::new("not-nfc", Group::Pedantic);
+pub(super) const NOT_NFC: Lint = Lint::new("not-nfc", Group::Pedantic);
 
 /// A character NFKC folds and NFC keeps: fullwidth, ligature, superscript.
-pub const NFKC_COMPAT: Lint = Lint::new("nfkc-compat", Group::Pedantic);
+pub(super) const NFKC_COMPAT: Lint = Lint::new("nfkc-compat", Group::Pedantic);
 
 /// One word written in two scripts.
-pub const MIXED_SCRIPT: Lint = Lint::new("mixed-script", Group::Pedantic);
+pub(super) const MIXED_SCRIPT: Lint =
+    Lint::new("mixed-script", Group::Pedantic);
 
 /// A non-ASCII character UTS #39 draws as ASCII.
-pub const CONFUSABLE: Lint = Lint::new("confusable", Group::Pedantic);
+pub(super) const CONFUSABLE: Lint = Lint::new("confusable", Group::Pedantic);
 
 /// The lints [`text_hits`] can fire, for the same question as below.
-pub const TEXT_LINTS: [Lint; 2] = [NOT_NFC, MIXED_SCRIPT];
+pub(crate) const TEXT_LINTS: [Lint; 2] = [NOT_NFC, MIXED_SCRIPT];
 
 /// The lints [`char_lints`] can fire.
-pub const CHAR_LINTS: [Lint; 3] = [UNICODE_SPACE, NFKC_COMPAT, CONFUSABLE];
+pub(crate) const CHAR_LINTS: [Lint; 3] =
+    [UNICODE_SPACE, NFKC_COMPAT, CONFUSABLE];
 
 /// The lints [`line_hits`] can fire, so a caller can ask whether any of
 /// them is switched on before paying for a second walk of the text.
-pub const LINE_LINTS: [Lint; 3] = [CRLF, TRAILING_WHITESPACE, FINAL_NEWLINE];
+pub(crate) const LINE_LINTS: [Lint; 3] =
+    [CRLF, TRAILING_WHITESPACE, FINAL_NEWLINE];
 
 /// Every pedantic lint in CLAIM order (V55, V58): when two point at one
 /// character, the earlier keeps it. The three walks each keep their own
 /// order; this is the one that holds across them.
-pub const CLAIM_ORDER: [Lint; 8] = [
+pub(super) const CLAIM_ORDER: [Lint; 8] = [
     UNICODE_SPACE,
     CRLF,
     TRAILING_WHITESPACE,
@@ -100,13 +105,13 @@ const SPACES: [char; 16] = [
 ];
 
 /// The pedantic lint one character fires on its own, wherever it sits.
-pub fn unicode_space(character: char) -> Option<Lint> {
+pub(crate) fn unicode_space(character: char) -> Option<Lint> {
     SPACES.contains(&character).then_some(UNICODE_SPACE)
 }
 
 /// Every pedantic lint one character fires on its own, the strongest
 /// claim first. ASCII is none of them, and pays no table lookup.
-pub fn char_lints(character: char) -> [Option<Lint>; 3] {
+pub(crate) fn char_lints(character: char) -> [Option<Lint>; 3] {
     if character.is_ascii() {
         return [None; 3];
     }
@@ -127,7 +132,7 @@ pub fn char_lints(character: char) -> [Option<Lint>; 3] {
 /// script sets never intersect to empty. Otherwise the text is walked, not
 /// copied into a list of hits: `mixed-script` streams, and `not-nfc` lays the
 /// hits out only for a text the quick check cannot clear.
-pub fn text_hits(text: &str) -> Vec<(Lint, Hit)> {
+pub(crate) fn text_hits(text: &str) -> Vec<(Lint, Hit)> {
     if text.is_ascii() {
         return Vec::new();
     }
@@ -141,7 +146,7 @@ pub fn text_hits(text: &str) -> Vec<(Lint, Hit)> {
 
 /// Every line-shaped finding in a text, as the lint and the character it
 /// points at, in byte order within each kind.
-pub fn line_hits(text: &str) -> Vec<(Lint, Hit)> {
+pub(crate) fn line_hits(text: &str) -> Vec<(Lint, Hit)> {
     let mut walk = Walk::default();
     for hit in located(text) {
         walk.step(hit);

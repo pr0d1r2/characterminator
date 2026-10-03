@@ -18,7 +18,7 @@ use std::fmt::{Display, Write};
 /// Taking the value pre-rendered is what keeps one function per shape: a
 /// field does not need to know whether it holds a number, a string or a
 /// whole object.
-pub fn field(name: &str, value: &str) -> String {
+pub(super) fn field(name: &str, value: &str) -> String {
     let mut out = string(name);
     out.push(':');
     out.push_str(value);
@@ -26,12 +26,12 @@ pub fn field(name: &str, value: &str) -> String {
 }
 
 /// `{...}` over already-rendered fields.
-pub fn object(fields: &[String]) -> String {
+pub(super) fn object(fields: &[String]) -> String {
     wrap('{', fields, '}')
 }
 
 /// `[...]` over already-rendered items.
-pub fn array(items: &[String]) -> String {
+pub(super) fn array(items: &[String]) -> String {
     wrap('[', items, ']')
 }
 
@@ -40,7 +40,7 @@ pub fn array(items: &[String]) -> String {
 /// Rendered through `Display` so the integer width stays the caller's
 /// business: a byte offset is a `usize` and a token count is a `u64`, and
 /// neither should have to be cast to be reported.
-pub fn number(value: impl Display) -> String {
+pub(super) fn number(value: impl Display) -> String {
     value.to_string()
 }
 
@@ -49,7 +49,7 @@ pub fn number(value: impl Display) -> String {
 /// `null` rather than an omitted key: a consumer that reads a fixed set of
 /// keys is simpler than one that has to test for their presence, and a key
 /// that comes and goes is a contract that changes shape.
-pub fn optional(value: Option<&str>) -> String {
+pub(super) fn optional(value: Option<&str>) -> String {
     match value {
         Some(text) => string(text),
         None => String::from("null"),
@@ -68,20 +68,20 @@ fn wrap(open: char, parts: &[String], close: char) -> String {
 /// bytes [`object`] over [`field`]s writes, without a `String` per field.
 /// The per-finding objects go out this way (R17); the small documents
 /// keep the plain functions above, which read better.
-pub struct Fields<'o> {
+pub(super) struct Fields<'o> {
     out: &'o mut String,
     first: bool,
 }
 
 impl<'o> Fields<'o> {
     /// `{`, in `out`.
-    pub fn open(out: &'o mut String) -> Self {
+    pub(super) fn open(out: &'o mut String) -> Self {
         out.push('{');
         Self { out, first: true }
     }
 
     /// `"name":`, and the buffer to write its value into.
-    pub fn key(&mut self, name: &str) -> &mut String {
+    pub(super) fn key(&mut self, name: &str) -> &mut String {
         if !self.first {
             self.out.push(',');
         }
@@ -92,28 +92,28 @@ impl<'o> Fields<'o> {
     }
 
     /// A field whose value is already rendered json.
-    pub fn raw(&mut self, name: &str, value: &str) {
+    pub(super) fn raw(&mut self, name: &str, value: &str) {
         self.key(name).push_str(value);
     }
 
     /// A string field.
-    pub fn text(&mut self, name: &str, value: &str) {
+    pub(super) fn text(&mut self, name: &str, value: &str) {
         crate::render::escape::push(self.key(name), value);
     }
 
     /// A number field, or any value whose `Display` is its json.
-    pub fn number(&mut self, name: &str, value: impl Display) {
+    pub(super) fn number(&mut self, name: &str, value: impl Display) {
         let _infallible = write!(self.key(name), "{value}");
     }
 
     /// `}`.
-    pub fn close(self) {
+    pub(super) fn close(self) {
         self.out.push('}');
     }
 }
 
 /// `[...]`, written into `out`: each item by `each`, comma-separated.
-pub fn list<T>(
+pub(super) fn list<T>(
     out: &mut String,
     all: impl IntoIterator<Item = T>,
     mut each: impl FnMut(&mut String, T),

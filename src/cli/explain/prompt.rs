@@ -44,7 +44,10 @@ struct Scope {
 ///
 /// A configuration that does not parse, a set that does not resolve, or
 /// a map rewrite the engine refuses to trust.
-pub fn render(config: &Config, path: Option<&str>) -> Result<String, String> {
+pub(super) fn render(
+    config: &Config,
+    path: Option<&str>,
+) -> Result<String, String> {
     let rules = config.rules()?;
     let catalog = config.catalog()?;
     let scope = match path {

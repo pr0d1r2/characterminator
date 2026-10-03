@@ -16,37 +16,37 @@ use crate::scan::Hit;
 /// arrive, because folding would have to decide the forbid question at
 /// insert time and would lose the sequence `explain` needs to show.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Levels {
+pub(crate) struct Levels {
     directives: Vec<(Target, Level)>,
     strict: bool,
 }
 
 impl Levels {
     /// An empty table: every lint sits at its group's default level.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
     /// Record a `!<lint|group>=<level>` suffix. Call order is rule order,
     /// and the later call wins wherever both cover the same lint.
-    pub fn set(&mut self, target: Target, level: Level) {
+    pub(crate) fn set(&mut self, target: Target, level: Level) {
         self.directives.push((target, level));
     }
 
     /// Record a bare `!<level>` suffix, which moves the charset group.
-    pub fn set_charset(&mut self, level: Level) {
+    pub(crate) fn set_charset(&mut self, level: Level) {
         self.set(Target::BARE, level);
     }
 
     /// Turn strict mode on: warn counts as deny, so a warned lint starts
     /// failing the run. It raises only, and it cannot reach a forbid.
-    pub fn set_strict(&mut self, strict: bool) {
+    pub(crate) fn set_strict(&mut self, strict: bool) {
         self.strict = strict;
     }
 
     /// The level that applies to one lint, all directives and strict mode
     /// taken into account.
-    pub fn level_of(&self, lint: Lint) -> Level {
+    pub(crate) fn level_of(&self, lint: Lint) -> Level {
         let stated = self.stated(lint);
         if self.strict {
             stated.under_strict()
@@ -57,7 +57,7 @@ impl Levels {
 
     /// What one hit is worth: the hit, the lint that found it, and the
     /// level this table resolved for that lint.
-    pub fn finding(&self, hit: Hit, lint: Lint) -> Finding {
+    pub(crate) fn finding(&self, hit: Hit, lint: Lint) -> Finding {
         Finding {
             hit,
             lint,

@@ -27,14 +27,14 @@ use crate::scan::{Hit, located};
 
 /// Whether NFKC changes this character where NFC does not: a fullwidth
 /// form, a ligature, a superscript, a circled digit.
-pub fn compat(character: char) -> bool {
+pub(super) fn compat(character: char) -> bool {
     !once(character).nfkc().eq(once(character).nfc())
 }
 
 /// Whether a non-ASCII character's UTS #39 skeleton is non-empty ASCII:
 /// it is drawn like ASCII text a reader would take it for. An ASCII
 /// character is never one, whatever its skeleton (`m` maps to `rn`).
-pub fn lookalike(character: char) -> bool {
+pub(super) fn lookalike(character: char) -> bool {
     let mut buffer = [0_u8; 4];
     let text = character.encode_utf8(&mut buffer);
     let mut drawn = skeleton(text).peekable();
@@ -46,7 +46,7 @@ pub fn lookalike(character: char) -> bool {
 /// The character each NFC-changed segment of a text points at, in order.
 /// Nothing at all for a text the quick check passes, which is nearly
 /// every text, so the per-segment work is only paid where it can find.
-pub fn denormal(hits: &[Hit]) -> Vec<Hit> {
+pub(super) fn denormal(hits: &[Hit]) -> Vec<Hit> {
     let characters = hits.iter().map(|hit| hit.character);
     if is_nfc_quick(characters) == IsNormalized::Yes {
         return Vec::new();
@@ -83,7 +83,7 @@ fn divergence(segment: &[Hit]) -> Option<Hit> {
 /// and a Cyrillic letter in `p\u{0430}ypal` is in the same word as the
 /// Latin around it.
 #[cfg(test)]
-pub fn mixed(hits: &[Hit]) -> Vec<Hit> {
+pub(crate) fn mixed(hits: &[Hit]) -> Vec<Hit> {
     mixed_in(hits.iter().copied())
 }
 
@@ -91,7 +91,7 @@ pub fn mixed(hits: &[Hit]) -> Vec<Hit> {
 /// set and no list of hits. A word is what `chunk_by` over the hits makes of it
 /// -- a run in which every neighbouring pair is in-word -- so a lone character
 /// that is not in a word is a word of its own, as it was.
-pub fn mixed_in(hits: impl IntoIterator<Item = Hit>) -> Vec<Hit> {
+pub(super) fn mixed_in(hits: impl IntoIterator<Item = Hit>) -> Vec<Hit> {
     let mut words = Words::default();
     hits.into_iter().filter_map(|hit| words.step(hit)).collect()
 }
@@ -130,7 +130,7 @@ fn in_word(character: char) -> bool {
 
 /// [`denormal`] over a whole text, collecting its hits only when the quick
 /// check cannot clear it -- which nearly every text it can (`src/render:R17`).
-pub fn denormal_in(text: &str) -> Vec<Hit> {
+pub(super) fn denormal_in(text: &str) -> Vec<Hit> {
     if is_nfc_quick(text.chars()) == IsNormalized::Yes {
         return Vec::new();
     }

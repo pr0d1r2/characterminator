@@ -3,7 +3,7 @@
 //! child of the `apply` tests, for their fixtures.
 
 use super::{ascii, check, fix};
-use crate::fix::ROOT;
+use crate::fix::family::ROOT;
 use crate::fix::map::Map;
 use crate::rules::Origin;
 

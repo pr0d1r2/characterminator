@@ -152,6 +152,7 @@ fn rejects_a_family_line_it_cannot_read() {
 #[test]
 fn the_builtin_map_parses() {
     assert!(parse(super::BUILTIN).is_ok());
+    assert!(!super::Map::builtin().entries().is_empty());
 }
 
 #[test]

@@ -7,12 +7,12 @@
 //! a report goes out in in `order`.
 
 mod bytes;
-mod order;
 mod text;
 
-pub use bytes::{decode, looks_binary, scan_bytes};
-pub use order::sort_hits;
-pub use text::{located, scan_str};
+pub(crate) use bytes::decode;
+pub use bytes::scan_bytes;
+pub(crate) use text::located;
+pub use text::scan_str;
 
 /// Where a character sits, in the three units a reader or a tool needs.
 ///
@@ -20,6 +20,7 @@ pub use text::{located, scan_str};
 /// byte column is wrong for an editor the moment a line holds anything
 /// multi-byte. The byte offset is kept beside them for tools that edit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Position {
     pub line: usize,
     pub column: usize,
@@ -30,6 +31,7 @@ pub struct Position {
 /// node reports what is where, and the rules and lint nodes decide what it
 /// means.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Hit {
     pub position: Position,
     pub character: char,
@@ -38,6 +40,7 @@ pub struct Hit {
 /// Why a file could not be scanned. Neither case is silent: an unreadable
 /// file that reported nothing would be indistinguishable from a clean one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Unreadable {
     /// Not valid UTF-8, with the byte offset where decoding failed.
     NotUtf8 { byte: usize },

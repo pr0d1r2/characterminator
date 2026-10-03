@@ -18,6 +18,7 @@ use crate::scan::{Hit, Position, located};
 
 /// What `fix` found, with no text to write: the `fix --check` answer.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Report {
     /// Every span that would be rewritten, in the order they were found.
     pub rewrites: Vec<Rewrite>,
@@ -260,7 +261,9 @@ fn guarded(
 }
 
 /// Report what `fix` would do and hand back nothing to write (`--check`).
-pub fn check(
+/// Test-only: the binary reads `Fixed::report` from the one `fix` it runs.
+#[cfg(test)]
+pub(super) fn check(
     text: &str,
     map: &Map,
     allowed: &dyn Fn(char) -> bool,

@@ -33,7 +33,7 @@ struct Skip {
 }
 
 /// A finished report: what to print, and what to exit with.
-pub struct Report {
+pub(super) struct Report {
     pub text: String,
     pub code: u8,
 }
@@ -132,7 +132,7 @@ fn batches(source: &Row) -> impl Iterator<Item = Batch<'_>> {
 ///
 /// `paths` empty means the git-tracked fileset; naming paths reaches
 /// untracked files too (`src/tokens:V9`).
-pub fn run(
+pub(super) fn run(
     config: &Config,
     paths: &[String],
     format: Format,

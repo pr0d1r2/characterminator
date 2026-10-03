@@ -5,6 +5,7 @@
 /// `Forbid` is the one that cannot be lowered by a later rule or flag, and
 /// it exists so the hazard group cannot be argued down to a warning.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum Level {
     Allow,
     Warn,

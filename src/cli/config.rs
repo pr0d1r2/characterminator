@@ -11,29 +11,29 @@
 //! `--no-builtin-*` flags are sources this loader does not add, and a
 //! `--rule` is one it does (`src/rules:V21`).
 
-use super::args::{self, Args, Flag};
+use super::args::{Args, Flag};
 use crate::charset::{self, SetCatalog, SetDefinition, builtin, locale};
 use crate::fix::{self as engine, Map};
 use crate::rules::{self, Place, Rule, Sources};
 use std::path::{Path, PathBuf};
 
 /// The rules file discovered at the run root (`src/rules:V45`).
-pub const RULES: &str = ".ctrm";
+pub(super) const RULES: &str = ".ctrm";
 
 /// The sets file discovered beside it.
-pub const SETS: &str = ".ctrm-sets";
+pub(super) const SETS: &str = ".ctrm-sets";
 
 /// The map file discovered beside it.
-pub const MAP: &str = ".ctrm-map";
+pub(super) const MAP: &str = ".ctrm-map";
 
 /// What `--pedantic` stands for, word for word (`src/lint:V37`). A rule
 /// line rather than a mode, so it sits in the chain at its argv position
 /// and `explain` names that position as its origin.
-pub const PEDANTIC: &str = "* !pedantic=warn";
+pub(super) const PEDANTIC: &str = "* !pedantic=warn";
 
 /// One run's configuration, unparsed.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Config {
+pub(crate) struct Config {
     /// The run root: `-C <dir>` resolved against the working directory.
     pub root: PathBuf,
     pub rules: Sources,
@@ -58,8 +58,9 @@ enum Added {
 /// # Errors
 ///
 /// A flag that is not one, or a `--*-file` that cannot be read.
-pub fn from_argv(cwd: &Path, argv: &[String]) -> Result<Config, String> {
-    load(cwd, &args::parse(argv)?)
+#[cfg(test)]
+pub(crate) fn from_argv(cwd: &Path, argv: &[String]) -> Result<Config, String> {
+    load(cwd, &super::args::parse(argv)?)
 }
 
 /// Build the configuration from flags already read.
@@ -67,7 +68,7 @@ pub fn from_argv(cwd: &Path, argv: &[String]) -> Result<Config, String> {
 /// # Errors
 ///
 /// A `--*-file` that cannot be read.
-pub fn load(cwd: &Path, args: &Args) -> Result<Config, String> {
+pub(super) fn load(cwd: &Path, args: &Args) -> Result<Config, String> {
     let root = args
         .value("-C")
         .map_or_else(|| cwd.to_owned(), |d| cwd.join(d));
@@ -117,7 +118,7 @@ impl Config {
     /// The configuration of a run given no flags: builtins and the
     /// dotfiles at `root`, which is what every verb read before T55.
     #[must_use]
-    pub fn discovered(root: &Path) -> Self {
+    pub(crate) fn discovered(root: &Path) -> Self {
         seeded(root.to_owned(), &Args::default())
     }
 
@@ -177,7 +178,7 @@ impl Config {
     /// # Errors
     ///
     /// The first line of any kind that does not parse, at its origin.
-    pub fn validate(&self) -> Result<(), String> {
+    pub(crate) fn validate(&self) -> Result<(), String> {
         let catalog = self.catalog()?;
         let map = self.map()?;
         for rule in self.rules()? {
@@ -192,7 +193,7 @@ impl Config {
     /// # Errors
     ///
     /// A line that does not parse, named at its origin.
-    pub fn rules(&self) -> Result<Vec<Rule>, String> {
+    pub(crate) fn rules(&self) -> Result<Vec<Rule>, String> {
         self.rules.rules().map_err(|bad| bad.to_string())
     }
 
@@ -210,7 +211,7 @@ impl Config {
     ///
     /// The CLDR locale sets come in only for the names the rules use
     /// (`src/charset:V61`), and only while the builtin sets are on.
-    pub fn catalog(&self) -> Result<SetCatalog, String> {
+    pub(crate) fn catalog(&self) -> Result<SetCatalog, String> {
         let mut catalog = self.declared()?;
         if self.sets.has_builtin() {
             let wanted = self.rules()?.into_iter().flat_map(|rule| rule.sets);
@@ -225,7 +226,7 @@ impl Config {
     /// # Errors
     ///
     /// As [`Config::catalog`].
-    pub fn listing(&self) -> Result<SetCatalog, String> {
+    pub(crate) fn listing(&self) -> Result<SetCatalog, String> {
         let mut catalog = self.declared()?;
         if self.sets.has_builtin() {
             locale::adopt_all(&mut catalog).map_err(|bad| bad.to_string())?;
@@ -255,7 +256,7 @@ impl Config {
     ///
     /// A map line that does not parse, or a tree that does not validate,
     /// named at the source it came from.
-    pub fn map(&self) -> Result<Map, String> {
+    pub(crate) fn map(&self) -> Result<Map, String> {
         let mut map = Map::default();
         for (place, text) in self.map.layers() {
             let line = one_line(place, text)?;

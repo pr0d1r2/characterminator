@@ -13,7 +13,7 @@ use crate::render::line::Line;
 use crate::render::{Batch, Change, FileStats, Skipped, Violation};
 
 /// Violations in report order.
-pub fn violations<'s, 'v>(
+pub(super) fn violations<'s, 'v>(
     items: &'s [Violation<'v>],
 ) -> Vec<&'s Violation<'v>> {
     let mut sorted: Vec<&Violation<'_>> = items.iter().collect();
@@ -22,7 +22,7 @@ pub fn violations<'s, 'v>(
 }
 
 /// Violations in report order, as the writers read them.
-pub fn lines<'s>(items: &'s [Violation<'_>]) -> Vec<Line<'s>> {
+pub(super) fn lines<'s>(items: &'s [Violation<'_>]) -> Vec<Line<'s>> {
     violations(items).into_iter().map(Line::from).collect()
 }
 
@@ -37,7 +37,7 @@ pub fn lines<'s>(items: &'s [Violation<'_>]) -> Vec<Line<'s>> {
 /// offsets interleave, or a batch out of byte order -- every violation is
 /// laid out and sorted the old way, so the answer never depends on which
 /// path was taken.
-pub fn batches<'a>(items: &'a [Batch<'a>]) -> Lines<'a> {
+pub(super) fn batches<'a>(items: &'a [Batch<'a>]) -> Lines<'a> {
     let total = items.iter().map(|b| b.findings.len()).sum();
     let mut sorted: Vec<&Batch<'_>> = items.iter().collect();
     sorted.sort_by_key(|item| item.path);
@@ -74,7 +74,7 @@ fn expand<'a>(batch: &'a Batch<'a>) -> impl Iterator<Item = Line<'a>> + 'a {
 
 /// [`batches`]' answer: the lines, and how many are left, so a writer can
 /// size its buffer once.
-pub struct Lines<'a> {
+pub(super) struct Lines<'a> {
     inner: Box<dyn Iterator<Item = Line<'a>> + 'a>,
     left: usize,
 }
@@ -94,7 +94,7 @@ impl<'a> Iterator for Lines<'a> {
 }
 
 /// Rewrites in report order.
-pub fn changes<'s, 'c>(items: &'s [Change<'c>]) -> Vec<&'s Change<'c>> {
+pub(super) fn changes<'s, 'c>(items: &'s [Change<'c>]) -> Vec<&'s Change<'c>> {
     let mut sorted: Vec<&Change<'_>> = items.iter().collect();
     sorted.sort_by_key(|item| (item.path, item.rewrite.hit.position.byte));
     sorted
@@ -102,14 +102,18 @@ pub fn changes<'s, 'c>(items: &'s [Change<'c>]) -> Vec<&'s Change<'c>> {
 
 /// Unread files in report order. There is no offset to fall back on, so the
 /// path alone decides.
-pub fn skipped<'s, 'k>(items: &'s [Skipped<'k>]) -> Vec<&'s Skipped<'k>> {
+pub(super) fn skipped<'s, 'k>(
+    items: &'s [Skipped<'k>],
+) -> Vec<&'s Skipped<'k>> {
     let mut sorted: Vec<&Skipped<'_>> = items.iter().collect();
     sorted.sort_by_key(|item| item.path);
     sorted
 }
 
 /// Stats rows in report order, by path for the same reason.
-pub fn stats<'s, 'f>(items: &'s [FileStats<'f>]) -> Vec<&'s FileStats<'f>> {
+pub(super) fn stats<'s, 'f>(
+    items: &'s [FileStats<'f>],
+) -> Vec<&'s FileStats<'f>> {
     let mut sorted: Vec<&FileStats<'_>> = items.iter().collect();
     sorted.sort_by_key(|item| item.path);
     sorted

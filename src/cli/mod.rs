@@ -19,7 +19,7 @@ mod guard;
 mod out;
 mod stats;
 
-pub use config::{Config, from_argv};
+pub(crate) use config::Config;
 
 use crate::render::Format;
 use args::Args;
@@ -27,21 +27,10 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-/// The command surface the root spec fixes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Verb {
-    Check,
-    Fix,
-    Stats,
-    Explain,
-    Sets,
-    Guard,
-}
-
 /// The three exits, named rather than spelled as bare integers at each
 /// call site.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Outcome {
+pub(crate) enum Outcome {
     /// Nothing to report.
     Ok,
     /// A violation, or drift under a `--check` flag.
@@ -59,7 +48,7 @@ pub enum Outcome {
 impl Outcome {
     /// The exit code the root spec's interface section fixes.
     #[must_use]
-    pub fn code(self) -> ExitCode {
+    pub(crate) fn code(self) -> ExitCode {
         match self {
             Self::Ok => ExitCode::SUCCESS,
             Self::Violation | Self::Broken => ExitCode::from(1),

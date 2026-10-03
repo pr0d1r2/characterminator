@@ -44,8 +44,8 @@ mod order;
 mod sarif;
 mod value;
 
-pub use escape::string as json_string;
-pub use name::codepoint;
+pub(crate) use escape::string as json_string;
+pub(crate) use name::codepoint;
 
 use crate::charset::CharSet;
 use crate::fix::Rewrite;
@@ -57,7 +57,7 @@ use crate::tokens::Count;
 /// Which rendering a caller wants. The json form is a stable contract; the
 /// human form is cosmetic and may change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Format {
+pub(crate) enum Format {
     Human,
     Json,
     /// A SARIF 2.1.0 log (V50). SARIF carries RESULTS, and only `check`
@@ -84,7 +84,7 @@ pub enum Format {
 /// is not settled here, so a caller that has one decides how to name it
 /// before handing it over.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Violation<'a> {
+pub(crate) struct Violation<'a> {
     pub path: &'a str,
     pub finding: Finding,
     pub set: &'a str,
@@ -94,7 +94,7 @@ pub struct Violation<'a> {
 /// reported nothing would be indistinguishable from a clean one
 /// (`src/scan:V8`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Skipped<'a> {
+pub(crate) struct Skipped<'a> {
     pub path: &'a str,
     pub reason: Unreadable,
 }
@@ -103,7 +103,7 @@ pub struct Skipped<'a> {
 /// `fix --check`, because the difference between them is whether the write
 /// happened, not what is reported.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Change<'a> {
+pub(crate) struct Change<'a> {
     pub path: &'a str,
     pub rewrite: Rewrite,
 }
@@ -111,7 +111,7 @@ pub struct Change<'a> {
 /// One file's row in `stats`: how much sits outside the set, how big the
 /// file is, and what it costs now against what it would cost after `fix`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FileStats<'a> {
+pub(crate) struct FileStats<'a> {
     pub path: &'a str,
     pub outside: u64,
     pub bytes: u64,
@@ -124,7 +124,7 @@ pub struct FileStats<'a> {
 /// `path` is absent when the question was asked of the whole repo rather
 /// than of one file.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Explanation<'a> {
+pub(crate) struct Explanation<'a> {
     pub path: Option<&'a str>,
     pub set: &'a CharSet,
     /// The rule that won, or NONE when nothing matched.
@@ -144,7 +144,7 @@ pub struct Explanation<'a> {
 
 /// The effective family and levels of an [`Explanation`], with origins.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InForce<'a> {
+pub(crate) struct InForce<'a> {
     /// The fidelity family, never empty: `text` when no rule named one.
     pub family: &'a str,
     /// The line that named the family, or none for the default.
@@ -156,7 +156,9 @@ pub struct InForce<'a> {
 }
 
 /// `check`: the violations, then the files that could not be read.
-pub fn check(
+/// Test-only: the binary reports through [`check_batches`].
+#[cfg(test)]
+pub(crate) fn check(
     format: Format,
     violations: &[Violation<'_>],
     skipped: &[Skipped<'_>],
@@ -175,7 +177,7 @@ pub fn check(
 /// [`check_batches`] reports a list of these exactly as [`check`] reports
 /// the [`Violation`]s they expand to, in that order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Batch<'a> {
+pub(crate) struct Batch<'a> {
     pub path: &'a str,
     pub set: &'a str,
     pub findings: &'a [Finding],
@@ -183,7 +185,7 @@ pub struct Batch<'a> {
 
 /// [`check`], over batches: the same report, byte for byte, as over the
 /// violations they expand to.
-pub fn check_batches(
+pub(crate) fn check_batches(
     format: Format,
     batches: &[Batch<'_>],
     skipped: &[Skipped<'_>],
@@ -199,7 +201,7 @@ pub fn check_batches(
 /// `fix` and `fix --check`: the rewrites, then the characters no map entry
 /// covers (`src/fix:V4`), in `check`'s own row shape, then the files that
 /// could not be read.
-pub fn fix(
+pub(crate) fn fix(
     format: Format,
     changes: &[Change<'_>],
     unmapped: &[Violation<'_>],
@@ -213,7 +215,7 @@ pub fn fix(
 
 /// `stats`: one row per file, then the files that are not text, named as
 /// `check` names them (`src/scan:V8`).
-pub fn stats(
+pub(crate) fn stats(
     format: Format,
     files: &[FileStats<'_>],
     skipped: &[Skipped<'_>],
@@ -225,7 +227,7 @@ pub fn stats(
 }
 
 /// `explain`: the effective set and the winning rule.
-pub fn explain(format: Format, explanation: &Explanation<'_>) -> String {
+pub(crate) fn explain(format: Format, explanation: &Explanation<'_>) -> String {
     match format {
         Format::Human => human::explain(explanation),
         Format::Json | Format::Sarif => json::explain(explanation),
@@ -233,7 +235,7 @@ pub fn explain(format: Format, explanation: &Explanation<'_>) -> String {
 }
 
 /// `sets`: the builtin sets and their members.
-pub fn sets(format: Format, sets: &[CharSet]) -> String {
+pub(crate) fn sets(format: Format, sets: &[CharSet]) -> String {
     match format {
         Format::Human => human::sets(sets),
         Format::Json | Format::Sarif => json::sets(sets),

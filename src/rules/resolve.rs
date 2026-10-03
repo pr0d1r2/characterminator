@@ -13,7 +13,7 @@ use crate::rules::{ASCII, LevelChoice, Rule, Sourced, TEXT};
 /// The one thing resolution DOES require of it: per-type globs and
 /// per-file paths share one grammar (V2), so a plain path is a pattern
 /// that matches itself.
-pub trait PathMatcher {
+pub(crate) trait PathMatcher {
     fn matches(&self, pattern: &str, path: &str) -> bool;
 }
 
@@ -31,7 +31,7 @@ impl<F: Fn(&str, &str) -> bool> PathMatcher for F {
 /// be able to name the winner and print the config line behind it (V2),
 /// and the rule carries its own origin (V20).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Resolution<'a> {
+pub(crate) struct Resolution<'a> {
     /// The set names granted, which a caller resolves against the charset
     /// node. Never empty: with no matching rule it is `ascii` (V1).
     pub sets: Vec<String>,
@@ -64,7 +64,7 @@ pub struct Resolution<'a> {
 /// runs FORWARD and keeps overwriting instead of stopping at the first
 /// hit. That is what makes a per-file line placed after a per-type line
 /// override it, with no notion of specificity to argue about.
-pub fn resolve<'a, M: PathMatcher + ?Sized>(
+pub(crate) fn resolve<'a, M: PathMatcher + ?Sized>(
     path: &str,
     rules: &'a [Rule],
     matcher: &M,

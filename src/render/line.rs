@@ -14,7 +14,7 @@ use std::borrow::Cow;
 /// One violation as a writer reads it: nothing owned, so producing one
 /// costs three pointers.
 #[derive(Debug, Clone, Copy)]
-pub struct Line<'a> {
+pub(super) struct Line<'a> {
     pub path: &'a str,
     pub set: &'a str,
     pub finding: &'a Finding,
@@ -32,17 +32,17 @@ impl<'a> From<&'a Violation<'_>> for Line<'a> {
 
 /// How one form spells a path: `<U+XXXX>` escapes for the human line, a
 /// json literal for the documents, a URI for SARIF.
-pub type Spelling = for<'p> fn(&'p str) -> Cow<'p, str>;
+pub(super) type Spelling = for<'p> fn(&'p str) -> Cow<'p, str>;
 
 /// A path's spelling, kept until the path changes.
-pub struct Spelled<'a> {
+pub(super) struct Spelled<'a> {
     spell: Spelling,
     raw: Option<&'a str>,
     said: Cow<'a, str>,
 }
 
 impl<'a> Spelled<'a> {
-    pub const fn new(spell: Spelling) -> Self {
+    pub(super) const fn new(spell: Spelling) -> Self {
         Self {
             spell,
             raw: None,
@@ -51,7 +51,7 @@ impl<'a> Spelled<'a> {
     }
 
     /// `raw`, spelled. Recomputed only when it differs from the last.
-    pub fn of(&mut self, raw: &'a str) -> &str {
+    pub(super) fn of(&mut self, raw: &'a str) -> &str {
         if self.raw != Some(raw) {
             self.said = (self.spell)(raw);
             self.raw = Some(raw);

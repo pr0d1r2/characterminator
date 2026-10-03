@@ -15,6 +15,7 @@ use crate::lint::{Group, Level, pedantic};
 /// A named check. The name is what a rule line and the json output carry,
 /// so it is the stable identifier rather than the message text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Lint {
     pub name: &'static str,
     pub group: Group,
@@ -36,7 +37,7 @@ pub struct Lint {
 /// Every pedantic row is the constant `pedantic.rs` detects under, so the
 /// name is spelled once: four need no data (V55), four read Unicode's
 /// tables (V58).
-pub const LINTS: &[Lint] = &[
+pub(crate) const LINTS: &[Lint] = &[
     // V34's classes, one lint each, in the order `hazard.rs` tries them.
     // One lint per class rather than one `hazard` lint: the json names
     // the lint, and "this is a bidi override" is the sentence a reader of
@@ -66,7 +67,7 @@ impl Lint {
     /// line: the struct literal spelled out is four lines per lint, and a
     /// registry nobody can read in one screen is a registry that grows
     /// duplicates.
-    pub const fn new(name: &'static str, group: Group) -> Self {
+    pub(crate) const fn new(name: &'static str, group: Group) -> Self {
         Self { name, group }
     }
 

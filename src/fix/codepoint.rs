@@ -11,7 +11,7 @@
 //! obeys.
 
 /// The text a token stands for, or `None` if it is not a well-formed token.
-pub fn decode(token: &str) -> Option<String> {
+pub(super) fn decode(token: &str) -> Option<String> {
     if !token.starts_with("U+") {
         return Some(token.to_owned());
     }

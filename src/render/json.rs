@@ -37,12 +37,16 @@ use std::path::Path;
 const VIOLATION_BYTES: usize = 160;
 
 /// `check`: every violation, and every file that could not be read.
-pub fn check(items: &[Violation<'_>], skipped: &[Skipped<'_>]) -> String {
+#[cfg(test)]
+pub(super) fn check(
+    items: &[Violation<'_>],
+    skipped: &[Skipped<'_>],
+) -> String {
     check_lines(order::lines(items), skipped)
 }
 
 /// [`check`] over violations ALREADY in report order.
-pub fn check_lines<'a>(
+pub(super) fn check_lines<'a>(
     lines: impl IntoIterator<Item = Line<'a>>,
     skipped: &[Skipped<'_>],
 ) -> String {
@@ -120,7 +124,7 @@ fn reason_fields(reason: Unreadable) -> Vec<String> {
 
 /// `fix`: every rewrite, every character no map entry covers (`src/fix:V4`)
 /// in `check`'s violation shape, and every file that could not be read.
-pub fn fix(
+pub(super) fn fix(
     items: &[Change<'_>],
     unmapped: &[Violation<'_>],
     skipped: &[Skipped<'_>],
@@ -148,7 +152,10 @@ fn change(out: &mut String, path: &str, item: &Change<'_>) {
 }
 
 /// `stats`: one row per file, and every file that is not text.
-pub fn stats(files: &[FileStats<'_>], skipped: &[Skipped<'_>]) -> String {
+pub(super) fn stats(
+    files: &[FileStats<'_>],
+    skipped: &[Skipped<'_>],
+) -> String {
     let rows: Vec<String> = order::stats(files).into_iter().map(row).collect();
     object(&[
         field("verb", &string("stats")),
@@ -178,7 +185,7 @@ fn count(value: Count) -> String {
 }
 
 /// `explain`: the effective set, and the rule that won.
-pub fn explain(item: &Explanation<'_>) -> String {
+pub(super) fn explain(item: &Explanation<'_>) -> String {
     object(&[
         field("verb", &string("explain")),
         field("path", &optional(item.path)),
@@ -223,7 +230,7 @@ fn sourced_level(item: &Sourced<'_, LevelChoice>) -> String {
 }
 
 /// `sets`: the builtin sets and what they hold.
-pub fn sets(items: &[CharSet]) -> String {
+pub(super) fn sets(items: &[CharSet]) -> String {
     let rendered: Vec<String> = items.iter().map(char_set).collect();
     object(&[
         field("verb", &string("sets")),

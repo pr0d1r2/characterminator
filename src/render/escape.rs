@@ -14,14 +14,14 @@
 use std::fmt::Write;
 
 /// A json string literal: quoted, escaped, and pure ASCII.
-pub fn string(text: &str) -> String {
+pub(crate) fn string(text: &str) -> String {
     let mut out = String::with_capacity(text.len().saturating_add(2));
     push(&mut out, text);
     out
 }
 
 /// [`string`], appended to `out`.
-pub fn push(out: &mut String, text: &str) {
+pub(super) fn push(out: &mut String, text: &str) {
     out.push('"');
     inner(out, text);
     out.push('"');
@@ -29,7 +29,7 @@ pub fn push(out: &mut String, text: &str) {
 
 /// [`push`] without the quotes: the escaped body of a literal whose other
 /// parts the caller writes.
-pub fn inner(out: &mut String, text: &str) {
+pub(super) fn inner(out: &mut String, text: &str) {
     if text.bytes().all(plain) {
         out.push_str(text);
     } else {

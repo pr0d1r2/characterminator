@@ -19,7 +19,7 @@ use crate::tokens;
 use std::path::{Path, PathBuf};
 
 /// What a run of `fix` produced.
-pub struct Report {
+pub(super) struct Report {
     pub text: String,
     pub code: u8,
 }
@@ -72,7 +72,7 @@ struct Kept {
 ///
 /// A configuration that cannot be read, a file that cannot be written,
 /// or a rewrite the engine refused to trust (`src/fix:V5`, `src/fix:V6`).
-pub fn run(
+pub(super) fn run(
     config: &Config,
     paths: &[String],
     format: Format,
