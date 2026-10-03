@@ -327,5 +327,5 @@ src/judge/SPEC.md    1400
 
 # The `usage` sub-node (help text, verb detection, did-you-mean), new
 # 2026-10-03: ~12% over its measured 569-token spec and 4094-token chain.
-src/cli/usage/SPEC.md 640
+src/cli/usage/SPEC.md 980
 src/cli/usage        4590
