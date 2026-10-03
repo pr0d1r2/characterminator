@@ -15,6 +15,7 @@
 
 use crate::charset::{CharRange, CharSet};
 use crate::lint::Group;
+#[cfg(test)]
 use crate::render::Violation;
 use crate::render::line::{Line, Spelled};
 use crate::render::name::{Codepoint, codepoint, level_name};
@@ -141,9 +142,9 @@ fn unread(item: &Skipped<'_>) -> String {
 /// `fix`: what was rewritten, and what it became; then what no map entry
 /// covers, as `check` would print it, since that is what a reader goes to
 /// look at next (`src/fix:V4`).
-pub(super) fn fix(
+pub(super) fn fix<'a>(
     items: &[Change<'_>],
-    unmapped: &[Violation<'_>],
+    unmapped: impl IntoIterator<Item = Line<'a>>,
     skipped: &[Skipped<'_>],
 ) -> String {
     let mut out = String::new();
@@ -152,7 +153,7 @@ pub(super) fn fix(
         next_line(&mut out);
         change(&mut out, path.of(item.path), item);
     }
-    violations(&mut out, order::lines(unmapped));
+    violations(&mut out, unmapped);
     unread_lines(&mut out, skipped);
     out
 }
@@ -480,9 +481,9 @@ mod tests {
         };
         let change = Change {
             path: "a.rs",
-            rewrite,
+            rewrite: &rewrite,
         };
-        assert_eq!(fix(&[change], &[], &[]), "a.rs:2:5 U+2014 -> \"--\"");
+        assert_eq!(fix(&[change], [], &[]), "a.rs:2:5 U+2014 -> \"--\"");
     }
 
     /// B23: a character `fix` could not rewrite is printed in `check`'s
@@ -495,9 +496,10 @@ mod tests {
         };
         let change = Change {
             path: "a.rs",
-            rewrite,
+            rewrite: &rewrite,
         };
-        let said = fix(&[change], &[em_dash()], &[]);
+        let said =
+            fix(&[change], crate::render::order::lines(&[em_dash()]), &[]);
         assert_eq!(
             said,
             "a.rs:2:5 U+2014 -> \"--\"\nsrc/a.rs:2:5 U+2014 ascii"

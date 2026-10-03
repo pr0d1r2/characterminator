@@ -164,14 +164,14 @@ fn a_rewrite_document_carries_the_replacement_text() {
     };
     let change = Change {
         path: "a.rs",
-        rewrite,
+        rewrite: &rewrite,
     };
     let expected = concat!(
         r#"{"verb":"fix","rewrites":[{"path":"a.rs","line":2,"#,
         r#""column":5,"byte":7,"codepoint":"U+2014","#,
         r#""character":"\u2014","to":"--"}],"unmapped":[],"skipped":[]}"#
     );
-    assert_eq!(fix(&[change], &[], &[]), expected);
+    assert_eq!(fix(&[change], [], &[]), expected);
 }
 
 /// B23: what no map entry covers is in the document, as `check`'s
@@ -184,7 +184,10 @@ fn a_fix_document_carries_the_unmapped_characters() {
         r#""character":"\u2014","set":"ascii","lint":"charset","#,
         r#""level":"deny"}],"skipped":[]}"#
     );
-    assert_eq!(fix(&[], &[em_dash()], &[]), expected);
+    assert_eq!(
+        fix(&[], crate::render::order::lines(&[em_dash()]), &[]),
+        expected
+    );
 }
 
 #[test]

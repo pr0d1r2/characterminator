@@ -9,10 +9,13 @@
 //! Every function returns REFERENCES into the caller's slice rather than
 //! reordering it: a renderer has no business mutating its input.
 
+#[cfg(test)]
+use crate::render::Violation;
 use crate::render::line::Line;
-use crate::render::{Batch, Change, FileStats, Skipped, Violation};
+use crate::render::{Batch, Change, FileStats, Skipped};
 
-/// Violations in report order.
+/// Violations in report order. Test-only: every report reads batches.
+#[cfg(test)]
 pub(super) fn violations<'s, 'v>(
     items: &'s [Violation<'v>],
 ) -> Vec<&'s Violation<'v>> {
@@ -22,6 +25,7 @@ pub(super) fn violations<'s, 'v>(
 }
 
 /// Violations in report order, as the writers read them.
+#[cfg(test)]
 pub(super) fn lines<'s>(items: &'s [Violation<'_>]) -> Vec<Line<'s>> {
     violations(items).into_iter().map(Line::from).collect()
 }

@@ -8,11 +8,17 @@
 //! Nothing here decides what a character becomes. That is the map's, and
 //! the map is data (`src/fix:V26`) plus whatever `.ctrm-map` declares
 //! over it (`src/rules:V45`).
+//!
+//! A run holds what it reports ONCE (`src/fix:R18`): a file's path is
+//! kept per file, not per row; a rewrite is moved, never copied, from the
+//! engine into the report; and what is left is held as `check` holds its
+//! findings, in batches the renderer borrows.
 
+use super::check::{Row, Skip, batches, found_code, skip, unreadable_code};
 use crate::fix::{self as engine, Map};
-use crate::judge::{Checker, Config, File, Looked, files, inspect};
-use crate::lint::{Finding, Group, exit_code};
-use crate::render::{self, Change, Format, Skipped, Violation};
+use crate::judge::{Checker, Config, File, Judge, Looked, files, inspect};
+use crate::lint::{Finding, Levels};
+use crate::render::{self, Batch, Change, Format, Skipped};
 use crate::scan::{Hit, Unreadable};
 use std::path::PathBuf;
 
@@ -23,41 +29,29 @@ pub(super) struct Report {
 }
 
 /// One file's rewrites, owned so the borrowed render rows can point at
-/// them.
-struct Row {
+/// them, with the path held once for all of them.
+struct Changed {
     path: String,
-    rewrite: engine::Rewrite,
-}
-
-/// A file that could not be read as text, named rather than dropped.
-struct Skip {
-    path: String,
-    reason: Unreadable,
+    rewrites: Vec<engine::Rewrite>,
 }
 
 /// What the walk accumulated.
 #[derive(Default)]
 struct Found {
-    rows: Vec<Row>,
+    changed: Vec<Changed>,
     skips: Vec<Skip>,
     /// What `check` finds in the text `fix` leaves: characters outside
     /// their set that no map entry covers, hazards, and any lint the
     /// rules ask for, at their levels (V80). V4: kept as they are,
     /// REPORTED -- a silent drop is the one thing `fix` may never do, and
-    /// an exit 1 that names nothing drops the reason instead (B23).
-    unmapped: Vec<Kept>,
+    /// an exit 1 that names nothing drops the reason instead (B23). One
+    /// row per file, in `check`'s own shape, so the two verbs name a
+    /// character alike.
+    unmapped: Vec<Row>,
     /// What a bare `fix` will write, held until EVERY file has been judged
     /// (V72): a refusal or a read error on the tenth file must not leave
     /// the first nine rewritten behind a run that reports only the error.
     pending: Vec<(PathBuf, String)>,
-}
-
-/// A character `fix` left in place, owned for the borrowed render row:
-/// the row `check` would print for it, so the two verbs name it alike.
-struct Kept {
-    path: String,
-    set: String,
-    finding: Finding,
 }
 
 /// Run `fix` over a repository.
@@ -115,55 +109,83 @@ impl Pass {
     /// One file: judge it, rewrite it, queue the write when asked.
     fn visit(&self, file: File, found: &mut Found) -> Result<(), String> {
         let File { full, shown, text } = file;
-        let (set, _) = self.checker.shared_law(&shown)?;
         let Some(text) = text_of(text, &shown, found) else {
             return Ok(());
         };
-        let fixed = self.checker.judge(&set).fix(&text, &self.map);
-        let fixed = fixed.map_err(|e| format!("{shown}: {e}"))?;
-        found.unmapped.extend(self.left(&shown, &text, &fixed)?);
-        if self.write && fixed.output != text {
-            found.pending.push((full, fixed.output));
+        let (set, levels) = self.checker.shared_law(&shown)?;
+        let judge = self.checker.judge(&set);
+        let fixed = self.fixed(&judge, &text, &shown)?;
+        found.keep(&shown, &set.name, left(&judge, &levels, &text, &fixed));
+        let engine::Fixed { output, report, .. } = fixed;
+        if self.write && output != text {
+            found.pending.push((full, output));
         }
-        absorb(found, shown, fixed.report);
+        found.absorb(shown, report.rewrites);
         Ok(())
     }
 
-    /// What is LEFT once the rewrite is done, judged exactly as `check`
-    /// judges it -- set, levels, `--strict` and hazards -- by `check`'s
-    /// own [`Checker`], then placed where it sits in the file on disk
-    /// (V80, B42). So `fix --check` and `check` cannot disagree about a
-    /// character `fix` leaves alone.
-    fn left(
+    /// The engine's rewrite of one file, less its own unmapped list: what
+    /// is left is judged afresh, as `check` judges it (V80), and dropping
+    /// the engine's list BEFORE that judging keeps the two from peaking
+    /// together (R18).
+    fn fixed(
         &self,
-        path: &str,
+        judge: &Judge<'_>,
         text: &str,
-        fixed: &engine::Fixed,
-    ) -> Result<Vec<Kept>, String> {
-        let (set, levels) = self.checker.shared_law(path)?;
-        let judge = self.checker.judge(&set);
-        let findings = match inspect(fixed.output.as_bytes(), &judge, &levels) {
-            Looked::Findings(found) => found,
-            Looked::Unread(_) => Vec::new(),
-        };
-        let hits: Vec<Hit> = findings.iter().map(|f| f.hit).collect();
-        let placed = fixed.origins(text, &hits);
-        let row = |(finding, hit): (Finding, Hit)| Kept {
-            path: path.to_owned(),
-            set: judged_against(&finding, &set.name),
-            finding: Finding { hit, ..finding },
-        };
-        Ok(findings.into_iter().zip(placed).map(row).collect())
+        shown: &str,
+    ) -> Result<engine::Fixed, String> {
+        let mut fixed = judge
+            .fix(text, &self.map)
+            .map_err(|e| format!("{shown}: {e}"))?;
+        fixed.report.unmapped = Vec::new();
+        Ok(fixed)
     }
 }
 
-/// The set a row names, as `check` names it: a hazard names `hazard`,
-/// since the file's set did not decide it (`src/lint:V34`).
-fn judged_against(finding: &Finding, set: &str) -> String {
-    if finding.lint.group == Group::Hazard {
-        String::from(Group::Hazard.name())
-    } else {
-        set.to_owned()
+/// What is LEFT once the rewrite is done, judged exactly as `check`
+/// judges it -- set, levels, `--strict` and hazards -- by `check`'s own
+/// judge, then placed IN PLACE where it sits in the file on disk (V80,
+/// B42). So `fix --check` and `check` cannot disagree about a character
+/// `fix` leaves alone.
+fn left(
+    judge: &Judge<'_>,
+    levels: &Levels,
+    text: &str,
+    fixed: &engine::Fixed,
+) -> Vec<Finding> {
+    let mut findings = match inspect(fixed.output.as_bytes(), judge, levels) {
+        Looked::Findings(found) => found,
+        Looked::Unread(_) => Vec::new(),
+    };
+    fixed.place(text, &mut findings, hit_of);
+    findings
+}
+
+/// A finding's hit, for [`engine::Fixed::place`].
+fn hit_of(finding: &mut Finding) -> &mut Hit {
+    &mut finding.hit
+}
+
+impl Found {
+    /// What one file left, as `check` would hold it: nothing for a clean
+    /// file, else one row with its path and set once.
+    fn keep(&mut self, path: &str, set: &str, mut findings: Vec<Finding>) {
+        if findings.is_empty() {
+            return;
+        }
+        findings.shrink_to_fit();
+        self.unmapped.push(Row {
+            path: path.to_owned(),
+            set: set.to_owned(),
+            findings,
+        });
+    }
+
+    /// One file's rewrites, MOVED out of the engine's report.
+    fn absorb(&mut self, path: String, rewrites: Vec<engine::Rewrite>) {
+        if !rewrites.is_empty() {
+            self.changed.push(Changed { path, rewrites });
+        }
     }
 }
 
@@ -191,15 +213,6 @@ fn text_of(
     }
 }
 
-fn absorb(found: &mut Found, path: String, report: engine::Report) {
-    for rewrite in report.rewrites {
-        found.rows.push(Row {
-            path: path.clone(),
-            rewrite,
-        });
-    }
-}
-
 /// The report, and the code that goes with it.
 ///
 /// `--check` GATES (V7): exit 1 on drift (the root spec's interface
@@ -215,277 +228,29 @@ fn absorb(found: &mut Found, path: String, report: engine::Report) {
 /// (`src/scan:V8`, B41): it claims to be text, so it was neither judged
 /// nor rewritten, and an exit 0 would read as "clean".
 fn report_of(found: &Found, format: Format, write: bool) -> Report {
-    let changes: Vec<Change<'_>> = found.rows.iter().map(change).collect();
+    let changes: Vec<Change<'_>> =
+        found.changed.iter().flat_map(changes).collect();
     let skipped: Vec<Skipped<'_>> = found.skips.iter().map(skip).collect();
-    let kept: Vec<Violation<'_>> = found.unmapped.iter().map(kept).collect();
-    let drifted = !write && !found.rows.is_empty();
-    let left: Vec<Finding> =
-        found.unmapped.iter().map(|k| k.finding.clone()).collect();
-    let failed = drifted || exit_code(&left) != 0 || unjudged(&found.skips);
+    let kept: Vec<Batch<'_>> =
+        found.unmapped.iter().flat_map(batches).collect();
+    let drifted = !write && !found.changed.is_empty();
+    let failed = drifted
+        || found_code(&found.unmapped) != 0
+        || unreadable_code(&found.skips) != 0;
     Report {
         text: render::fix(format, &changes, &kept, &skipped),
         code: u8::from(failed),
     }
 }
 
-/// Whether a skipped file claimed to be text and was not. A binary skip
-/// is not: it never claimed to be text (`src/scan:V8`).
-fn unjudged(skips: &[Skip]) -> bool {
-    skips
-        .iter()
-        .any(|skip| matches!(skip.reason, Unreadable::NotUtf8 { .. }))
-}
-
-fn change(row: &Row) -> Change<'_> {
-    Change {
-        path: &row.path,
-        rewrite: row.rewrite.clone(),
-    }
-}
-
-fn kept(held: &Kept) -> Violation<'_> {
-    Violation {
-        path: &held.path,
-        finding: held.finding.clone(),
-        set: &held.set,
-    }
-}
-
-fn skip(held: &Skip) -> Skipped<'_> {
-    Skipped {
-        path: &held.path,
-        reason: held.reason,
-    }
+/// One file's rewrites as the rows `render` borrows.
+fn changes(file: &Changed) -> impl Iterator<Item = Change<'_>> {
+    file.rewrites.iter().map(|rewrite| Change {
+        path: &file.path,
+        rewrite,
+    })
 }
 
 #[cfg(test)]
-#[path = "fix_hazard_test.rs"]
-mod hazard_tests;
-
-#[cfg(test)]
-mod tests {
-    use super::run;
-    use crate::cli::testkit::fixture;
-    use crate::render::Format;
-    use std::path::Path;
-
-    pub(super) fn ran(root: &Path, write: bool) -> (String, u8) {
-        let asked = ["notes.md".to_owned()];
-        match run(
-            &crate::cli::config::discovered(root),
-            &asked,
-            Format::Human,
-            write,
-        ) {
-            Ok(report) => (report.text, report.code),
-            Err(why) => (why, 9),
-        }
-    }
-
-    pub(super) fn read(root: &Path) -> String {
-        std::fs::read_to_string(root.join("notes.md")).unwrap_or_default()
-    }
-
-    /// The builtin map, through the verb: an em dash and curly quotes
-    /// become ASCII, and the file on disk changes.
-    #[test]
-    fn fix_rewrites_what_the_builtin_map_covers() {
-        let files = [("notes.md", "a \u{2014} \u{201C}b\u{201D}\n")];
-        let Some(root) = fixture("ctrm-fix-fixture", &files) else {
-            return;
-        };
-        let (text, code) = ran(&root, true);
-        assert_eq!(read(&root), "a -- \"b\"\n", "{text}");
-        // V7: a bare `fix` that left nothing behind exits 0. Only `check`
-        // and `fix --check` gate, and the file IS clean now.
-        assert_eq!(code, 0, "{text}");
-    }
-
-    /// `--check` reports the SAME thing and writes nothing, which is the
-    /// half of V7 that makes it usable in a gate.
-    #[test]
-    fn fix_check_reports_the_drift_without_writing() {
-        let before = "a \u{2014} b\n";
-        let files = [("notes.md", before)];
-        let Some(root) = fixture("ctrm-fixcheck-fixture", &files) else {
-            return;
-        };
-        let (text, code) = ran(&root, false);
-        assert_eq!(read(&root), before, "{text}");
-        assert_eq!(code, 1, "{text}");
-        assert!(text.contains("U+2014"), "{text}");
-    }
-
-    /// V6: a character the file is ALLOWED to hold is not touched, even
-    /// when the map has an entry for it. The grant wins.
-    #[test]
-    fn an_allowed_character_is_left_alone() {
-        let files = [
-            (".ctrm", "*.md ascii+typography\n"),
-            ("notes.md", "a \u{2014} b\n"),
-        ];
-        let Some(root) = fixture("ctrm-fix-allowed-fixture", &files) else {
-            return;
-        };
-        let (text, code) = ran(&root, true);
-        assert_eq!(read(&root), "a \u{2014} b\n", "{text}");
-        assert_eq!(code, 0, "{text}");
-    }
-
-    /// V4: a disallowed character with no mapping is KEPT and reported,
-    /// and the run exits 1 rather than claiming success.
-    #[test]
-    fn a_character_with_no_mapping_is_kept_and_still_fails() {
-        // IDENTICAL TO: outside `ascii`, and no builtin entry covers it.
-        let files = [("notes.md", "a \u{2261} b\n")];
-        let Some(root) = fixture("ctrm-fix-unmapped-fixture", &files) else {
-            return;
-        };
-        let (text, code) = ran(&root, true);
-        assert_eq!(read(&root), "a \u{2261} b\n", "{text}");
-        assert_eq!(code, 1, "{text}");
-        // B23: and NAMED, in `check`'s row grammar, so exit 1 says why.
-        assert_eq!(text, "notes.md:1:3 U+2261 ascii");
-    }
-
-    /// B21: a file `check` skips as binary is skipped by `fix` too, and
-    /// named. Before, only UTF-8 was asked, so a NUL-laden blob that
-    /// happened to decode had its bytes rewritten.
-    #[test]
-    fn a_binary_file_is_skipped_and_named_not_rewritten() {
-        let blob = "\0\0\u{2014}\u{FEFF}data\0";
-        let files = [("notes.md", blob)];
-        let Some(root) = fixture("ctrm-fix-binary-fixture", &files) else {
-            return;
-        };
-        let (text, code) = ran(&root, true);
-        assert_eq!(read(&root), blob, "{text}");
-        assert_eq!(text, "notes.md: skipped, binary");
-        assert_eq!(code, 0, "{text}");
-    }
-
-    /// B42: what `fix` leaves is judged as `check` judges it (V80). Each
-    /// `.ctrm` here made the two verbs disagree: `fix` judged the set at
-    /// a fixed `deny` and never asked about hazards.
-    fn left_behind(name: &str, ctrm: &str, text: &str) -> (String, u8) {
-        let files = [(".ctrm", ctrm), ("notes.md", text)];
-        let Some(root) = fixture(name, &files) else {
-            return (String::new(), 9);
-        };
-        ran(&root, false)
-    }
-
-    #[test]
-    fn an_allowed_or_warned_lint_does_not_fail_fix_check() {
-        let text = "a \u{2261} b\n";
-        let allow = "*.md ascii !outside-set=allow\n";
-        let (out, code) = left_behind("ctrm-fix-allow-fixture", allow, text);
-        assert_eq!((out.as_str(), code), ("", 0));
-        let warn = "*.md ascii !outside-set=warn\n";
-        let (out, code) = left_behind("ctrm-fix-warn-fixture", warn, text);
-        assert_eq!(code, 0, "{out}");
-        assert!(out.contains("U+2261"), "{out}");
-    }
-
-    /// `src/fix:V104` (B59): a hazard is rewritten even where the set
-    /// grants it, so `--check` fails on the DRIFT -- the row a person
-    /// acts on -- where it used to fail on a hazard only a hand could
-    /// remove. A control character `fix` may not delete is still left
-    /// and judged as `check` judges it.
-    #[test]
-    fn a_hazard_the_set_grants_is_drift_for_fix_check() {
-        let text = "a\u{202E}b\n";
-        let gone = "notes.md:1:2 U+202E -> \"\"";
-        let any = "* any\n";
-        let (out, code) = left_behind("ctrm-fix-hazard-any", any, text);
-        assert_eq!((out.as_str(), code), (gone, 1));
-        let ascii = "* ascii\n";
-        let (out, code) = left_behind("ctrm-fix-hazard-ascii", ascii, text);
-        assert_eq!((out.as_str(), code), (gone, 1));
-        // Placed in the original: the em dash before it became `--`, and
-        // the row still names column 3, where the override sits on disk.
-        let shifted = "a\u{2014}\u{202E}b\n";
-        let (out, _) = left_behind("ctrm-fix-hazard-shift", ascii, shifted);
-        assert!(out.ends_with("\nnotes.md:1:3 U+202E -> \"\""), "{out}");
-        let bell = "a\u{7}b\n";
-        let (out, code) = left_behind("ctrm-fix-hazard-bell", any, bell);
-        assert_eq!((out.as_str(), code), ("notes.md:1:2 U+0007 hazard", 1));
-    }
-
-    /// B41: a file that is not UTF-8 fails both forms, as it fails
-    /// `check` (B22). It used to exit 0: `fix` never looked at skips.
-    #[test]
-    fn a_file_that_is_not_utf8_fails_fix_and_fix_check() {
-        let Some(root) = fixture("ctrm-fix-not-utf8-fixture", &[]) else {
-            return;
-        };
-        let wrote = std::fs::write(root.join("notes.md"), b"ab\xffcd\n");
-        assert!(wrote.is_ok());
-        let (text, code) = ran(&root, false);
-        assert_eq!(code, 1, "{text}");
-        let (text, code) = ran(&root, true);
-        assert_eq!(code, 1, "{text}");
-        let left = std::fs::read(root.join("notes.md")).unwrap_or_default();
-        assert_eq!(left, b"ab\xffcd\n");
-    }
-
-    /// V72: a run that fails on a later file writes NOTHING, not the files
-    /// it judged before the failure (B25). The failure here is a file the
-    /// run cannot read; as root it can, and then there is no failure.
-    #[cfg(unix)]
-    #[test]
-    fn a_failed_run_writes_no_file_at_all() {
-        let before = "a \u{2014} b\n";
-        let files = [("notes.md", before), ("zz.md", "x\n")];
-        let Some(root) = fixture("ctrm-fix-two-phase", &files) else {
-            return;
-        };
-        let asked = ["notes.md".to_owned(), "zz.md".to_owned()];
-        let config = crate::cli::config::discovered(&root);
-        mode(&root.join("zz.md"), 0o000);
-        let failed = run(&config, &asked, Format::Human, true).is_err();
-        mode(&root.join("zz.md"), 0o644);
-        if failed {
-            assert_eq!(read(&root), before);
-        }
-    }
-
-    #[cfg(unix)]
-    fn mode(path: &Path, bits: u32) {
-        use std::os::unix::fs::PermissionsExt;
-        let wanted = std::fs::Permissions::from_mode(bits);
-        let _ = std::fs::set_permissions(path, wanted);
-    }
-
-    /// `.ctrm-map` is discovered beside `.ctrm` and wins over the builtin
-    /// for the same source (`src/rules:V19`, `src/rules:V45`).
-    #[test]
-    fn a_declared_map_entry_beats_the_builtin() {
-        let files =
-            [(".ctrm-map", "U+2014 -\n"), ("notes.md", "a \u{2014} b\n")];
-        let Some(root) = fixture("ctrm-fix-map-fixture", &files) else {
-            return;
-        };
-        let (text, _) = ran(&root, true);
-        assert_eq!(read(&root), "a - b\n", "{text}");
-    }
-
-    /// `src/fix:V51` through the verb: the notation is left alone until a
-    /// `.ctrm-map` line opts in, and then it becomes words that do not
-    /// fuse with the letter beside them.
-    #[test]
-    fn the_words_map_rewrites_only_once_asked_for() {
-        let before = "x \u{22A5}owns y\n";
-        let files = [("notes.md", before)];
-        let Some(root) = fixture("ctrm-fix-words-fixture", &files) else {
-            return;
-        };
-        let _ = std::fs::remove_file(root.join(".ctrm-map"));
-        let (text, _) = ran(&root, true);
-        assert_eq!(read(&root), before, "{text}");
-        let opted = std::fs::write(root.join(".ctrm-map"), "use words\n");
-        assert!(opted.is_ok());
-        let (text, _) = ran(&root, true);
-        assert_eq!(read(&root), "x not owns y\n", "{text}");
-    }
-}
+#[path = "fix_test.rs"]
+mod tests;

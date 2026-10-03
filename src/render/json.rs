@@ -17,6 +17,7 @@
 
 use crate::charset::{CharRange, CharSet};
 use crate::lint::Level;
+#[cfg(test)]
 use crate::render::Violation;
 use crate::render::escape::string;
 use crate::render::line::{Line, Spelled};
@@ -124,9 +125,9 @@ fn reason_fields(reason: Unreadable) -> Vec<String> {
 
 /// `fix`: every rewrite, every character no map entry covers (`src/fix:V4`)
 /// in `check`'s violation shape, and every file that could not be read.
-pub(super) fn fix(
+pub(super) fn fix<'a>(
     items: &[Change<'_>],
-    unmapped: &[Violation<'_>],
+    unmapped: impl IntoIterator<Item = Line<'a>>,
     skipped: &[Skipped<'_>],
 ) -> String {
     let mut out = String::new();
@@ -137,7 +138,7 @@ pub(super) fn fix(
     list(doc.key("rewrites"), rewrites, |out, item| {
         change(out, path.of(item.path), item);
     });
-    violations(doc.key("unmapped"), order::lines(unmapped));
+    violations(doc.key("unmapped"), unmapped);
     doc.raw("skipped", &unread(skipped));
     doc.close();
     out

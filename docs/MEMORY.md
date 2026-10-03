@@ -30,7 +30,8 @@ most RAM the process held at once.
 | `ctrm check` | 9 MB, mixed scripts | 2.06 M | 0.56 s | 268 MB |
 | `ctrm check --format json` | same | 2.06 M | 1.43 s | 503 MB |
 | `ctrm check --format sarif` | same | 2.06 M | 0.90 s | 651 MB |
-| `ctrm fix --check` | same | 2.06 M rewrites | 1.41 s | 932 MB |
+| `ctrm fix --check` | same | 0.69 M rewrites + 1.37 M left | 0.69 s | 385 MB |
+| `ctrm fix --check --format json` | same | same | 0.90 s | 579 MB |
 
 The mixed file is 5.5 million characters drawn at random from ASCII letters,
 spaces, `e` with an acute accent, an em dash and a CJK character, so about
@@ -50,9 +51,13 @@ For a run with findings, three things dominate:
 3. **The file being read**, plus the compiled-in character sets, maps and
    tables -- the 8-15 MB floor every run pays.
 
-`fix --check` peaks highest because it holds two lists: every rewrite it
-would make, and everything the rewritten text would still be reported for,
-judged the same way `check` judges it.
+`fix --check` holds two lists: every rewrite it would make, and everything
+the rewritten text would still be reported for, judged the same way `check`
+judges it. Both are held the way `check` holds its findings -- the path
+once per file, each row moved rather than copied -- so on the mixed file it
+peaks at 385 MB, about 1.45 times `check`. It used to copy the path, the
+set and every row on the way to the report, and peaked at over 900 MB;
+`src/fix/SPEC.md` R18 records the before and after.
 
 ## Why the report is built before it is printed
 

@@ -105,7 +105,8 @@ pub(crate) struct Skipped<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Change<'a> {
     pub path: &'a str,
-    pub rewrite: Rewrite,
+    /// BORROWED: a run of a million rewrites holds each one once (R18).
+    pub rewrite: &'a Rewrite,
 }
 
 /// One file's row in `stats`: how much sits outside the set, how big the
@@ -200,13 +201,16 @@ pub(crate) fn check_batches(
 
 /// `fix` and `fix --check`: the rewrites, then the characters no map entry
 /// covers (`src/fix:V4`), in `check`'s own row shape, then the files that
-/// could not be read.
+/// could not be read. What is left arrives as [`Batch`]es, as `check`'s
+/// findings do: a path and a set held once per file, not once per row
+/// (`src/fix:R18`).
 pub(crate) fn fix(
     format: Format,
     changes: &[Change<'_>],
-    unmapped: &[Violation<'_>],
+    unmapped: &[Batch<'_>],
     skipped: &[Skipped<'_>],
 ) -> String {
+    let unmapped = order::batches(unmapped);
     match format {
         Format::Human => human::fix(changes, unmapped, skipped),
         Format::Json | Format::Sarif => json::fix(changes, unmapped, skipped),

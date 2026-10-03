@@ -4,7 +4,7 @@
 //! joiner the file's own script preset spells with) is left byte for byte,
 //! and what `check` fires on is gone after one bare `fix`.
 
-use super::tests::{ran, read};
+use super::{ran, read};
 use crate::cli::testkit::fixture;
 
 /// A bare `fix` over one `notes.md` under `ctrm`: the file it leaves, the

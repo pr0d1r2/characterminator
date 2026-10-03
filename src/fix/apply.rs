@@ -53,6 +53,18 @@ impl Fixed {
     pub fn origins(&self, original: &str, hits: &[Hit]) -> Vec<Hit> {
         self.trail.origins(original, hits)
     }
+
+    /// [`Fixed::origins`] IN PLACE, over any row that holds a hit: a
+    /// caller judging millions of leftovers moves each one where it sits
+    /// rather than copying every hit out and back (R18).
+    pub(crate) fn place<T>(
+        &self,
+        original: &str,
+        items: &mut [T],
+        hit: fn(&mut T) -> &mut Hit,
+    ) {
+        self.trail.place(original, items, hit);
+    }
 }
 
 /// Rewrite every disallowed span of `text` that the map covers.
@@ -112,7 +124,7 @@ pub(crate) fn fix_under(
         if again.output == pass.output {
             return Ok(seen.settled(pass));
         }
-        seen.record(pass);
+        seen.record(pass.spans);
         pass = again;
     }
     Err(Error::NotIdempotent)
@@ -139,26 +151,37 @@ impl<'t> History<'t> {
         }
     }
 
-    /// A pass that changed its input: its rewrites join the report, and
-    /// its spans become the layer later positions are mapped through.
-    fn record(&mut self, pass: Pass) {
-        let hits: Vec<Hit> = pass.spans.iter().map(|span| span.hit).collect();
-        let found = self.trail.origins(self.original, &hits);
-        let rewrites = pass.spans.iter().zip(found);
-        let rows = rewrites.map(|(span, hit)| span.rewrite_at(hit));
-        self.report.rewrites.extend(rows.collect::<Vec<_>>());
-        if !pass.spans.is_empty() {
-            self.trail.layers.push(Layer::of(&pass.spans));
+    /// A pass that changed its input: its rewrites join the report, placed
+    /// through the layers BEFORE this one, and its spans become the layer
+    /// later positions are mapped through. The spans are consumed, so no
+    /// replacement is ever held twice (R18).
+    fn record(&mut self, spans: Vec<Span>) {
+        if spans.is_empty() {
+            return;
         }
+        let layer = Layer::of(&spans);
+        let mut rows: Vec<Rewrite> =
+            spans.into_iter().map(Span::into_rewrite).collect();
+        self.trail.place(self.original, &mut rows, rewrite_hit);
+        if self.report.rewrites.is_empty() {
+            self.report.rewrites = rows;
+        } else {
+            self.report.rewrites.append(&mut rows);
+        }
+        self.trail.layers.push(layer);
     }
 
     /// The pass whose output is the fixed point. Its unmapped characters
     /// are the ones left, located where they sit in the original.
     fn settled(mut self, pass: Pass) -> Fixed {
-        let unmapped = self.trail.origins(self.original, &pass.unmapped);
+        let Pass {
+            output,
+            spans,
+            mut unmapped,
+        } = pass;
+        self.trail.place(self.original, &mut unmapped, itself);
         self.report.unmapped = unmapped;
-        let output = pass.output.clone();
-        self.record(pass);
+        self.record(spans);
         self.report.rewrites.sort_by_key(|r| r.hit.position.byte);
         Fixed {
             output,
@@ -183,17 +206,24 @@ impl Trail {
     /// a walk per hit made a large file with a second pass quadratic.
     fn origins(&self, original: &str, hits: &[Hit]) -> Vec<Hit> {
         let mut out = hits.to_vec();
+        self.place(original, &mut out, itself);
+        out
+    }
+
+    /// [`Trail::origins`] IN PLACE, over anything that holds a hit: a
+    /// caller with millions of rows moves each one's hit where it sits
+    /// rather than holding a second list of them (R18).
+    fn place<T>(&self, original: &str, items: &mut [T], hit: HitOf<T>) {
         if self.layers.is_empty() {
-            return out;
+            return;
         }
-        let mut order: Vec<(usize, usize)> = hits
-            .iter()
+        let mut order: Vec<(usize, usize)> = items
+            .iter_mut()
             .enumerate()
-            .map(|(at, hit)| (self.back(hit.position.byte), at))
+            .map(|(at, item)| (self.back(hit(item).position.byte), at))
             .collect();
         order.sort_unstable();
-        relocate(original, &order, &mut out);
-        out
+        relocate(original, &order, items, hit);
     }
 
     /// A byte of the newest layer's output, as a byte of the original.
@@ -208,16 +238,24 @@ impl Trail {
 /// Give each `(byte, index)` -- sorted by byte -- the position that byte
 /// has in `original`, in one walk. A byte that starts no character keeps
 /// the position it came with.
-fn relocate(original: &str, order: &[(usize, usize)], out: &mut [Hit]) {
+fn relocate<T>(
+    original: &str,
+    order: &[(usize, usize)],
+    out: &mut [T],
+    hit: HitOf<T>,
+) {
     let mut walk = located(original).peekable();
     for &(byte, at) in order {
         while walk.next_if(|seen| seen.position.byte < byte).is_some() {}
         let here = walk.peek().filter(|seen| seen.position.byte == byte);
         if let (Some(slot), Some(seen)) = (out.get_mut(at), here) {
-            slot.position = seen.position;
+            hit(slot).position = seen.position;
         }
     }
 }
+
+/// How [`Trail::place`] reaches the hit inside a row.
+type HitOf<T> = fn(&mut T) -> &mut Hit;
 
 /// One pass's spans, each with where its replacement sits in that pass's
 /// output, so mapping a byte back is a binary search, not a walk.
@@ -325,13 +363,24 @@ struct Span {
 }
 
 impl Span {
-    /// This span as the public row, at `hit` rather than its own.
-    fn rewrite_at(&self, hit: Hit) -> Rewrite {
+    /// This span as the public row, its replacement MOVED rather than
+    /// copied: a pass's spans are spent once its layer is built (R18).
+    fn into_rewrite(self) -> Rewrite {
         Rewrite {
-            hit,
-            to: self.to.clone(),
+            hit: self.hit,
+            to: self.to,
         }
     }
+}
+
+/// A rewrite's hit, for [`Trail::place`].
+fn rewrite_hit(rewrite: &mut Rewrite) -> &mut Hit {
+    &mut rewrite.hit
+}
+
+/// A hit, for [`Trail::place`].
+const fn itself(hit: &mut Hit) -> &mut Hit {
+    hit
 }
 
 /// What a walk reads besides its text: the map, the set's predicate, and

@@ -18,16 +18,16 @@ use std::path::Path;
 /// One file's findings with the strings they are reported against, owned so the
 /// borrowed `render` batches can point at them. The path and set are held ONCE
 /// per file, not copied into every finding (`src/render:R17`).
-struct Row {
-    path: String,
-    set: String,
-    findings: Vec<Finding>,
+pub(super) struct Row {
+    pub path: String,
+    pub set: String,
+    pub findings: Vec<Finding>,
 }
 
 /// A file that was skipped, owned for the same reason.
-struct Skip {
-    path: String,
-    reason: Unreadable,
+pub(super) struct Skip {
+    pub path: String,
+    pub reason: Unreadable,
 }
 
 /// A finished report: what to print, and what to exit with.
@@ -98,7 +98,7 @@ fn judged_against<'s>(finding: &Finding, set: &'s str) -> &'s str {
 
 /// One file's findings as the batches `render` reads: each run of
 /// findings that names one set, in the file's own byte order.
-fn batches(source: &Row) -> impl Iterator<Item = Batch<'_>> {
+pub(super) fn batches(source: &Row) -> impl Iterator<Item = Batch<'_>> {
     let named = |f: &Finding| judged_against(f, &source.set);
     source
         .findings
@@ -131,7 +131,7 @@ pub(super) fn run(
 
 /// The findings' exit code, read in place: a run of millions need not copy
 /// every finding just to ask whether one of them fails (`src/render:R17`).
-fn found_code(rows: &[Row]) -> u8 {
+pub(super) fn found_code(rows: &[Row]) -> u8 {
     rows.iter()
         .map(|row| exit_code(&row.findings))
         .max()
@@ -143,13 +143,13 @@ fn found_code(rows: &[Row]) -> u8 {
 /// (B22). A binary skip is not: the file never claimed to be text, and
 /// failing on every tracked PNG would make the gate unusable. One code for
 /// every format, since json and SARIF report the same run.
-fn unreadable_code(skips: &[Skip]) -> u8 {
+pub(super) fn unreadable_code(skips: &[Skip]) -> u8 {
     let broken =
         |skip: &Skip| matches!(skip.reason, Unreadable::NotUtf8 { .. });
     u8::from(skips.iter().any(broken))
 }
 
-fn skip(source: &Skip) -> Skipped<'_> {
+pub(super) fn skip(source: &Skip) -> Skipped<'_> {
     Skipped {
         path: &source.path,
         reason: source.reason,
