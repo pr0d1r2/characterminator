@@ -211,8 +211,8 @@ src/render/SPEC.md   1420
 # guard's chain is over.
 src                2490
 src/charset          5010
-src/cli              3510
-src/cli/explain      3740
+src/cli              3940
+src/cli/explain      4200
 src/cli/guard        4770
 src/fix              4510
 src/lint             4670
