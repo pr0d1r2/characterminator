@@ -20,7 +20,7 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
 ## §V INVARIANTS
 
-V8: invalid UTF-8 → error naming path & byte offset, exit 1; ⊥ lossy decode. binary file (NUL byte ANYWHERE in it) → skipped & named in report, ⊥ silent. `Unreadable` carries the REASON, ⊥ the path ∴ pairing is the reporter's (`src/render` `Skipped{path,reason}`).
+V8: invalid UTF-8 → error naming path & byte offset, exit 1, `check` & `fix` alike; ⊥ lossy decode. binary file (NUL byte ANYWHERE in it) → skipped & named in report, ⊥ silent. `Unreadable` carries the REASON, ⊥ the path ∴ pairing is the reporter's (`src/render` `Skipped{path,reason}`).
 V12: violation position = 1-based line + col (chars) + byte offset + `U+XXXX`. output sorted by path, then offset.
 
 ## §T TASKS

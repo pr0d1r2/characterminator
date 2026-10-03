@@ -205,16 +205,28 @@ fn absorb(found: &mut Found, path: String, report: engine::Report) {
 /// unmapped character is LEFT, because then the tree is still not clean.
 /// A run that cleaned everything exits 0. The `ctrm-fix` pre-commit hook
 /// still refuses the commit: pre-commit fails any hook that modified files.
+///
+/// Both forms exit 1 on a file that is not UTF-8, as `check` does
+/// (`src/scan:V8`, B41): it claims to be text, so it was neither judged
+/// nor rewritten, and an exit 0 would read as "clean".
 fn report_of(found: &Found, format: Format, write: bool) -> Report {
     let changes: Vec<Change<'_>> = found.rows.iter().map(change).collect();
     let skipped: Vec<Skipped<'_>> = found.skips.iter().map(skip).collect();
     let kept: Vec<Violation<'_>> = found.unmapped.iter().map(kept).collect();
     let drifted = !write && !found.rows.is_empty();
-    let failed = drifted || !kept.is_empty();
+    let failed = drifted || !kept.is_empty() || unjudged(&found.skips);
     Report {
         text: render::fix(format, &changes, &kept, &skipped),
         code: u8::from(failed),
     }
+}
+
+/// Whether a skipped file claimed to be text and was not. A binary skip
+/// is not: it never claimed to be text (`src/scan:V8`).
+fn unjudged(skips: &[Skip]) -> bool {
+    skips
+        .iter()
+        .any(|skip| matches!(skip.reason, Unreadable::NotUtf8 { .. }))
 }
 
 fn change(row: &Row) -> Change<'_> {
@@ -347,6 +359,23 @@ mod tests {
         assert_eq!(read(&root), blob, "{text}");
         assert_eq!(text, "notes.md: skipped, binary");
         assert_eq!(code, 0, "{text}");
+    }
+
+    /// B41: a file that is not UTF-8 fails both forms, as it fails
+    /// `check` (B22). It used to exit 0: `fix` never looked at skips.
+    #[test]
+    fn a_file_that_is_not_utf8_fails_fix_and_fix_check() {
+        let Some(root) = fixture("ctrm-fix-not-utf8-fixture", &[]) else {
+            return;
+        };
+        let wrote = std::fs::write(root.join("notes.md"), b"ab\xffcd\n");
+        assert!(wrote.is_ok());
+        let (text, code) = ran(&root, false);
+        assert_eq!(code, 1, "{text}");
+        let (text, code) = ran(&root, true);
+        assert_eq!(code, 1, "{text}");
+        let left = std::fs::read(root.join("notes.md")).unwrap_or_default();
+        assert_eq!(left, b"ab\xffcd\n");
     }
 
     /// V72: a run that fails on a later file writes NOTHING, not the files

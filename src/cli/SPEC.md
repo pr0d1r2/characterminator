@@ -38,7 +38,7 @@ sib|src/render|human & json output, stable json contract
 
 ## §V INVARIANTS
 
-V7: only `check` & `fix --check` gate. bare `fix` rewrites only on explicit call; exit 1 only if an unmapped char is LEFT (`src/fix:V4`), ⊥ for what it repaired. `stats`/`explain`/`sets` report-only, exit 0.
+V7: only `check` & `fix --check` gate. bare `fix` rewrites only on explicit call; exit 1 only if an unmapped char is LEFT (`src/fix:V4`) or a not-UTF-8 file went unjudged (`src/scan:V8`), ⊥ for what it repaired. `stats`/`explain`/`sets` report-only, exit 0.
 V47: stdout closed by reader (EPIPE, `ctrm check | head`) → stop writing, keep verdict, ⊥ panic. other write error → named, exit 2 ∵ lost output ⊥ silent. ∀ verb. LIMIT: a stdout CLOSED before start (`ctrm check >&-`) ⊥ detectable: the Rust runtime reopens fd 1 on `/dev/null` before `main` & `unsafe` is forbidden ∴ ≡ discarded output, exit by verdict.
 V71: path matched (`src/rules`) & shown in LEXICAL normal form: `.` dropped, `..` folded ∴ `sub/../sub/c.md` ≡ `sub/c.md` ∀ anchored rule. symlink ⊥ resolved.
 V72: bare `fix` = 2 phases: judge ∀ file, THEN write ∴ a refusal (`src/fix:V5`, `src/fix:V6`) or read error writes ⊥ file.
@@ -66,4 +66,5 @@ B26|2026-10-02|`stats` dropped a not-UTF-8 file w/o a word ∴ a total short of 
 B29|2026-10-02|map parsed only by `fix` & `stats` ∴ `check --map 'U+ZZZZ x y z'` & a 2-line `--map` ran as if the config were valid. via release review|V74
 B38|2026-10-02|a named path w/ `..` (`sub/../sub/c.md`) ⊥ normalised ∴ missed anchored rules & was judged `ascii`. via release review|V71
 B39|2026-10-02|`sets a.md` & `explain a.md b.txt` silently ignored the extra path ∴ the run read as if it had judged it. via release review|V73
+B41|2026-10-03|B22 fixed `check` only: `fix` & `fix --check` never read skips ∴ a not-UTF-8 file named & exit 0 while `check` exits 1. via release review|V7
 B47|2026-10-03|rule sets resolved only when a file matched ∴ `check --rule '*.txt asci' --rule '* any'` exit 0, & a match's refusal ⊥ named `argv[n]`. via release review|V74
