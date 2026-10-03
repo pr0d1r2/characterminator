@@ -27,7 +27,7 @@ self|.|-
 - fs walk = `itok::walk::tracked`. `itok::glob::matches` & `itok::estimate::select_paths` = `pub(crate)` ∴ OWN glob matcher (zero-dep, `src/rules:T42`) & explicit-path selection lives in `src/tokens`.
 - federation = `sherd`: dir = node = Rust module (dir + `mod.rs`), ⊥ 2018 `foo.rs`+`foo/`.
 - gate runner = `hk` from `nix-hk`; ops in `hk.pkl`; schema vendored `pkl/Config.pkl` ∴ gate runs w/ ⊥ network.
-- dev shell = `flake.nix`; ∀ inputs follow `nixpkgs-lock`; pins: `microlith` `v0.7.3`, `itok` `v0.3.1`, `sherd` `v0.5.2`. pin policy = V44.
+- dev shell = `flake.nix`; ∀ inputs follow `nixpkgs-lock`; pins: `microlith` `v0.7.3`, `itok` `v0.3.1`, `sherd` `v0.5.3`. pin policy = V44.
 - source ASCII-only (dogfood, V13).
 - deps minimal; each direct dep justified in `docs/THIRD-PARTY-NOTICES.md`. direct: `itok` · `unicode-normalization` & `unicode-security` (0.1, `default-features = false`; UCD tables for pedantic, `src/lint/pedantic:V58`).
 - ⊥ non-public repo named in spec, source, or commit message. private repos ? scanned & improved; their data cited as anonymous counts only. named only once verified public; unknown → private (fail closed).
