@@ -26,7 +26,7 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
 V1: path w/ no matching rule → `ascii`. strict default; extended set = explicit grant. ≠ `itok`'s opt-in `.context-limits`: here an unguarded char IS the cost.
 V2: rule resolution: later matching line wins (gitignore semantics); per-type glob & per-file path share one grammar ∴ per-file line placed after per-type line overrides it. `explain` ! print winner.
-V17: locale separation: extended sets granted to data paths (`locales/**`, `*.po`, `config/locales/*.yml`); code stays `ascii`. non-ASCII string literal in code file → the `locale-literal` pedantic lint (`src/lint:V37`), ⊥ a mechanism of its own.
+V17: locale separation: extended sets granted to data paths (`locales/**`, `*.po`, `config/locales/*.yml`); code stays `ascii`. non-ASCII string literal in code file → the `locale-literal` pedantic lint (`src/lint:V37`), ⊥ a mechanism of its own. PENDING `src/lint:T58`: ⊥ registered ∴ this clause ⊥ enforced today.
 V18: ∀ data-file line kind → flag twin: `--rule` ≡ rules line, `--map` ≡ map line, `--set` ≡ sets line. flag value = exactly 1 line, same parser ∴ ∀ file F: `--no-files` + 1 flag per line of F ≡ F, property-tested.
 V19: precedence, low → high: builtin → discovered dotfiles → `--*-file` (argv order) → inline flags (argv order). later wins: rule per V2, map entry per char, set per name.
 V20: ∀ effective rule, map entry, set → origin (`<file>:<line>` | `argv[<n>]` | `builtin:<line>`). `explain` ! print it: grant winner + effective family + ∀ effective level, each w/ the origin of the line that set it, ⊥ only the winner's (B28). export via `explain --as` (`src/cli/explain:V32`).
