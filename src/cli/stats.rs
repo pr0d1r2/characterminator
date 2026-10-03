@@ -10,9 +10,8 @@
 //! reports has to be the same number `itok` reports elsewhere. The
 //! rewriting is `src/fix`'s. This node asks both and prints the pair.
 
-use super::checker::Checker;
-use super::config::Config;
 use crate::fix::{self as engine, Map};
+use crate::judge::{Checker, Config};
 use crate::render::{self, FileStats, Format, Skipped};
 use crate::scan::{Unreadable, decode};
 use crate::tokens::{self, Count, Method};
@@ -153,7 +152,7 @@ fn stat(row: &Row) -> FileStats<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Config, run};
+    use super::run;
     use crate::render::Format;
     use std::path::{Path, PathBuf};
 
@@ -170,8 +169,13 @@ mod tests {
 
     fn ran(root: &Path, bpe: bool) -> String {
         let asked = ["notes.md".to_owned()];
-        run(&Config::discovered(root), &asked, Format::Human, bpe)
-            .unwrap_or_else(|why| why)
+        run(
+            &crate::cli::config::discovered(root),
+            &asked,
+            Format::Human,
+            bpe,
+        )
+        .unwrap_or_else(|why| why)
     }
 
     /// The row carries both figures, which is the point of the verb: what

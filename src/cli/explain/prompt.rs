@@ -17,8 +17,8 @@
 //! check it is teaching, and the code point is the unambiguous name.
 
 use crate::charset::{CharSet, SetCatalog, builtin};
-use crate::cli::config::Config;
 use crate::fix::{self as engine, Map};
+use crate::judge::Config;
 use crate::render::{Format, sets as render_sets};
 use crate::rules::{self, ASCII, Rule, TEXT, describe};
 
@@ -273,7 +273,8 @@ fn hazards() -> Result<Vec<String>, String> {
 #[cfg(test)]
 mod tests {
     use super::render;
-    use crate::cli::config::{Config, from_argv};
+    use crate::cli::config::from_argv;
+    use crate::judge::Config;
     use std::path::Path;
 
     fn loaded(words: &[&str]) -> Config {

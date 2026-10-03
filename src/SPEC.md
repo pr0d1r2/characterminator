@@ -13,6 +13,7 @@ scan|read text: positions, UTF-8 validity, binary skip|which chars are allowed, 
 fix|rewriting: map, families, equivalence classes, typography, emoji compression|which chars are allowed, reporting|-
 lint|lint names, groups, levels, hazard, pedantic|char sets, rewriting|-
 tokens|`itok` facade: counts w/ method label, git-tracked fileset|char sets, rewriting|-
+judge|findings from rules, sets, lints, scan & fix; config assembly|argv, dotfile discovery, rendering|-
 render|human & json output, stable json contract|what is reported|-
 cli|arg dispatch, verbs, exit codes, `guard` hook adapter|every verb's logic|-
 

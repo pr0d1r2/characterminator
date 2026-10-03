@@ -3,10 +3,10 @@
 //!
 //! `check`, `fix`, `stats`, `explain` and the guard all judge through the
 //! one [`Checker`], so no two of them can disagree about the same bytes
-//! (`src/cli/guard:V35`). The verbs own what they DO with a finding; this
+//! (`src/judge:V99`). The verbs own what they DO with a finding; this
 //! file owns what a finding IS.
 
-use super::config::Config;
+use super::Config;
 use crate::charset::{CharSet, SetCatalog};
 use crate::lint::{
     CHAR_LINTS, Finding, Hazards, LINE_LINTS, Level, Levels, Lint, TEXT_LINTS,
@@ -23,7 +23,7 @@ use std::rc::Rc;
 const OUTSIDE: &str = "outside-set";
 
 /// One file's contribution to the report.
-pub(super) enum Looked {
+pub(crate) enum Looked {
     /// What was found, already levelled.
     Findings(Vec<Finding>),
     /// The file could not be read AS TEXT, and is named rather than
@@ -33,7 +33,7 @@ pub(super) enum Looked {
 
 /// The rules and the sets a run resolves against, read once, and the
 /// lints `check` reports under.
-pub(super) struct Checker {
+pub(crate) struct Checker {
     rules: Vec<Rule>,
     catalog: SetCatalog,
     /// The hazard classes, from the COMPILED-IN data (`src/lint:V34`) and
@@ -51,7 +51,7 @@ type Unions = HashMap<String, HashMap<Vec<String>, Rc<CharSet>>>;
 
 /// What one file's characters are judged against: its set, and the
 /// hazards that fire whatever the set says.
-pub(super) struct Judge<'a> {
+pub(crate) struct Judge<'a> {
     set: &'a CharSet,
     hazards: &'a Hazards,
     outside: Lint,
@@ -144,7 +144,7 @@ impl Checker {
     /// # Errors
     ///
     /// A line that cannot be parsed, named at its origin.
-    pub(super) fn configured(config: &Config) -> Result<Self, String> {
+    pub(crate) fn configured(config: &Config) -> Result<Self, String> {
         let rules = config.rules()?;
         let catalog = config.catalog()?;
         Ok(Self {
@@ -164,7 +164,7 @@ impl Checker {
     /// # Errors
     ///
     /// As [`Checker::configured`].
-    pub(super) fn listing(config: &Config) -> Result<Self, String> {
+    pub(crate) fn listing(config: &Config) -> Result<Self, String> {
         let catalog = config.listing()?;
         Ok(Self {
             catalog,
@@ -173,13 +173,13 @@ impl Checker {
     }
 
     /// What one file's characters are judged against.
-    pub(super) fn judge<'a>(&'a self, set: &'a CharSet) -> Judge<'a> {
+    pub(crate) fn judge<'a>(&'a self, set: &'a CharSet) -> Judge<'a> {
         Judge::new(set, &self.hazards, self.outside)
     }
 
     /// [`Checker::shared_law`], with the set copied out, as a test reads it.
     #[cfg(test)]
-    pub(super) fn law(&self, shown: &str) -> Result<(CharSet, Levels), String> {
+    pub(crate) fn law(&self, shown: &str) -> Result<(CharSet, Levels), String> {
         let (set, levels) = self.shared_law(shown)?;
         Ok((CharSet::clone(&*set), levels))
     }
@@ -187,7 +187,7 @@ impl Checker {
     /// What one path may contain, and how loudly a stray character there is
     /// reported. The set is SHARED: its union is resolved once per run for each
     /// sets-and-family a rule grants, not once per file (`src/render:R17`).
-    pub(super) fn shared_law(
+    pub(crate) fn shared_law(
         &self,
         shown: &str,
     ) -> Result<(Rc<CharSet>, Levels), String> {
@@ -205,7 +205,7 @@ impl Checker {
     /// # Errors
     ///
     /// A rule naming a set nothing declares, or a lint nothing registers.
-    pub(super) fn findings(
+    pub(crate) fn findings(
         &self,
         shown: &str,
         bytes: &[u8],
@@ -227,7 +227,7 @@ impl Checker {
     /// # Errors
     ///
     /// A rule naming a set nothing declares, or one that cycles.
-    pub(super) fn effective(
+    pub(crate) fn effective(
         &self,
         shown: &str,
     ) -> Result<(CharSet, Option<Rule>), String> {
@@ -242,7 +242,7 @@ impl Checker {
     ///
     /// A declared set that cannot be resolved: a cycle, or a member
     /// naming a set nothing declares.
-    pub(super) fn declared(
+    pub(crate) fn declared(
         &self,
         family: &str,
     ) -> Result<Vec<CharSet>, String> {
@@ -312,7 +312,7 @@ fn unknown(target: &str) -> String {
 ///
 /// Pure, so every rule it encodes is testable without a filesystem: the
 /// I/O lives in the caller and this decides what the bytes MEAN.
-pub(super) fn inspect(
+pub(crate) fn inspect(
     bytes: &[u8],
     judge: &Judge<'_>,
     levels: &Levels,

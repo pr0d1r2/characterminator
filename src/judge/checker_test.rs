@@ -9,11 +9,9 @@
 
 use super::{Checker, Config, Judge, Looked, OUTSIDE, inspect, levels_for};
 use crate::charset::{CharSet, builtin};
-use crate::cli::check::run;
+use crate::fix as engine;
 use crate::lint::{Finding, Hazards, Level, Levels, Lint};
-use crate::render::Format;
-use crate::rules::{self, Rule};
-use std::path::{Path, PathBuf};
+use crate::rules::{self, Rule, Sources};
 use std::rc::Rc;
 
 #[path = "checker_hazard_test.rs"]
@@ -126,32 +124,28 @@ fn a_level_directive_naming_nothing_is_an_error() {
     assert!(levels_for(&resolution).is_err());
 }
 
-/// A tree carrying the dotfiles named, or `None` if it cannot be
-/// written: a test should not fail for the disk's reasons.
-///
-/// It lives under `target/`, which `.gitignore` excludes, so it is
-/// untracked by construction rather than by hoping, and each caller
-/// names its own directory so two tests never share one tree.
-fn fixture(name: &str, files: &[(&str, &str)]) -> Option<PathBuf> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("target")
-        .join(name);
-    std::fs::create_dir_all(&root).ok()?;
-    for (file, text) in files {
-        std::fs::write(root.join(file), text).ok()?;
+/// A run configured by these dotfiles alone, over the builtin sets and
+/// map: what discovery (`src/cli`) builds from a tree holding them, with
+/// no tree. Judging reads sources, never the disk.
+fn configured(files: &[(&str, &str)]) -> Config {
+    let source = |name: &str, under: Sources| match files
+        .iter()
+        .find(|(file, _)| *file == name)
+    {
+        Some((_, text)) => under.dotfile(name, *text),
+        None => under,
+    };
+    Config {
+        rules: source(".ctrm", Sources::new()),
+        sets: source(".ctrm-sets", Sources::new().builtin(builtin::SETS)),
+        map: source(".ctrm-map", Sources::new().builtin(engine::BUILTIN)),
+        ..Config::default()
     }
-    Some(root)
 }
 
-fn preset_fixture() -> Option<PathBuf> {
-    fixture("ctrm-preset-fixture", &[(".ctrm", "*.md ascii+caveman\n")])
-}
-
-/// The set one path is judged against, in a tree of our own.
-fn granted(root: &Path, shown: &str) -> Result<CharSet, String> {
-    Checker::configured(&Config::discovered(root))?
-        .law(shown)
-        .map(|(set, _)| set)
+/// The set one path is judged against, under `config`.
+fn granted(config: &Config, shown: &str) -> Result<CharSet, String> {
+    Checker::configured(config)?.law(shown).map(|(set, _)| set)
 }
 
 /// A rule may name a preset that ships as DATA, not only the
@@ -159,10 +153,8 @@ fn granted(root: &Path, shown: &str) -> Result<CharSet, String> {
 /// this is the path that makes it reachable from a `.ctrm` line.
 #[test]
 fn a_rule_may_grant_a_preset_that_ships_as_data() {
-    let Some(root) = preset_fixture() else {
-        return;
-    };
-    let found = granted(&root, "notes.md");
+    let preset = configured(&[(".ctrm", "*.md ascii+caveman\n")]);
+    let found = granted(&preset, "notes.md");
     let why = found.as_ref().err().cloned().unwrap_or_default();
     let set = found.unwrap_or_else(|_| unreachable!("{why}"));
     assert_eq!(set.name, "ascii+caveman");
@@ -182,10 +174,8 @@ fn a_declared_set_is_discovered_beside_the_rules() {
         (".ctrm", "*.md ascii+house\n"),
         (".ctrm-sets", "house U+2261\n"),
     ];
-    let Some(root) = fixture("ctrm-declared-fixture", &files) else {
-        return;
-    };
-    let found = granted(&root, "notes.md");
+    let config = configured(&files);
+    let found = granted(&config, "notes.md");
     let why = found.as_ref().err().cloned().unwrap_or_default();
     let set = found.unwrap_or_else(|_| unreachable!("{why}"));
     assert!(set.contains('\u{2261}'));
@@ -201,10 +191,8 @@ fn a_declared_set_replaces_the_builtin_it_renames() {
         // The builtin `legal` also grants REGISTERED and TRADE MARK.
         (".ctrm-sets", "legal U+00A9\n"),
     ];
-    let Some(root) = fixture("ctrm-override-fixture", &files) else {
-        return;
-    };
-    let set = granted(&root, "notes.md").unwrap_or_else(|why| {
+    let config = configured(&files);
+    let set = granted(&config, "notes.md").unwrap_or_else(|why| {
         unreachable!("{why}");
     });
     assert!(set.contains('\u{00A9}'));
@@ -217,12 +205,8 @@ fn a_declared_set_replaces_the_builtin_it_renames() {
 #[test]
 fn a_bad_declared_line_is_reported_at_its_origin() {
     let files = [(".ctrm-sets", "\n\nbad U+ZZZZ\n")];
-    let Some(root) = fixture("ctrm-badset-fixture", &files) else {
-        return;
-    };
-    let why = Checker::configured(&Config::discovered(&root))
-        .err()
-        .unwrap_or_default();
+    let config = configured(&files);
+    let why = Checker::configured(&config).err().unwrap_or_default();
     assert!(why.contains(".ctrm-sets:3"), "{why}");
     assert!(why.contains("U+ZZZZ"), "{why}");
 }
@@ -231,14 +215,11 @@ fn a_bad_declared_line_is_reported_at_its_origin() {
 #[test]
 fn one_preset_grants_differently_under_two_fidelities() {
     let rules = "*.md ascii+marks\ndocs/*.md ascii+marks @emoji\n";
-    let Some(root) = fixture("ctrm-fidelity-fixture", &[(".ctrm", rules)])
-    else {
-        return;
-    };
-    let plain = granted(&root, "notes.md").unwrap_or_else(|why| {
+    let config = configured(&[(".ctrm", rules)]);
+    let plain = granted(&config, "notes.md").unwrap_or_else(|why| {
         unreachable!("{why}");
     });
-    let rich = granted(&root, "docs/notes.md").unwrap_or_else(|why| {
+    let rich = granted(&config, "docs/notes.md").unwrap_or_else(|why| {
         unreachable!("{why}");
     });
     // CHECK MARK at `text`, WHITE HEAVY CHECK MARK at `emoji`.
@@ -246,23 +227,6 @@ fn one_preset_grants_differently_under_two_fidelities() {
     assert!(rich.contains('\u{2705}') && !rich.contains('\u{2713}'));
     // WARNING SIGN carries no label, so both spellings hold it.
     assert!(plain.contains('\u{26A0}') && rich.contains('\u{26A0}'));
-}
-
-/// The human report for `files` under `ctrm`, with every file that is
-/// not a dotfile named on the command line.
-fn report(name: &str, ctrm: &str, files: &[(&str, &str)]) -> String {
-    let mut tree = vec![(".ctrm", ctrm)];
-    tree.extend_from_slice(files);
-    let Some(root) = fixture(name, &tree) else {
-        return String::from("(fixture not written)");
-    };
-    let paths: Vec<String> = files
-        .iter()
-        .filter(|(path, _)| !path.starts_with('.'))
-        .map(|(path, _)| String::from(*path))
-        .collect();
-    let found = run(&Config::discovered(&root), &paths, Format::Human);
-    found.map(|r| r.text).unwrap_or_else(|why| why)
 }
 
 /// `src/render:R17`: the lints one hit could fire, strongest first, are the
@@ -292,15 +256,13 @@ fn every_lint_a_hit_could_fire_is_listed_strongest_first() {
 #[test]
 fn a_union_is_resolved_once_and_shared_by_every_path_it_governs() {
     let ctrm = "*.md ascii+caveman\n*.txt ascii\n";
-    let Some(root) = fixture("ctrm-union-kept", &[(".ctrm", ctrm)]) else {
-        return;
-    };
-    let Some([a, b, txt]) = kept(&root, ["a.md", "sub/b.md", "c.txt"]) else {
+    let config = configured(&[(".ctrm", ctrm)]);
+    let Some([a, b, txt]) = kept(&config, ["a.md", "sub/b.md", "c.txt"]) else {
         unreachable!("every path here resolves");
     };
     assert!(Rc::ptr_eq(&a, &b));
     assert!(!Rc::ptr_eq(&a, &txt));
-    assert_eq!(Ok(CharSet::clone(&a)), granted(&root, "a.md"));
+    assert_eq!(Ok(CharSet::clone(&a)), granted(&config, "a.md"));
     assert_eq!(
         (a.name.as_str(), txt.name.as_str()),
         ("ascii+caveman", "ascii")
@@ -308,8 +270,8 @@ fn a_union_is_resolved_once_and_shared_by_every_path_it_governs() {
 }
 
 /// The sets ONE checker answers for each path, in order.
-fn kept(root: &Path, paths: [&str; 3]) -> Option<[Rc<CharSet>; 3]> {
-    let checker = Checker::configured(&Config::discovered(root)).ok()?;
+fn kept(config: &Config, paths: [&str; 3]) -> Option<[Rc<CharSet>; 3]> {
+    let checker = Checker::configured(config).ok()?;
     let set = |shown: &str| checker.shared_law(shown).ok().map(|(set, _)| set);
     let [one, two, three] = paths.map(set);
     Some([one?, two?, three?])

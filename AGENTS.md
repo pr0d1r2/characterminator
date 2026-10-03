@@ -10,7 +10,7 @@ not a description written afterwards: it holds the invariants that must stay
 true, the tasks that remain, and a record of every bug found so far paired
 with the rule that now catches it.
 
-Twelve files, not one -- the root, the `src` hub, eight nodes, and two
+Thirteen files, not one -- the root, the `src` hub, nine nodes, and two
 sub-nodes under `src/cli` (`guard`, `explain`); `find src -name SPEC.md`
 lists them -- because a session should load the chain it needs -- root
 plus hub plus the node it is working in, plus the parent for a sub-node --

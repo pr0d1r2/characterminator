@@ -11,7 +11,6 @@
 
 mod args;
 mod check;
-mod checker;
 mod config;
 mod explain;
 mod fix;
@@ -19,7 +18,7 @@ mod guard;
 mod out;
 mod stats;
 
-pub(crate) use config::Config;
+use crate::judge::Config;
 
 use crate::render::Format;
 use args::Args;
@@ -328,8 +327,8 @@ ctrm never prints colour: --no-color and NO_COLOR are accepted, no-ops";
 #[cfg(test)]
 mod tests {
     use super::{
-        Config, Format, Outcome, adapted, args, format_of, prepared,
-        sarif_misused, sarif_refused, verb_of,
+        Format, Outcome, adapted, args, format_of, prepared, sarif_misused,
+        sarif_refused, verb_of,
     };
 
     fn argv(words: &[&str]) -> Vec<String> {
@@ -457,7 +456,7 @@ mod tests {
             return;
         }
         let asked = [String::from("a.md")];
-        let config = Config::discovered(&root);
+        let config = crate::cli::config::discovered(&root);
         let report = super::check::run(&config, &asked, Format::Sarif);
         let report = report.unwrap_or_else(|why| unreachable!("{why}"));
         assert_eq!(report.code, 1);

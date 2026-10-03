@@ -29,6 +29,7 @@
 mod charset;
 mod cli;
 mod fix;
+mod judge;
 mod lint;
 mod render;
 mod rules;

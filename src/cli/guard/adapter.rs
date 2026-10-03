@@ -19,8 +19,7 @@
 
 use super::hook::{self, Call, Event, Verdict};
 use crate::cli::check::shown_path;
-use crate::cli::checker::Checker;
-use crate::cli::config::Config;
+use crate::judge::Checker;
 use crate::lint::{Finding, Group, Hazards, Lint};
 use crate::render::codepoint;
 use crate::scan::{Hit, scan_bytes, scan_str};
@@ -99,7 +98,7 @@ fn read(cwd: &Path, path: &str, hazards: &Hazards) -> Verdict {
         return Verdict::Pass;
     };
     let shown = shown_path(cwd, &full);
-    let config = Config::discovered(cwd);
+    let config = crate::cli::config::discovered(cwd);
     let checker = Checker::configured(&config);
     let judged = checker.and_then(|c| c.findings(&shown, &bytes));
     match judged {

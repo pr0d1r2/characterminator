@@ -3,12 +3,17 @@
 //!
 //! What the VERB owns: the path a file is shown and matched as (V71),
 //! the exit code a skip earns, and the shape a finding is reported in.
-//! What a finding IS -- the judging -- is tested beside `checker.rs`.
+//! What a finding IS -- the judging -- is tested in `src/judge`; the
+//! judging through a real tree is the `judged` child below.
 
-use super::{Config, run, shown_path};
+use super::super::config::discovered;
+use super::{run, shown_path};
 use crate::lint::Group;
 use crate::render::Format;
 use std::path::{Path, PathBuf};
+
+#[path = "check_judged_test.rs"]
+mod judged;
 
 #[test]
 fn a_path_is_shown_relative_to_the_root() {
@@ -43,7 +48,7 @@ fn an_anchored_rule_reaches_a_path_spelled_with_dot_dot() {
         .and_then(|()| std::fs::write(root.join("sub/c.md"), "\u{2014}\n"));
     assert!(wrote.is_ok());
     let asked = [String::from("sub/../sub/c.md")];
-    let found = run(&Config::discovered(&root), &asked, Format::Human);
+    let found = run(&discovered(&root), &asked, Format::Human);
     assert_eq!(found.map(|r| (r.text, r.code)), Ok((String::new(), 0)));
 }
 
@@ -72,7 +77,7 @@ fn code_for(name: &str, bytes: &[u8]) -> Vec<u8> {
     if std::fs::write(root.join("f.txt"), bytes).is_err() {
         return vec![];
     }
-    let config = Config::discovered(&root);
+    let config = discovered(&root);
     let asked = [String::from("f.txt")];
     [Format::Human, Format::Json, Format::Sarif]
         .into_iter()
@@ -98,7 +103,7 @@ fn a_hazard_row_names_the_hazard_set() {
         return;
     };
     let paths = [String::from("trojan.rs")];
-    let report = run(&Config::discovered(&root), &paths, Format::Human);
+    let report = run(&discovered(&root), &paths, Format::Human);
     let text = report.map(|r| r.text).unwrap_or_else(|why| why);
     assert_eq!(text, "trojan.rs:1:2 U+202E hazard");
     assert_eq!(Group::Hazard.name(), "hazard");
@@ -114,7 +119,7 @@ fn a_pedantic_finding_keeps_the_json_contract() {
         return;
     };
     let paths = [String::from("n.txt")];
-    let report = run(&Config::discovered(&root), &paths, Format::Json);
+    let report = run(&discovered(&root), &paths, Format::Json);
     let report = report.unwrap_or_else(|why| unreachable!("{why}"));
     let expected = concat!(
         r#"{"verb":"check","violations":[{"path":"n.txt","line":1,"#,
@@ -134,7 +139,7 @@ fn a_pedantic_finding_is_a_sarif_result_on_one_character() {
         return;
     };
     let paths = [String::from("n.txt")];
-    let found = run(&Config::discovered(&root), &paths, Format::Sarif);
+    let found = run(&discovered(&root), &paths, Format::Sarif);
     let log = found.map(|r| r.text).unwrap_or_else(|why| why);
     let result = concat!(
         r#"{"ruleId":"final-newline","level":"warning","#,

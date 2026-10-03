@@ -1,61 +1,93 @@
-//! The pedantic lints: silent until asked, one claim per character, and
-//! the fixtures where each one is right to be allowed (V37, V58). A
-//! child of the `checker` tests, for their helpers.
+//! The judging, end to end through `check`: a real tree, a real `.ctrm`,
+//! and the report a reader sees. A child of the `check` tests, for their
+//! fixture. What a finding IS, without the tree, is tested beside the
+//! checker in `src/judge`; these hold the wiring between the two -- the
+//! hazards no configuration lowers (`src/lint:V36`), the joiners only a
+//! compiled-in preset excuses (`src/lint:V57`, B19), and the pedantic
+//! fixtures exempted per path (`src/lint:V37`, `src/lint:V58`, B20).
 
-use super::{any, findings, hazards, lint, report, summary};
-use crate::charset::{CharSet, builtin};
-use crate::cli::checker::{Judge, Looked, inspect};
-use crate::lint::{Group, Level, Levels, Target};
+use super::super::run;
+use super::fixture;
+use crate::render::Format;
 
-/// One finding as `(lint name, level, byte)`.
-type Fired = (&'static str, Level, usize);
-
-/// What `check` finds in `text` under `set`, with pedantic at `warn`
-/// and the charset findings at `charset`, sorted by byte.
-fn pedantic(text: &str, set: &CharSet, charset: Level) -> Vec<Fired> {
-    let mut levels = Levels::new();
-    levels.set(Target::Group(Group::Pedantic), Level::Warn);
-    levels.set_charset(charset);
-    let hazards = hazards();
-    let judge = Judge::new(set, &hazards, lint());
-    let mut all = match inspect(text.as_bytes(), &judge, &levels) {
-        Looked::Findings(all) => all.iter().map(summary).collect(),
-        Looked::Unread(_) => Vec::new(),
+/// The human report for `files` under `ctrm`, with every file that is
+/// not a dotfile named on the command line.
+fn report(name: &str, ctrm: &str, files: &[(&str, &str)]) -> String {
+    let mut tree = vec![(".ctrm", ctrm)];
+    tree.extend_from_slice(files);
+    let Some(root) = fixture(name, &tree) else {
+        return String::from("(fixture not written)");
     };
-    all.sort_by_key(|(_, _, byte)| *byte);
-    all
+    let paths: Vec<String> = files
+        .iter()
+        .filter(|(path, _)| !path.starts_with('.'))
+        .map(|(path, _)| String::from(*path))
+        .collect();
+    let config = crate::cli::config::discovered(&root);
+    let found = run(&config, &paths, Format::Human);
+    found.map(|r| r.text).unwrap_or_else(|why| why)
 }
 
-/// V37: the group is `allow`, so a text with every pedantic shape in
-/// it says nothing until a run asks.
+/// The whole path, through a real `.ctrm`: a rule that grants `any`
+/// and tries to allow the group, the lint, and the charset findings,
+/// plus a `.ctrm-sets` that redeclares the class as harmless. None of
+/// it lowers the forbid (V36), and the run fails.
 #[test]
-fn pedantic_lints_are_silent_until_asked() {
-    assert_eq!(findings("a \r\nb\u{a0}c", &any()), vec![]);
-}
-
-/// Asked, each of the four fires at the character it points at.
-#[test]
-fn asked_for_every_pedantic_shape_fires_once() {
-    let fired = pedantic("a \r\nb\u{a0}c", &any(), Level::Deny);
-    let warn = Level::Warn;
-    let expected = vec![
-        ("trailing-whitespace", warn, 1),
-        ("crlf", warn, 2),
-        ("unicode-space", warn, 5),
-        ("final-newline", warn, 7),
+fn no_configuration_talks_a_hazard_down() {
+    let files = [
+        (".ctrm", "* any !hazard=allow !invisible=allow !allow\n"),
+        (".ctrm-sets", "hazard-invisible U+0041\n"),
+        ("smuggled.txt", "fine\u{200B}\n"),
     ];
-    assert_eq!(fired, expected);
+    let Some(root) = fixture("ctrm-hazard-fixture", &files) else {
+        return;
+    };
+    let paths = [String::from("smuggled.txt")];
+    let config = crate::cli::config::discovered(&root);
+    let report = run(&config, &paths, Format::Json);
+    let report = report.unwrap_or_else(|why| unreachable!("{why}"));
+    assert_eq!(report.code, 1, "{}", report.text);
+    assert!(report.text.contains("\"invisible\""), "{}", report.text);
+    assert!(report.text.contains("\"forbid\""), "{}", report.text);
 }
 
-/// A no-break space the set does not grant is ONE finding: the set's,
-/// which is the stronger claim. Allow that one, and pedantic speaks.
+/// `src/lint:V57`: a Persian word spelled with ZWNJ (mi-khaham, "I
+/// want") is clean where the rule names `persian`, and the same bytes
+/// under `any` still fire -- granting everything excuses nothing.
 #[test]
-fn a_space_outside_the_set_is_reported_once() {
-    let ascii = builtin::ascii();
-    let denied = pedantic("a\u{a0}b\n", &ascii, Level::Deny);
-    assert_eq!(denied, vec![("outside-set", Level::Deny, 1)]);
-    let allowed = pedantic("a\u{a0}b\n", &ascii, Level::Allow);
-    assert_eq!(allowed, vec![("unicode-space", Level::Warn, 1)]);
+fn a_script_preset_excuses_its_own_joiner_and_any_does_not() {
+    let word =
+        "\u{0645}\u{06CC}\u{200C}\u{062E}\u{0648}\u{0627}\u{0647}\u{0645}\n";
+    let files = [("fa.md", word)];
+    let fa = report("ctrm-joiner-fa", "* ascii+persian\n", &files);
+    assert_eq!(fa, "");
+    let any = report("ctrm-joiner-any", "* any\n", &files);
+    assert!(any.contains("U+200C"), "{any}");
+}
+
+/// The excuse is the joiner the preset grants and nothing else: a bidi
+/// control in a Persian file still fires, and `persian` does not
+/// excuse the ZERO WIDTH JOINER that `hindi` does.
+#[test]
+fn a_script_preset_excuses_nothing_but_its_joiners() {
+    let bidi = [("fa.md", "\u{0645}\u{202E}\u{0645}\n")];
+    let fired = report("ctrm-joiner-bidi", "* ascii+persian\n", &bidi);
+    assert!(fired.contains("U+202E"), "{fired}");
+    let conjunct = [("hi.md", "\u{0915}\u{094D}\u{200D}\u{0937}\n")];
+    let hi = report("ctrm-joiner-hi", "* ascii+hindi\n", &conjunct);
+    assert_eq!(hi, "");
+    let fa = report("ctrm-joiner-zwj", "* ascii+persian\n", &conjunct);
+    assert!(fa.contains("U+200D"), "{fa}");
+}
+
+/// B19: a `.ctrm-sets` line NAMED `hindi` is not the preset, so the
+/// ZWNJ it grants is still a hazard (`src/lint:V57`).
+#[test]
+fn a_redeclared_preset_excuses_no_joiner() {
+    let sets = (".ctrm-sets", "hindi ascii U+200C U+200D\n");
+    let files = [sets, ("a.md", "a\u{200C}b\n")];
+    let got = report("ctrm-joiner-redeclared", "* hindi\n", &files);
+    assert!(got.contains("U+200C"), "{got}");
 }
 
 /// V37 fixture, `crlf`: a Windows batch file, which `cmd.exe` reads
@@ -73,16 +105,6 @@ fn a_batch_file_needs_crlf_and_says_so_per_path() {
     let ctrm = format!("{base}*.bat !crlf=allow\n");
     let off = report("ctrm-crlf-off", &ctrm, &files);
     assert_eq!(off, "notes.txt:1:3 U+000D crlf");
-}
-
-/// Under plain `ascii` the CR is not granted, so a CR LF is already
-/// `outside-set`; asking for pedantic does not say it twice.
-#[test]
-fn a_cr_the_set_refuses_is_one_finding() {
-    let fired = pedantic("hi\r\n", &builtin::ascii(), Level::Deny);
-    assert_eq!(fired, vec![("outside-set", Level::Deny, 2)]);
-    let quiet = pedantic("hi\r\n", &builtin::ascii(), Level::Allow);
-    assert_eq!(quiet, vec![("crlf", Level::Warn, 2)]);
 }
 
 /// V37 fixture, `trailing-whitespace`: two trailing spaces are a
@@ -203,24 +225,4 @@ fn russian_prose_is_confusable_on_purpose() {
     let md = "a.md:1:1 U+0440 confusable";
     assert_eq!(on, format!("{md}\nru.md:1:3 U+0440 confusable"));
     assert_eq!(off, md);
-}
-
-/// Asked for nothing, none of the four fires, and a character the
-/// set refuses is one `outside-set` finding however many lints it
-/// would also fire. The `e` the accent decomposes from is in the set, so
-/// `not-nfc` still names it.
-#[test]
-fn the_unicode_lints_are_silent_until_asked_and_claim_once() {
-    let text = "cafe\u{301} p\u{430}y \u{ff21}\n";
-    assert_eq!(findings(text, &any()), vec![]);
-    let ascii = builtin::ascii();
-    let fired = pedantic(text, &ascii, Level::Deny);
-    let deny = Level::Deny;
-    let expected = vec![
-        ("not-nfc", Level::Warn, 3),
-        ("outside-set", deny, 4),
-        ("outside-set", deny, 8),
-        ("outside-set", deny, 12),
-    ];
-    assert_eq!(fired, expected);
 }

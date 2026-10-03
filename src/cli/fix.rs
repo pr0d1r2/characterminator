@@ -9,9 +9,8 @@
 //! the map is data (`src/fix:V26`) plus whatever `.ctrm-map` declares
 //! over it (`src/rules:V45`).
 
-use super::checker::{Checker, Looked, inspect};
-use super::config::Config;
 use crate::fix::{self as engine, Map};
+use crate::judge::{Checker, Config, Looked, inspect};
 use crate::lint::{Finding, Group, exit_code};
 use crate::render::{self, Change, Format, Skipped, Violation};
 use crate::scan::{Hit, Unreadable, decode};
@@ -273,7 +272,7 @@ fn skip(held: &Skip) -> Skipped<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Config, run};
+    use super::run;
     use crate::render::Format;
     use std::path::{Path, PathBuf};
 
@@ -293,7 +292,12 @@ mod tests {
 
     fn ran(root: &Path, write: bool) -> (String, u8) {
         let asked = ["notes.md".to_owned()];
-        match run(&Config::discovered(root), &asked, Format::Human, write) {
+        match run(
+            &crate::cli::config::discovered(root),
+            &asked,
+            Format::Human,
+            write,
+        ) {
             Ok(report) => (report.text, report.code),
             Err(why) => (why, 9),
         }
@@ -452,7 +456,7 @@ mod tests {
             return;
         };
         let asked = ["notes.md".to_owned(), "zz.md".to_owned()];
-        let config = Config::discovered(&root);
+        let config = crate::cli::config::discovered(&root);
         mode(&root.join("zz.md"), 0o000);
         let failed = run(&config, &asked, Format::Human, true).is_err();
         mode(&root.join("zz.md"), 0o644);

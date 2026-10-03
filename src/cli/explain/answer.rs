@@ -14,8 +14,7 @@
 use super::export::{self, Shape};
 use super::prompt;
 use crate::charset::CharSet;
-use crate::cli::checker::Checker;
-use crate::cli::config::Config;
+use crate::judge::{Checker, Config};
 use crate::render::{Explanation, Format, InForce};
 use crate::render::{explain as render_explain, sets as render_sets};
 use crate::rules::{self, Resolution, Sourced};
@@ -143,7 +142,7 @@ mod tests {
     }
 
     fn explained(root: &Path, path: &[String]) -> String {
-        run(&Config::discovered(root), path, Format::Human)
+        run(&crate::cli::config::discovered(root), path, Format::Human)
             .unwrap_or_else(|why| why)
     }
 
@@ -205,8 +204,8 @@ mod tests {
         let Some(root) = fixture("ctrm-sets-fixture", &[]) else {
             return;
         };
-        let listed =
-            sets(&Config::discovered(&root), HUMAN).unwrap_or_default();
+        let listed = sets(&crate::cli::config::discovered(&root), HUMAN)
+            .unwrap_or_default();
         assert!(listed.contains("caveman"), "{listed}");
         assert!(listed.contains("U+2192"), "{listed}");
     }
@@ -219,8 +218,8 @@ mod tests {
         let Some(root) = fixture("ctrm-sets-declared-fixture", &files) else {
             return;
         };
-        let listed =
-            sets(&Config::discovered(&root), HUMAN).unwrap_or_default();
+        let listed = sets(&crate::cli::config::discovered(&root), HUMAN)
+            .unwrap_or_default();
         assert!(listed.contains("house U+2261"), "{listed}");
     }
 
@@ -232,7 +231,7 @@ mod tests {
         let Some(root) = fixture("ctrm-sets-locale-fixture", &files) else {
             return;
         };
-        let config = Config::discovered(&root);
+        let config = crate::cli::config::discovered(&root);
         let listed = sets(&config, HUMAN).unwrap_or_default();
         assert!(listed.contains("ja U+3005"), "{listed}");
         assert!(listed.contains("pt-BR U+"), "{listed}");
@@ -248,7 +247,8 @@ mod tests {
         let Some(root) = fixture("ctrm-sets-fidelity-fixture", &[]) else {
             return;
         };
-        let text = sets(&Config::discovered(&root), HUMAN).unwrap_or_default();
+        let text = sets(&crate::cli::config::discovered(&root), HUMAN)
+            .unwrap_or_default();
         let emoji =
             sets(&argued(&root, "--fidelity|emoji"), HUMAN).unwrap_or_default();
         assert!(text.contains("U+2713"), "{text}");

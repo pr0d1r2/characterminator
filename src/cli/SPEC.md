@@ -22,6 +22,7 @@ sib|src/scan|read text: positions, UTF-8 validity, binary skip
 sib|src/fix|rewriting: map, families, equivalence classes, typography, emoji compression
 sib|src/lint|lint names, groups, levels, hazard, pedantic
 sib|src/tokens|`itok` facade: counts w/ method label, git-tracked fileset
+sib|src/judge|findings from rules, sets, lints, scan & fix; config assembly
 sib|src/render|human & json output, stable json contract
 
 ## §I INTERFACES
@@ -44,8 +45,8 @@ V47: stdout closed by reader (EPIPE, `ctrm check | head`) → stop writing, keep
 V71: path matched (`src/rules`) & shown in LEXICAL normal form: `.` dropped, `..` folded ∴ `sub/../sub/c.md` ≡ `sub/c.md` ∀ anchored rule. symlink ⊥ resolved.
 V72: bare `fix` = 2 phases: judge ∀ file, THEN write ∴ a refusal (`src/fix:V5`, `src/fix:V6`) or read error writes ⊥ file.
 V73: path arity: `sets` 0, `explain` (any `--as`) ≤ 1, other verbs any. extra path → exit 2 naming it ∵ `explain a.md b.txt` answered for `a.md` only & `sets a.md` ignored it, each read as an answer about what was asked.
-V74: ∀ verb ⊥ `guard`: whole config (rules, sets, map) parsed & validated before dispatch; any kind broken → exit 2, naming its origin ∵ a verb reading only its own kind reported on a config that ⊥ parsed (B29). ∀ rule: every set it names resolves, matched or ⊥ (B47). `--map` value = 1 line, as `--set` & `--rule` (`src/rules:V18`).
-V80: `fix` & `fix --check` judge what they LEAVE via `check`'s `Checker` (levels, `--strict`, hazards), rows @ ORIGINAL pos (`src/fix:V65`) ∴ exit = drift (`--check`) ∨ `check`(output) ∨ not-UTF-8 skip.
+V74: ∀ verb ⊥ `guard`: whole config (rules, sets, map) parsed & validated (`src/judge` `Config::validate`) before dispatch; any kind broken → exit 2, naming its origin ∵ a verb reading only its own kind reported on a config that ⊥ parsed (B29). ∀ rule: every set it names resolves, matched or ⊥ (B47). `--map` value = 1 line, as `--set` & `--rule` (`src/rules:V18`).
+V80: `fix` & `fix --check` judge what they LEAVE via `check`'s `Checker` (`src/judge:V99`) (levels, `--strict`, hazards), rows @ ORIGINAL pos (`src/fix:V65`) ∴ exit = drift (`--check`) ∨ `check`(output) ∨ not-UTF-8 skip.
 
 ## §T TASKS
 

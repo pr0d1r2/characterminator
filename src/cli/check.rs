@@ -5,12 +5,11 @@
 //! (`src/charset`), where a character sits (`src/scan`), how loudly it is
 //! said (`src/lint`), and how the report reads (`src/render`). V7 makes
 //! this one of the two verbs that GATE. What a file's bytes are judged to
-//! hold is the shared engine's answer (`checker.rs`); this file walks the
+//! hold is the shared engine's answer (`src/judge`); this file walks the
 //! tree, gathers those answers, and reports them.
 
-use super::checker::{Checker, Looked, inspect};
-use super::config::Config;
 use crate::charset::CharSet;
+use crate::judge::{Checker, Config, Looked, inspect};
 use crate::lint::{Finding, Group, exit_code};
 use crate::render::{self, Batch, Format, Skipped};
 use crate::scan::Unreadable;

@@ -15,7 +15,8 @@
 //! whole, because a set may be built from another set and a map line may
 //! declare a family a later line uses.
 
-use crate::cli::config::{Config, MAP, RULES, SETS};
+use crate::cli::config::{MAP, RULES, SETS};
+use crate::judge::Config;
 use crate::rules;
 
 /// The three forms V32 names.
@@ -150,8 +151,9 @@ pub(super) fn lines(
 mod tests {
     use super::{Shape, args, lines};
     use crate::charset::builtin;
-    use crate::cli::config::{Config, from_argv};
+    use crate::cli::config::from_argv;
     use crate::fix::{self as engine, MapEntry};
+    use crate::judge::Config;
     use crate::rules::corpus::{Noise, SHAPES, file};
     use crate::rules::{Origin, Rule, Sources};
     use std::path::Path;

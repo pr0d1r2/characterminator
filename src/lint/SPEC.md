@@ -15,6 +15,7 @@ sib|src/rules|config files & flags, precedence, origin, rule resolution, fidelit
 sib|src/scan|read text: positions, UTF-8 validity, binary skip
 sib|src/fix|rewriting: map, families, equivalence classes, typography, emoji compression
 sib|src/tokens|`itok` facade: counts w/ method label, git-tracked fileset
+sib|src/judge|findings from rules, sets, lints, scan & fix; config assembly
 sib|src/render|human & json output, stable json contract
 sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
