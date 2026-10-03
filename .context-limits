@@ -80,7 +80,16 @@ src/charset/locale/SPEC.md 1570
 # 2810 -> 3400: R8, R9 and R11 move here from the root (the words map and
 # the builtin map are this node's), about 530 tokens the root sheds. ~12%
 # over the measured 3037.
-src/fix/SPEC.md      4010
+# 4010 -> 1900 on 2026-10-03: LOWERED after the split into `emoji` and
+# `words` sub-nodes took V31, V51, V60, V62, V65, V76, R8, R9, R11 and
+# their bug rows with them. ~12% over the measured 1695, so the parent
+# cannot quietly regrow into the room its children took.
+src/fix/SPEC.md      1900
+# Set 2026-10-03 with the split, ~12% over each measured spec: the emoji
+# compression (five invariants, four bug rows) and the `words` map (V51
+# and the three research rows that measured it).
+src/fix/emoji/SPEC.md 1650
+src/fix/words/SPEC.md 1080
 # 1160 -> 1460: V56 and B5, the node's first bug row, land with the fix
 # they describe -- a level-only line used to win the set grant. Archiving
 # T49 ran first and bought 15 tokens. 1460 is ~12% over the measured 1305.
@@ -234,13 +243,20 @@ src/render/SPEC.md   1680
 # own, ~12% over their measured chains (hazard 3769, pedantic 3472),
 # for the reason the cli sub-nodes have theirs: by longest prefix they
 # would inherit the parent's 2990, which both chains are over.
+#
+# src/fix 4510 -> 3720 on 2026-10-03 after the `emoji` and `words` split,
+# ~12% over the measured 3323. The sub-nodes get rows of their own, ~12%
+# over their measured chains (emoji 4417, words 3664), for the reason the
+# cli sub-nodes did: emoji's chain is over the parent's lowered 3720.
 src                2490
 src/charset          4460
 src/charset/locale   5490
 src/cli              3940
 src/cli/explain      4200
 src/cli/guard        4770
-src/fix              4510
+src/fix              3720
+src/fix/emoji        4950
+src/fix/words        4100
 src/lint             2990
 src/lint/hazard      4220
 src/lint/pedantic    3890
