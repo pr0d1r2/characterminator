@@ -3,14 +3,21 @@
 #
 # WHAT THIS CEILING IS: a cap on ENTRY COST -- what a session loads before any
 # work begins. A spec is re-read every turn, so its size is a recurring bill,
-# not a one-off. The federation split this repo's law into one file per node
-# exactly so a session can load one chain (root + hub + node) instead of everything.
+# not a one-off. The federation split this repo's law into one file per
+# node exactly so a session can load one chain (root + hub + node) instead
+# of everything.
 #
 # It forces a REVIEW, not a shrink. Set with real slack (~12% over measured),
 # because a ceiling a hair above current turns every legitimate sentence into
 # a raise, and a threshold raised reflexively trains the reflex it exists to
 # catch. Raising one is a reviewed decision and belongs in its own commit,
 # with the reason.
+#
+# TWO KINDS OF ROW. A `SPEC.md` path caps that one file (`itok check`); a
+# directory caps the node's CHAIN, root + hub + node (`sherd budget`). Both
+# are CAPPED by V103: 3500 for a file, 5500 for a chain, enforced by the
+# `ceiling-cap` gate step. A raise that would pass a cap is refused: split
+# the node instead (`sherd split <dir>` proposes one).
 #
 # MEASURED 2026-09-17 with `itok estimate --bpe` (o200k), at the commit that
 # wrote this file: 8,548 tokens across the spec files of that day. The chain a node actually

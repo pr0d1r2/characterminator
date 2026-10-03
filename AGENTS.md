@@ -17,9 +17,35 @@ hub plus the node it is working in, plus the parent for a sub-node --
 rather than everything. Each node owns its own rules and cites its siblings by
 name.
 
-`mth tasks SPEC.md` prints the backlog in id order. A row carrying `~` is
-work somebody started. Only `/spec` edits the spec; `/build` flips a status
-cell and nothing else.
+Every spec keeps its own backlog, so `mth tasks SPEC.md` shows the root's
+only. The whole backlog, open (`.`) and started (`~`) rows, every node:
+
+```bash
+for f in $(find . -name SPEC.md -not -path './target/*' | sort); do
+  mth tasks "$f" | grep -E '^task [^:]+: [.~] ' | sed "s|^|$f: |"
+done
+```
+
+Only `/spec` edits the spec; `/build` flips a status cell and nothing else.
+Both are Claude Code skills (cavekit's `ck:spec` and `ck:build`). A human
+does the same by hand: edit the rows in the format below, run `mth fmt
+<file>` and `mth check <file>`, and keep the edit to the spec in a commit
+of its own unless it is the rule landing with its runner.
+
+### Reading a spec
+
+| notation | meaning |
+|---|---|
+| `⊥` `∴` `∵` `∀` | not / never, therefore, because, for every |
+| `!` `?` | must, may (or: an open question) |
+| `V` `T` `B` `R` `C` ids | invariant, task, bug, research row, constraint; `src/cli:V47` is V47 of that node, `.:C` the root's constraints |
+| `§G` `§C` `§I` `§V` `§T` `§B` `§R` | goal, constraints, interfaces, invariants, tasks, bugs, research |
+| `§F` `§N` | FEDERATION (the child nodes a spec declares) and NAV (generated from it by `sherd sync`; never hand-edited) |
+| NAV rows | `up`, `self`, `sib`: the chain above this node, the node itself, and the siblings it may cite |
+| `.spec-records` | closed options that must survive later edits; one beside any spec that has them |
+| `.context-limits` | token ceilings: a `SPEC.md` row caps that file, a directory row caps the chain root + hub + node |
+| `mth extensions`, `mth docs` | the notation and the format rules, from their owner |
+| `sherd lens <dir>` | exactly what a session working in that node should load |
 
 Three conventions that are easy to break by accident:
 
@@ -40,7 +66,9 @@ hk check --all        # everything
 cargo test            # the fast inner loop
 ```
 
-The steps, and what each is for:
+The steps, and what each is for. `hk.pkl` is the source of truth -- each
+step's comment there says why it exists -- and this table is a summary of
+it; if they disagree, `hk.pkl` is right and this table is the bug.
 
 | step | what it refuses |
 |---|---|
@@ -48,7 +76,7 @@ The steps, and what each is for:
 | `ctrm` | this tool, run on this repository's own tree |
 | `mth`, `mth-check` | every `SPEC.md` is well formed and still correct, and no closed option recorded in a `.spec-records` (the root's, or one beside a node's spec) has gone missing |
 | `context-limits` | no spec is over the token ceiling it declared |
-| `sherd-check`, `sherd-sync`, `sherd-budget` | the node tree resolves, `NAV` is not stale, and no node chain is over its ceiling |
+| `sherd-check`, `sherd-sync`, `sherd-budget` | the node tree resolves, `NAV` is not stale, and no node chain is over its ceiling; after `mth-check`, so a malformed spec is reported by its format's owner first |
 | `ceiling-cap` | no chain ceiling over 5500 tokens and no spec file ceiling over 3500 (V103): outgrow it and the node splits |
 | `flake-tags` | every flake input pins a `vX.Y.Z` tag, not a branch (V44) |
 | `hook-guard` | a `flake.nix` shellHook that installs a hook before both of its guards (V40) |
@@ -79,6 +107,11 @@ fifteen lines is asking to be split, and a call taking five arguments is
 usually a struct that has not been written yet. Both are cheap to fix and
 the fix is nearly always better; resist the urge to reach for an `#[allow]`.
 
+The denied lints are in `Cargo.toml` under `[lints]`; every threshold is in
+`clippy.toml`, each with its reason: `cognitive_complexity` 7,
+`excessive_nesting` 4, `type_complexity` 150, at most one `bool` parameter
+and three `bool` fields, three trait bounds.
+
 In tests, `assert!(x.is_ok())` followed by `unwrap_or_default()` is the
 idiom that replaces `expect`.
 
@@ -107,6 +140,12 @@ The repository keeps its rejected options in commit messages rather than in
 the spec, which is what `.spec-records` says in its own header. A closed
 option that becomes load-bearing gets a line in that file, and then `mth
 check --records` fails if a later edit quietly drops it.
+
+A token ceiling in `.context-limits` is raised in its own commit, with the
+measurement and the compaction tried first. V103 caps the ceilings: 3500
+tokens for a spec file, 5500 for a node's chain. A raise that would pass a
+cap is refused by `ceiling-cap`; split the node (`sherd split <dir>`
+proposes one) instead.
 
 Never commit to `main`; a hook refuses it.
 

@@ -43,7 +43,7 @@ self|.|-
 
 ## §V INVARIANTS
 
-V13: dogfood: `ctrm check` gates own tree (`hk.pkl` step `ctrm`). `.ctrm` grants, last match wins: `*` `ascii` · `*.md` `ascii+spec` (custom set, `.ctrm-sets`) ∵ specs DOCUMENT the chars they govern · `README.md` `AGENTS.md` `LICENSE` `docs/**/*.md` back to `ascii` ∵ the front page argues plain text · `.context-limits` `ascii+caveman` ∵ it cites `§` · `pkl/Config.pkl` `any` ∵ vendored upstream schema, ⊥ ours to rewrite.
+V13: dogfood: `ctrm check` gates own tree (`hk.pkl` step `ctrm`). `.ctrm` grants, last match wins: `*` `ascii` · `*.md` `ascii+spec` (custom set, `.ctrm-sets`) ∵ specs DOCUMENT the chars they govern · `README.md` `LICENSE` `docs/**/*.md` back to `ascii` ∵ the front page argues plain text · `AGENTS.md` `ascii+caveman` ∵ its glossary decodes spec notation · `.context-limits` `ascii+caveman` ∵ it cites `§` · `pkl/Config.pkl` `any` ∵ vendored upstream schema, ⊥ ours to rewrite.
 V14: SPEC.md form gated by `mth fmt --check SPEC.md` & `mth check --records .spec-records SPEC.md`. `mth` absent → gate FAILS hard, ⊥ skip. ∀ node SPEC.md, ⊥ root only; node records → `.spec-records` beside its SPEC.md ∵ ids repeat across specs.
 V15: SPEC.md capped from commit one: `.context-limits` row gated by `itok check`; ceiling ~12% over measured.
 V16: `sherd check`, `sherd budget` & `sherd sync --check` gate; federation live since the split ∴ ⊥ deferred.

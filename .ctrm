@@ -20,8 +20,13 @@
 # wins) -- which is the per-file-beats-per-type case, dogfooded here
 # rather than only tested.
 README.md ascii
-AGENTS.md ascii
 LICENSE ascii
+
+# AGENTS.md is the one exception among them: its glossary teaches the spec
+# notation, so it prints the handful of logic symbols the specs are written
+# in. `caveman` is exactly that notation and nothing wider -- no curly
+# quotes, no dashes -- so the rest of the file stays as plain as before.
+AGENTS.md ascii+caveman
 docs/**/*.md ascii
 
 # The token ceilings, which cite spec sections by the section sign.
