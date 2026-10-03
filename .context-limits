@@ -59,7 +59,12 @@ src/SPEC.md          580
 # 2240 -> 2760: V61 and T60 specify option 1A (every CLDR locale, lazy
 # parse) for the next build. `mth archive` folded T23 and T46 first.
 # 2760 is ~12% over the measured 2465.
-src/charset/SPEC.md  4250
+# 4250 -> 3160 on 2026-10-03: LOWERED after the `locale` sub-node took the
+# CLDR letter rows (R6, R15, V30, V59, V61, V64, V88, B32, B33). ~12% over
+# the measured 2823, so the parent cannot quietly regrow into the room its
+# child took. The child gets its own row, ~12% over its measured 1404.
+src/charset/SPEC.md  3160
+src/charset/locale/SPEC.md 1570
 # RAISED 1240 -> 1600, reviewed. The node gains V51, the opt-in `words`
 # map: the one rewrite in the crate that measurably saves tokens (`.:R11`),
 # and a rule with three parts nothing else states -- how it is switched on,
@@ -209,8 +214,14 @@ src/render/SPEC.md   1680
 # sub-node chain is root + hub + cli + node, four files, so without its
 # own row it would inherit the parent's 3510 by longest prefix, which
 # guard's chain is over.
+#
+# src/charset 5010 -> 4460 on 2026-10-03 after the `locale` split, ~12%
+# over the measured 3982. src/charset/locale is root + hub + charset +
+# locale, measured 4902; its own row, 5490, keeps it from inheriting the
+# parent's 4460 by longest prefix, which it is over.
 src                2490
-src/charset          5010
+src/charset          4460
+src/charset/locale   5490
 src/cli              3940
 src/cli/explain      4200
 src/cli/guard        4770
