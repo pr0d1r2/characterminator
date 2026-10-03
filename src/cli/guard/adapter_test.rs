@@ -104,6 +104,19 @@ fn a_read_is_judged_against_the_rules_in_cwd() {
     assert_eq!(got, "");
 }
 
+/// The note follows the level (V35): a finding at `warn` is noted like
+/// one at `deny`, and one at `allow` is no finding, so the read passes in
+/// silence.
+#[test]
+fn the_note_fires_at_warn_and_is_silent_at_allow() {
+    let files = [(".ctrm", "* ascii !warn\n"), ("a.md", "a\u{2014}b\n")];
+    let got = read_of("ctrm-guard-note-warn", &files, "a.md");
+    assert!(got.contains("(outside-set: 1)"), "{got}");
+    let files = [(".ctrm", "* ascii !allow\n"), ("a.md", "a\u{2014}b\n")];
+    let got = read_of("ctrm-guard-note-allow", &files, "a.md");
+    assert_eq!(got, "");
+}
+
 /// A `.ctrm` that cannot be applied leaves the hazards judged: they
 /// are compiled in, and a typo must not open the door (V53).
 #[test]

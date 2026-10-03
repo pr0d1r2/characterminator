@@ -15,7 +15,7 @@ sib|src/cli/guard|`guard` hook adapter: harness payload in, hook decision out, J
 
 ## §V INVARIANTS
 
-V32: `explain --as args|lines|prompt` renders effective config (per path | whole repo): `args` = flags, `lines` = data-file lines, `prompt` = deterministic agent instruction (allowed chars, replacements, fidelity) for drafting compliant code up front. round trip: `--as args` output fed back ≡ same config, property-tested w/ `src/rules:V18`. ⊥ model (CPU only).
+V32: `explain --as args|lines|prompt` renders effective config (per path | whole repo): `args` = flags, `lines` = data-file lines, `prompt` = deterministic agent instruction (allowed chars, replacements, fidelity) for drafting compliant code up front. round trip: `--as args` output fed back ≡ same config, property-tested w/ `src/rules:V18`. ⊥ model (CPU only). `--as` writes text ∴ `--format` json | sarif → exit 2 (test `tests/explain_as.rs`).
 
 ## §T TASKS
 
