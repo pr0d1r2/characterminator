@@ -14,6 +14,9 @@ use crate::lint::{
 };
 use crate::rules::{self, Resolution, Rule};
 use crate::scan::{Hit, Unreadable, decode, scan_str};
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 /// The lint a character outside its set is reported under. Named for what
 /// is true of the character, not for its group (`src/lint` registry).
@@ -39,7 +42,12 @@ pub struct Checker {
     outside: Lint,
     /// `--strict`: warn counts as deny (`src/lint:V36`).
     strict: bool,
+    /// Each union [`Checker::granted`] resolved, by family, then sets.
+    unions: RefCell<Unions>,
 }
+
+/// The kept unions: family, then the set names, to the set.
+type Unions = HashMap<String, HashMap<Vec<String>, Rc<CharSet>>>;
 
 /// What one file's characters are judged against: its set, and the
 /// hazards that fire whatever the set says.
@@ -148,6 +156,7 @@ impl Checker {
             outside: Lint::named(OUTSIDE)
                 .ok_or_else(|| String::from("no `outside-set` lint"))?,
             strict: config.strict,
+            unions: RefCell::default(),
         })
     }
 
@@ -170,9 +179,20 @@ impl Checker {
         Judge::new(set, &self.hazards, self.outside)
     }
 
-    /// What one path may contain, and how loudly a stray character there
-    /// is reported.
+    /// [`Checker::shared_law`], with the set copied out, as a test reads it.
+    #[cfg(test)]
     pub(super) fn law(&self, shown: &str) -> Result<(CharSet, Levels), String> {
+        let (set, levels) = self.shared_law(shown)?;
+        Ok((CharSet::clone(&*set), levels))
+    }
+
+    /// What one path may contain, and how loudly a stray character there
+    /// is reported. The set is SHARED: its union is resolved once per run
+    /// for each sets-and-family a rule grants, not once per file (R17).
+    pub(super) fn shared_law(
+        &self,
+        shown: &str,
+    ) -> Result<(Rc<CharSet>, Levels), String> {
         let found = rules::resolve(shown, &self.rules, &rules::matches);
         let mut levels = levels_for(&found)?;
         levels.set_strict(self.strict);
@@ -192,7 +212,7 @@ impl Checker {
         shown: &str,
         bytes: &[u8],
     ) -> Result<Option<Vec<Finding>>, String> {
-        let (set, levels) = self.law(shown)?;
+        let (set, levels) = self.shared_law(shown)?;
         match inspect(bytes, &self.judge(&set), &levels) {
             Looked::Findings(found) => Ok(Some(found)),
             Looked::Unread(_) => Ok(None),
@@ -214,7 +234,8 @@ impl Checker {
         shown: &str,
     ) -> Result<(CharSet, Option<Rule>), String> {
         let found = rules::resolve(shown, &self.rules, &rules::matches);
-        Ok((self.granted(&found)?, found.winner.cloned()))
+        let set = CharSet::clone(&*self.granted(&found)?);
+        Ok((set, found.winner.cloned()))
     }
 
     /// Every declared set, resolved at one fidelity -- `sets`' answer.
@@ -236,7 +257,30 @@ impl Checker {
     /// That name lands in the json contract: `set: "effective"` would
     /// tell a reader nothing, while `ascii+caveman` says what the file
     /// was judged against and which rule to look for.
-    fn granted(&self, found: &Resolution<'_>) -> Result<CharSet, String> {
+    ///
+    /// Resolved once per sets-and-family and kept (R17): every file one
+    /// rule governs asks the same question, and under a locale set the
+    /// union is the costliest thing a small file asks for. Looked up by
+    /// borrowed key, so a file whose answer is kept allocates nothing.
+    fn granted(&self, found: &Resolution<'_>) -> Result<Rc<CharSet>, String> {
+        if let Some(set) = self.kept(found) {
+            return Ok(set);
+        }
+        let set = Rc::new(self.union(found)?);
+        let mut kept = self.unions.borrow_mut();
+        let by_sets = kept.entry(found.family.clone()).or_default();
+        by_sets.insert(found.sets.clone(), Rc::clone(&set));
+        Ok(set)
+    }
+
+    /// The union already resolved for this sets-and-family, if any.
+    fn kept(&self, found: &Resolution<'_>) -> Option<Rc<CharSet>> {
+        let kept = self.unions.borrow();
+        let by_sets = kept.get(found.family.as_str())?;
+        by_sets.get(found.sets.as_slice()).map(Rc::clone)
+    }
+
+    fn union(&self, found: &Resolution<'_>) -> Result<CharSet, String> {
         self.catalog
             .resolve_union(&found.sets.join("+"), &found.sets, &found.family)
             .map_err(|bad| bad.to_string())

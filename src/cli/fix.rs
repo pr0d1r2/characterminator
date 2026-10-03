@@ -151,7 +151,7 @@ impl Pass {
         text: &str,
         fixed: &engine::Fixed,
     ) -> Result<Vec<Kept>, String> {
-        let (set, levels) = self.checker.law(path)?;
+        let (set, levels) = self.checker.shared_law(path)?;
         let judge = self.checker.judge(&set);
         let findings = match inspect(fixed.output.as_bytes(), &judge, &levels) {
             Looked::Findings(found) => found,

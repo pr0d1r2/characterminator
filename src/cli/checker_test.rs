@@ -14,6 +14,7 @@ use crate::lint::{Finding, Hazards, Level, Levels, Lint};
 use crate::render::Format;
 use crate::rules::{self, Rule};
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 #[path = "checker_hazard_test.rs"]
 mod hazard;
@@ -284,4 +285,32 @@ fn every_lint_a_hit_could_fire_is_listed_strongest_first() {
     };
     let names: Vec<&str> = judge.lints_for(hit).map(|l| l.name).collect();
     assert_eq!(names, ["outside-set", "nfkc-compat", "confusable"]);
+}
+
+/// R17: one union per sets-and-family, kept for every path that asks for
+/// it, and the kept answer is the one a fresh checker resolves.
+#[test]
+fn a_union_is_resolved_once_and_shared_by_every_path_it_governs() {
+    let ctrm = "*.md ascii+caveman\n*.txt ascii\n";
+    let Some(root) = fixture("ctrm-union-kept", &[(".ctrm", ctrm)]) else {
+        return;
+    };
+    let Some([a, b, txt]) = kept(&root, ["a.md", "sub/b.md", "c.txt"]) else {
+        unreachable!("every path here resolves");
+    };
+    assert!(Rc::ptr_eq(&a, &b));
+    assert!(!Rc::ptr_eq(&a, &txt));
+    assert_eq!(Ok(CharSet::clone(&a)), granted(&root, "a.md"));
+    assert_eq!(
+        (a.name.as_str(), txt.name.as_str()),
+        ("ascii+caveman", "ascii")
+    );
+}
+
+/// The sets ONE checker answers for each path, in order.
+fn kept(root: &Path, paths: [&str; 3]) -> Option<[Rc<CharSet>; 3]> {
+    let checker = Checker::configured(&Config::discovered(root)).ok()?;
+    let set = |shown: &str| checker.shared_law(shown).ok().map(|(set, _)| set);
+    let [one, two, three] = paths.map(set);
+    Some([one?, two?, three?])
 }

@@ -63,7 +63,7 @@ fn gather(
     let mut found = Found::default();
     for full in &files {
         let shown = shown_path(root, full);
-        let (set, levels) = checker.law(&shown)?;
+        let (set, levels) = checker.shared_law(&shown)?;
         let looked = inspect(&read(full)?, &checker.judge(&set), &levels);
         found.absorb(shown, &set, looked);
     }
