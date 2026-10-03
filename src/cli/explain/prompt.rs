@@ -19,7 +19,7 @@
 use crate::charset::{CharSet, SetCatalog, builtin};
 use crate::fix::{self as engine, Map};
 use crate::judge::Config;
-use crate::render::{Format, sets as render_sets};
+use crate::render::{Format, codepoint, sets as render_sets};
 use crate::rules::{self, ASCII, Rule, TEXT, describe};
 
 /// What the prompt is about: one path, or the whole repository.
@@ -243,10 +243,7 @@ fn sources(map: &Map) -> Vec<String> {
 /// A source as code points, `+` between the points of a sequence, the
 /// spelling the map grammar itself uses.
 fn points(text: &str) -> String {
-    let each: Vec<String> = text
-        .chars()
-        .map(|c| format!("U+{:04X}", u32::from(c)))
-        .collect();
+    let each: Vec<String> = text.chars().map(codepoint).collect();
     each.join("+")
 }
 

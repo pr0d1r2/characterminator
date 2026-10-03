@@ -103,9 +103,48 @@ pub(crate) const HAZARD: &str = include_str!("hazard.ctrm-sets");
 /// The RGI emoji sequences, vendored from Unicode emoji data
 /// (`src/fix:V62`): one `<kind> <sequence> [name]` line each. Not a set
 /// file -- a set holds code points and a sequence is not one -- so it is
-/// TEXT the lint node reads for its exemption (`src/lint:V63`), compiled
-/// in so no configuration can widen it.
-pub(crate) const EMOJI_SEQUENCES: &str = include_str!("emoji-sequences.txt");
+/// read through [`emoji_sequences`], by the lint node for its exemption
+/// (`src/lint:V63`), compiled in so no configuration can widen it.
+const EMOJI_SEQUENCES: &str = include_str!("emoji-sequences.txt");
+
+/// What a vendored RGI sequence is, per the list's first word.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SequenceKind {
+    Zwj,
+    Tag,
+    Keycap,
+    Presentation,
+    Flag,
+}
+
+/// One vendored RGI emoji sequence, decoded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct EmojiSequence {
+    pub(crate) kind: SequenceKind,
+    pub(crate) text: String,
+}
+
+/// Every sequence in the vendored list, in file order. A line this cannot
+/// read is skipped rather than guessed at: `src/lint`'s test counts the
+/// lines it needs, so a skipped one cannot ship.
+pub(crate) fn emoji_sequences() -> impl Iterator<Item = EmojiSequence> {
+    EMOJI_SEQUENCES.lines().filter_map(sequence_line)
+}
+
+/// One `<kind> <sequence> [name]` line; `None` for a comment.
+fn sequence_line(line: &str) -> Option<EmojiSequence> {
+    let mut words = line.split_whitespace();
+    let kind = match words.next()? {
+        "zwj" => SequenceKind::Zwj,
+        "tag" => SequenceKind::Tag,
+        "keycap" => SequenceKind::Keycap,
+        "presentation" => SequenceKind::Presentation,
+        "flag" => SequenceKind::Flag,
+        _ => return None,
+    };
+    let text = super::code_points(words.next()?)?;
+    Some(EmojiSequence { kind, text })
+}
 
 /// The hazard file's sets, and nothing else.
 ///

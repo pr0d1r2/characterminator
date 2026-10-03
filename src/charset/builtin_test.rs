@@ -395,3 +395,16 @@ fn the_library_catalog_holds_presets_and_locales() {
     assert!(library.resolve("caveman", "text").is_ok());
     assert!(library.resolve("pl", "text").is_ok());
 }
+
+/// Every vendored sequence line decodes, by kind: none is skipped by the
+/// one `U+` decoder the map and the set grammar share.
+#[test]
+fn every_vendored_emoji_sequence_decodes() {
+    use super::SequenceKind::{Flag, Keycap, Presentation, Tag, Zwj};
+    let all: Vec<_> = super::emoji_sequences().collect();
+    let count = |kind| all.iter().filter(|s| s.kind == kind).count();
+    let kinds = [Zwj, Tag, Keycap, Presentation, Flag].map(count);
+    assert_eq!(kinds, [1614, 3, 12, 207, 259]);
+    let heart = all.iter().find(|s| s.text == "\u{2764}\u{FE0F}");
+    assert_eq!(heart.map(|s| s.kind), Some(Presentation));
+}

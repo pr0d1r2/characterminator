@@ -11,7 +11,7 @@
 //! between two emoji" is not a rule here; it would be a second, private
 //! definition of a sequence, and a looser one.
 
-use crate::charset::builtin;
+use crate::charset::builtin::{self, EmojiSequence, SequenceKind};
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -132,7 +132,7 @@ impl Sequences {
 /// The list's sequences by first character, longest first.
 fn listed() -> BTreeMap<char, Vec<String>> {
     let mut by_first: BTreeMap<char, Vec<String>> = BTreeMap::new();
-    for text in builtin::EMOJI_SEQUENCES.lines().filter_map(exempting) {
+    for text in builtin::emoji_sequences().filter_map(exempting) {
         if let Some(first) = text.chars().next() {
             by_first.entry(first).or_default().push(text);
         }
@@ -162,22 +162,12 @@ fn inner(held: &str) -> impl Iterator<Item = usize> + '_ {
         .map(|(i, _)| i)
 }
 
-/// One list line's sequence, if it is a kind that holds a hazard.
-fn exempting(line: &str) -> Option<String> {
-    let mut words = line.split_whitespace();
-    let kind = words.next()?;
-    let sequence = words.next()?;
-    matches!(kind, "zwj" | "tag" | "keycap" | "presentation")
-        .then(|| decode(sequence))?
-}
-
-/// `U+XXXX+U+XXXX...` as text.
-fn decode(sequence: &str) -> Option<String> {
-    sequence
-        .strip_prefix("U+")?
-        .split("+U+")
-        .map(|hex| char::from_u32(u32::from_str_radix(hex, 16).ok()?))
-        .collect()
+/// A sequence's text, if it is a kind that holds a hazard: a flag is
+/// two regional indicators, which are none, so it exempts nothing.
+fn exempting(sequence: EmojiSequence) -> Option<String> {
+    use SequenceKind::{Keycap, Presentation, Tag, Zwj};
+    let holds = matches!(sequence.kind, Zwj | Tag | Keycap | Presentation);
+    holds.then_some(sequence.text)
 }
 
 #[cfg(test)]

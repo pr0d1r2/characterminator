@@ -12,7 +12,9 @@ pub(crate) mod range;
 pub(crate) mod set;
 
 pub use compose::{ComposeError, SetCatalog};
-pub(crate) use parse::{ParseError, SetDefinition, SetMember, parse_line};
+pub(crate) use parse::{
+    ParseError, SetDefinition, SetMember, code_points, parse_line,
+};
 
 /// An inclusive range of code points, the unit a set is built from.
 ///

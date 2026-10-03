@@ -243,19 +243,36 @@ fn span(token: &str, low: &str, high: &str) -> Result<SetMember, ParseError> {
         })
 }
 
+/// Hexadecimal digits to a character, or the token named as bad.
+fn code_point(token: &str, digits: &str) -> Result<char, ParseError> {
+    hex(digits).ok_or_else(|| ParseError::BadCodePoint {
+        token: token.to_owned(),
+    })
+}
+
+/// `U+XXXX`, or a sequence `U+XXXX+U+YYYY...`, as the text it spells.
+///
+/// The ONE decoder of the code-point spelling every grammar here shares:
+/// a set member, a map token (`src/fix`) and a line of the vendored emoji
+/// sequences (`src/lint:V63`). `None` for anything else, so each caller
+/// names the refusal in its own grammar's words.
+pub(crate) fn code_points(token: &str) -> Option<String> {
+    token
+        .strip_prefix(CODE_POINT)?
+        .split("+U+")
+        .map(hex)
+        .collect()
+}
+
 /// Hexadecimal digits to a character.
 ///
 /// The digits are checked before conversion because `from_str_radix` also
 /// accepts a leading sign, which would read `U++41` as a letter.
-fn code_point(token: &str, digits: &str) -> Result<char, ParseError> {
-    let bad = || ParseError::BadCodePoint {
-        token: token.to_owned(),
-    };
+fn hex(digits: &str) -> Option<char> {
     if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_hexdigit()) {
-        return Err(bad());
+        return None;
     }
-    let value = u32::from_str_radix(digits, 16).map_err(|_| bad())?;
-    char::from_u32(value).ok_or_else(bad)
+    char::from_u32(u32::from_str_radix(digits, 16).ok()?)
 }
 
 #[cfg(test)]

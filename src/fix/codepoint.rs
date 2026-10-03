@@ -10,31 +10,17 @@
 //! (`src/charset:V22`), which is the same rule this crate's own source
 //! obeys.
 
-/// The text a token stands for, or `None` if it is not a well-formed token.
-pub(super) fn decode(token: &str) -> Option<String> {
-    if !token.starts_with("U+") {
-        return Some(token.to_owned());
-    }
-    let mut text = String::new();
-    let mut rest = token;
-    loop {
-        rest = take_one(rest, &mut text)?;
-        if rest.is_empty() {
-            return Some(text);
-        }
-        rest = rest.strip_prefix('+')?;
-    }
-}
+use crate::charset::code_points;
 
-/// Read one `U+XXXX` off the front, push the character, return the rest.
-fn take_one<'a>(token: &'a str, text: &mut String) -> Option<&'a str> {
-    let body = token.strip_prefix("U+")?;
-    let end = body
-        .find(|c: char| !c.is_ascii_hexdigit())
-        .unwrap_or(body.len());
-    let value = u32::from_str_radix(body.get(..end)?, 16).ok()?;
-    text.push(char::from_u32(value)?);
-    body.get(end..)
+/// The text a token stands for, or `None` if it is not a well-formed token.
+/// The `U+` form is read by `src/charset`'s one decoder, so a map token
+/// and a set member cannot disagree about what a code point is.
+pub(super) fn decode(token: &str) -> Option<String> {
+    if token.starts_with("U+") {
+        code_points(token)
+    } else {
+        Some(token.to_owned())
+    }
 }
 
 #[cfg(test)]
