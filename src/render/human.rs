@@ -197,9 +197,10 @@ fn unread_lines(out: &mut String, items: &[Skipped<'_>]) {
 /// read exactly like a clean one.
 fn unread(item: &Skipped<'_>) -> String {
     match item.reason {
-        Unreadable::NotUtf8 { byte } => {
-            format!("{}: invalid UTF-8 at byte {byte}", shown(item.path))
-        }
+        Unreadable::NotUtf8 { byte, line, column } => format!(
+            "{}: invalid UTF-8 at {line}:{column} (byte {byte})",
+            shown(item.path)
+        ),
         Unreadable::Binary => format!("{}: skipped, binary", shown(item.path)),
     }
 }
@@ -460,7 +461,11 @@ mod tests {
     fn broken(path: &str, byte: usize) -> Skipped<'_> {
         Skipped {
             path,
-            reason: Unreadable::NotUtf8 { byte },
+            reason: Unreadable::NotUtf8 {
+                byte,
+                line: 1,
+                column: byte.saturating_add(1),
+            },
         }
     }
 
@@ -566,7 +571,7 @@ mod tests {
     fn an_unread_file_is_named_rather_than_dropped() {
         let items = [skip("b.bin"), broken("a.txt", 17)];
         let expected =
-            "a.txt: invalid UTF-8 at byte 17\nb.bin: skipped, binary";
+            "a.txt: invalid UTF-8 at 1:18 (byte 17)\nb.bin: skipped, binary";
         assert_eq!(check(&[], &items), expected);
     }
 

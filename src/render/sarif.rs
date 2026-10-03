@@ -250,10 +250,10 @@ fn invocation(skipped: &[Skipped<'_>]) -> String {
 /// because that is the scanner working as intended.
 fn notification(item: &Skipped<'_>) -> String {
     let (level, words, at) = match item.reason {
-        Unreadable::NotUtf8 { byte } => (
+        Unreadable::NotUtf8 { byte, line, column } => (
             "warning",
-            format!("not read: invalid UTF-8 at byte {byte}"),
-            Some(object(&[field("byteOffset", &number(byte))])),
+            format!("not read: invalid UTF-8 at {line}:{column}"),
+            Some(undecoded(line, column, byte)),
         ),
         Unreadable::Binary => ("note", String::from("not read: binary"), None),
     };
@@ -261,6 +261,16 @@ fn notification(item: &Skipped<'_>) -> String {
         field("level", &string(level)),
         field("message", &text(&words)),
         field("locations", &array(&[location(item.path, at)])),
+    ])
+}
+
+/// Where decoding failed, as a SARIF region: the line and column a viewer
+/// jumps to, and the byte offset beside them.
+fn undecoded(line: usize, column: usize, byte: usize) -> String {
+    object(&[
+        field("startLine", &number(line)),
+        field("startColumn", &number(column)),
+        field("byteOffset", &number(byte)),
     ])
 }
 
@@ -372,18 +382,23 @@ mod tests {
         assert_eq!(log, format!("{}{expected}", head()));
     }
 
+    /// Decoding stopped at byte 17, which is line 1, column 18.
+    const NOT_UTF8: Unreadable = Unreadable::NotUtf8 {
+        byte: 17,
+        line: 1,
+        column: 18,
+    };
+
     #[test]
     fn unread_files_are_notifications_in_path_order() {
-        let items = [
-            skip("b.bin", Unreadable::Binary),
-            skip("a.txt", Unreadable::NotUtf8 { byte: 17 }),
-        ];
+        let items =
+            [skip("b.bin", Unreadable::Binary), skip("a.txt", NOT_UTF8)];
         let expected = concat!(
             r#""results":[],"invocations":[{"executionSuccessful":true,"#,
             r#""toolExecutionNotifications":[{"level":"warning","#,
-            r#""message":{"text":"not read: invalid UTF-8 at byte 17"},"#,
+            r#""message":{"text":"not read: invalid UTF-8 at 1:18"},"#,
             r#""locations":[{"physicalLocation":{"artifactLocation":{"#,
-            r#""uri":"a.txt"},"region":{"byteOffset":17}}}]},"#,
+            r#""uri":"a.txt"},"region":{"startLine":1,"startColumn":18,"byteOffset":17}}}]},"#,
             r#"{"level":"note","message":{"text":"not read: binary"},"#,
             r#""locations":[{"physicalLocation":{"artifactLocation":{"#,
             r#""uri":"b.bin"}}}]}]}]}]}"#

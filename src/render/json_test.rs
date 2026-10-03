@@ -53,7 +53,11 @@ fn skip(path: &str) -> Skipped<'_> {
 fn broken(path: &str, byte: usize) -> Skipped<'_> {
     Skipped {
         path,
-        reason: Unreadable::NotUtf8 { byte },
+        reason: Unreadable::NotUtf8 {
+            byte,
+            line: 1,
+            column: byte.saturating_add(1),
+        },
     }
 }
 
@@ -158,7 +162,7 @@ fn unread_files_are_tagged_objects_in_path_order() {
     let items = [skip("b.bin"), broken("a.txt", 17)];
     let expected = concat!(
         r#"{"schema":1,"verb":"check","violations":[],"skipped":["#,
-        r#"{"path":"a.txt","reason":"not-utf8","byte":17},"#,
+        r#"{"path":"a.txt","reason":"not-utf8","byte":17,"line":1,"column":18},"#,
         r#"{"path":"b.bin","reason":"binary"}]}"#
     );
     assert_eq!(check(&[], &items), expected);
@@ -221,7 +225,7 @@ fn a_stats_row_carries_each_count_beside_its_method() {
 fn a_stats_document_names_the_files_it_skipped() {
     let expected = concat!(
         r#"{"schema":1,"verb":"stats","files":[],"total":null,"skipped":["#,
-        r#"{"path":"a.txt","reason":"not-utf8","byte":17},"#,
+        r#"{"path":"a.txt","reason":"not-utf8","byte":17,"line":1,"column":18},"#,
         r#"{"path":"b.bin","reason":"binary"}]}"#
     );
     let items = [skip("b.bin"), broken("a.txt", 17)];

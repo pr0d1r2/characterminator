@@ -182,9 +182,11 @@ fn unread_item(item: &Skipped<'_>) -> String {
 
 fn reason_fields(reason: Unreadable) -> Vec<String> {
     match reason {
-        Unreadable::NotUtf8 { byte } => vec![
+        Unreadable::NotUtf8 { byte, line, column } => vec![
             field("reason", &string("not-utf8")),
             field("byte", &number(byte)),
+            field("line", &number(line)),
+            field("column", &number(column)),
         ],
         Unreadable::Binary => vec![field("reason", &string("binary"))],
     }

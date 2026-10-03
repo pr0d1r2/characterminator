@@ -42,7 +42,7 @@ a SARIF 2.1.0 log (`src/render:V50`), which has its own schema.
 |---|---|
 | `level` | `allow`, `warn`, `deny`, `forbid` |
 | `lint` | a lint name: `outside-set`, a hazard (`bidi-control`, ...) or a pedantic lint (`trailing-whitespace`, ...); `ctrm explain` and the README list them |
-| `reason` (skipped) | `not-utf8` (with `byte`, where decoding failed) or `binary` |
+| `reason` (skipped) | `not-utf8` (with `byte`, 0-based, and `line`/`column`, 1-based in code points, where decoding failed) or `binary` |
 | `method` (counts) | `estimate` or `bpe` |
 
 ## Sets
@@ -76,7 +76,7 @@ the map: a file `fix` refuses to rewrite (`src/fix:V5`, `src/fix:V6`) has
 rewrite (an emoji sequence) can be `fixable` with a `null` replacement: the
 replacement is reported on the span's first character.
 
-A **skipped** entry is `{path, reason}` plus `byte` for `not-utf8`.
+A **skipped** entry is `{path, reason}` plus `byte`, `line` and `column` for `not-utf8`.
 
 ### `check --summary`
 

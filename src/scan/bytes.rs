@@ -72,9 +72,8 @@ pub(crate) fn decode(bytes: &[u8]) -> Result<&str, Unreadable> {
     if looks_binary(bytes) {
         return Err(Unreadable::Binary);
     }
-    core::str::from_utf8(bytes).map_err(|error| Unreadable::NotUtf8 {
-        byte: error.valid_up_to(),
-    })
+    core::str::from_utf8(bytes)
+        .map_err(|error| not_utf8(bytes, error.valid_up_to()))
 }
 
 /// [`decode`], keeping the bytes: a file read once becomes its text with
@@ -87,9 +86,22 @@ pub(crate) fn decode_owned(bytes: Vec<u8>) -> Result<String, Unreadable> {
     if looks_binary(&bytes) {
         return Err(Unreadable::Binary);
     }
-    String::from_utf8(bytes).map_err(|error| Unreadable::NotUtf8 {
-        byte: error.utf8_error().valid_up_to(),
+    String::from_utf8(bytes).map_err(|error| {
+        let byte = error.utf8_error().valid_up_to();
+        not_utf8(error.as_bytes(), byte)
     })
+}
+
+/// The refusal for bytes that stop decoding at `byte`, located the way a
+/// finding is: the bytes before it are valid UTF-8 by construction, so
+/// their lines and characters can be counted.
+fn not_utf8(bytes: &[u8], byte: usize) -> Unreadable {
+    let before = bytes.get(..byte).and_then(|b| core::str::from_utf8(b).ok());
+    let before = before.unwrap_or_default();
+    let line = before.matches('\n').count().saturating_add(1);
+    let tail = before.rsplit('\n').next().unwrap_or_default();
+    let column = tail.chars().count().saturating_add(1);
+    Unreadable::NotUtf8 { byte, line, column }
 }
 
 #[cfg(test)]
@@ -106,7 +118,27 @@ mod tests {
         // 0xFF is not a legal UTF-8 lead byte; two bytes decoded first.
         let outcome = scan_bytes(b"ab\xffcd", ascii_only);
 
-        assert_eq!(outcome, Err(Unreadable::NotUtf8 { byte: 2 }));
+        assert_eq!(
+            outcome,
+            Err(Unreadable::NotUtf8 {
+                byte: 2,
+                line: 1,
+                column: 3
+            })
+        );
+    }
+
+    /// The refusal says where a reader should look: line and column of the
+    /// bad byte, counted in characters, as a finding's position is.
+    #[test]
+    fn invalid_utf8_is_located_by_line_and_column() {
+        let outcome = decode(b"ok\n\xc3\xa9x\xff");
+        let want = Unreadable::NotUtf8 {
+            byte: 6,
+            line: 2,
+            column: 3,
+        };
+        assert_eq!(outcome, Err(want));
     }
 
     #[test]
@@ -151,7 +183,14 @@ mod tests {
     #[test]
     fn decoding_refuses_the_way_scanning_does() {
         assert_eq!(decode(b"ab\x00\xff"), Err(Unreadable::Binary));
-        assert_eq!(decode(b"ab\xff"), Err(Unreadable::NotUtf8 { byte: 2 }));
+        assert_eq!(
+            decode(b"ab\xff"),
+            Err(Unreadable::NotUtf8 {
+                byte: 2,
+                line: 1,
+                column: 3
+            })
+        );
         assert_eq!(decode("a\u{e9}".as_bytes()), Ok("a\u{e9}"));
     }
 

@@ -199,7 +199,7 @@ mod tests {
             return;
         }
         let said = ran(&root, false);
-        assert_eq!(said, "notes.md: invalid UTF-8 at byte 2");
+        assert_eq!(said, "notes.md: invalid UTF-8 at 1:3 (byte 2)");
     }
 
     /// A file already inside its set costs the same before and after:

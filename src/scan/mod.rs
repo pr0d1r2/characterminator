@@ -42,8 +42,14 @@ pub struct Hit {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Unreadable {
-    /// Not valid UTF-8, with the byte offset where decoding failed.
-    NotUtf8 { byte: usize },
+    /// Not valid UTF-8: where decoding failed, as the 0-based byte offset
+    /// and as the 1-based line and column (in code points, as a
+    /// [`Position`] counts them) of that byte, so a reader can go to it.
+    NotUtf8 {
+        byte: usize,
+        line: usize,
+        column: usize,
+    },
     /// Detected as binary, so it was skipped and named rather than read.
     Binary,
 }
