@@ -42,7 +42,7 @@ V75: rule line ! name ≥ 1 of set | `@<family>` | `!<level>`. pattern only (`a.
 
 id|status|task|cites
 T6|x|ARCHIVED to SPEC-ARCHIVE.md|V1,V2
-T15|.|[superseded by `src/lint:T39`] locale hint = the `locale-literal` pedantic lint|V17,`src/lint:V37`
+T15|x|ARCHIVED to SPEC-ARCHIVE.md|V17,`src/lint:V37`
 T18|x|ARCHIVED to SPEC-ARCHIVE.md|V18,`.:I.flag`
 T19|x|ARCHIVED to SPEC-ARCHIVE.md|V18
 T20|x|ARCHIVED to SPEC-ARCHIVE.md|V19,V20
