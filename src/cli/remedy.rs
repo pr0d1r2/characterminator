@@ -52,6 +52,22 @@ impl<'a> Case<'a> {
         findings
     }
 
+    /// What is left, where it sits on disk once the run is over (`src/cli:V80`,
+    /// B71): in the output when `fix` writes it, else in the text as it is.
+    /// Reported at the ORIGINAL position after a write, it named a column the
+    /// written file no longer had, and the next `check` disagreed.
+    pub(super) fn left_on_disk(
+        &self,
+        fixed: &Fixed,
+        wrote: bool,
+    ) -> Vec<Finding> {
+        if wrote {
+            self.left(fixed)
+        } else {
+            self.left_in_place(fixed)
+        }
+    }
+
     /// One remedy per finding, in `findings`' order. A text the engine
     /// refuses to fix (`src/fix:V5`, `src/fix:V6`) is written by no `fix`
     /// run, so every finding in it has none.

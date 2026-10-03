@@ -86,8 +86,10 @@ A **skipped** entry is `{path, reason}` plus `byte` for `not-utf8`.
   `replacement` equals `to` and `fixable` is `true`. Positions are in the
   file as it was before the rewrite.
 - **unmapped** is what the rewrite leaves, as `check` would report it: a
-  violation with `replacement: null` and `fixable: false`, at its position
-  in the file before the rewrite.
+  violation with `replacement: null` and `fixable: false`. After a bare
+  `fix` its position is in the file AS WRITTEN, so it matches the next
+  `check`; under `--check` nothing is written, and it is in the file on
+  disk.
 
 ### `stats`
 

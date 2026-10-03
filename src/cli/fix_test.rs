@@ -83,7 +83,35 @@ fn a_character_with_no_mapping_is_kept_and_still_fails() {
     assert_eq!(read(&root), "a \u{2261} b\n", "{text}");
     assert_eq!(code, 1, "{text}");
     // B23: and NAMED, in `check`'s row grammar, so exit 1 says why.
-    assert_eq!(text, "notes.md:1:3 U+2261 ascii");
+    assert_eq!(text, "left: notes.md:1:3 U+2261 ascii");
+}
+
+/// B71: after a WRITE what is left is named where it sits in the file
+/// as written -- the em dash became `--`, so U+2261 moved from column 3
+/// to 4 -- which is where the next `check` finds it. `--check` writes
+/// nothing, so it keeps the column on disk. Both still exit 1.
+#[test]
+fn a_leftover_is_named_where_the_written_file_has_it() {
+    let files = [("notes.md", "a\u{2014}\u{2261}\n")];
+    let Some(root) = fixture("ctrm-fix-left-shift", &files) else {
+        return;
+    };
+    let (said, code) = ran(&root, false);
+    let on_disk = "\nleft: notes.md:1:3 U+2261 ascii";
+    assert_eq!((said.ends_with(on_disk), code), (true, 1), "{said}");
+    let (said, code) = ran(&root, true);
+    let written = "\nleft: notes.md:1:4 U+2261 ascii";
+    assert_eq!((said.ends_with(written), code), (true, 1), "{said}");
+    assert_eq!(read(&root), "a--\u{2261}\n");
+    assert_eq!(checked(&root), "notes.md:1:4 U+2261 ascii");
+}
+
+/// What the next `check` says of `notes.md`.
+fn checked(root: &Path) -> String {
+    let config = crate::cli::config::discovered(root);
+    let asked = ["notes.md".to_owned()];
+    let next = super::super::check::run(&config, &asked, Format::Human);
+    next.map(|r| r.text).unwrap_or_default()
 }
 
 /// B21: a file `check` skips as binary is skipped by `fix` too, and
@@ -147,7 +175,8 @@ fn a_hazard_the_set_grants_is_drift_for_fix_check() {
     assert!(out.ends_with("\nnotes.md:1:3 U+202E -> \"\""), "{out}");
     let bell = "a\u{7}b\n";
     let (out, code) = left_behind("ctrm-fix-hazard-bell", any, bell);
-    assert_eq!((out.as_str(), code), ("notes.md:1:2 U+0007 hazard", 1));
+    let kept = "left: notes.md:1:2 U+0007 hazard";
+    assert_eq!((out.as_str(), code), (kept, 1));
 }
 
 /// B41: a file that is not UTF-8 fails both forms, as it fails
@@ -244,7 +273,7 @@ fn two_files_report_in_path_order_rewrites_then_leftovers() {
     let report = run(&config, &asked, Format::Human, false);
     let (text, code) = report.map(|r| (r.text, r.code)).unwrap_or_default();
     let want = "a.md:1:3 U+2014 -> \"--\"\nb.md:1:2 U+2014 -> \"--\"\n\
-        a.md:1:1 U+0007 hazard\na.md:1:2 U+2261 ascii\nb.md:1:3 U+2261 ascii";
+        left: a.md:1:1 U+0007 hazard\nleft: a.md:1:2 U+2261 ascii\nleft: b.md:1:3 U+2261 ascii";
     assert_eq!((text.as_str(), code), (want, 1));
 }
 

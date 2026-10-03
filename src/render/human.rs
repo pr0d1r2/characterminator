@@ -47,22 +47,31 @@ pub(super) fn check_lines<'a>(
     skipped: &[Skipped<'_>],
 ) -> String {
     let mut out = String::new();
-    violations(&mut out, lines);
+    violations(&mut out, lines, "");
     unread_lines(&mut out, skipped);
     out
 }
 
 /// Every violation line, each after a newline unless it is the first
 /// thing in the report: lines are JOINED, never terminated.
-fn violations<'a>(out: &mut String, lines: impl IntoIterator<Item = Line<'a>>) {
+fn violations<'a>(
+    out: &mut String,
+    lines: impl IntoIterator<Item = Line<'a>>,
+    prefix: &str,
+) {
     let lines = lines.into_iter();
     out.reserve(lines.size_hint().0.saturating_mul(LINE_BYTES));
     let mut path = Spelled::new(shown);
     for item in lines {
         next_line(out);
+        out.push_str(prefix);
         violation(out, path.of(item.path), item);
     }
 }
+
+/// What `fix` leaves is marked, so it is not read as one more rewrite or
+/// as a row about the file before it was written (V96, B71).
+const LEFT: &str = "left: ";
 
 /// The separator before a line, which the first line goes without.
 fn next_line(out: &mut String) {
@@ -166,9 +175,27 @@ pub(super) fn fix<'a>(
         next_line(&mut out);
         change(&mut out, path.of(item.path), item);
     }
-    violations(&mut out, unmapped);
+    violations(&mut out, unmapped, LEFT);
     unread_lines(&mut out, skipped);
     out
+}
+
+/// The one-line tally after a `fix` report, for stderr (V123):
+/// `rewrote 5, 1 left (no map entry): grant a set in .ctrm or edit by
+/// hand`. `fix --check` says `would rewrite`. Empty when there was
+/// nothing to rewrite and nothing left: a clean run stays silent.
+pub(super) fn fix_note(rewrote: usize, left: usize, wrote: bool) -> String {
+    if rewrote == 0 && left == 0 {
+        return String::new();
+    }
+    let verb = if wrote { "rewrote" } else { "would rewrite" };
+    if left == 0 {
+        return format!("{verb} {rewrote}, nothing left");
+    }
+    format!(
+        "{verb} {rewrote}, {left} left (no map entry): \
+         grant a set in .ctrm or edit by hand"
+    )
 }
 
 fn change(out: &mut String, path: &str, item: &Change<'_>) {
@@ -546,6 +573,19 @@ mod tests {
         assert_eq!(stats(&[row], &[]), expected);
     }
 
+    /// V123: the `fix` tally, in both forms; a clean run says nothing.
+    #[test]
+    fn a_fix_tally_says_what_was_rewritten_and_what_is_left() {
+        let left = "rewrote 5, 1 left (no map entry): \
+                    grant a set in .ctrm or edit by hand";
+        assert_eq!(super::fix_note(5, 1, true), left);
+        assert_eq!(
+            super::fix_note(2, 0, false),
+            "would rewrite 2, nothing left"
+        );
+        assert_eq!(super::fix_note(0, 0, true), "");
+    }
+
     #[test]
     fn a_rewrite_shows_what_replaces_the_character() {
         let rewrite = Rewrite {
@@ -569,7 +609,7 @@ mod tests {
             fix(&[change], crate::render::order::lines(&[em_dash()]), &[]);
         assert_eq!(
             said,
-            "a.rs:2:5 U+2014 -> \"--\"\nsrc/a.rs:2:5 U+2014 ascii"
+            "a.rs:2:5 U+2014 -> \"--\"\nleft: src/a.rs:2:5 U+2014 ascii"
         );
     }
 

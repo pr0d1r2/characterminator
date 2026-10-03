@@ -252,6 +252,20 @@ pub(crate) fn fix(
     }
 }
 
+/// The tally a human `fix` report ends with, for STDERR so stdout stays
+/// rows (V123). Empty for json and for a run with nothing to say.
+pub(crate) fn fix_note(
+    format: Format,
+    rewrote: usize,
+    left: usize,
+    wrote: bool,
+) -> String {
+    match format {
+        Format::Human => human::fix_note(rewrote, left, wrote),
+        Format::Json | Format::Sarif => String::new(),
+    }
+}
+
 /// `stats`: one row per file, then the files that are not text, named as
 /// `check` names them (`src/scan:V8`).
 pub(crate) fn stats(

@@ -29,6 +29,8 @@ use std::path::PathBuf;
 pub(super) struct Report {
     pub text: String,
     pub code: u8,
+    /// The tally for stderr (`src/render:V123`), empty when none.
+    pub note: String,
 }
 
 /// One file's rewrites, owned so the borrowed render rows can point at
@@ -151,7 +153,11 @@ impl Pass {
         found: &mut Found,
     ) -> Result<String, String> {
         let fixed = self.fixed(case.judge, case.text, &changed.path)?;
-        found.keep(&changed.path, &changed.set, case.left_in_place(&fixed));
+        found.keep(
+            &changed.path,
+            &changed.set,
+            case.left_on_disk(&fixed, self.write),
+        );
         changed.verdicts = verdicts(case, &fixed.report.rewrites);
         let engine::Fixed { output, report, .. } = fixed;
         changed.rewrites = report.rewrites;
@@ -258,14 +264,22 @@ fn report_of(found: &Found, format: Format, write: bool) -> Report {
     let skipped: Vec<Skipped<'_>> = found.skips.iter().map(skip).collect();
     let kept: Vec<Batch<'_>> =
         found.unmapped.iter().flat_map(batches).collect();
+    let left = kept.iter().map(|batch| batch.findings.len()).sum();
+    Report {
+        text: render::fix(format, &changes, &kept, &skipped),
+        code: code_of(found, write),
+        note: render::fix_note(format, changes.len(), left, write),
+    }
+}
+
+/// Exit 1 on drift under `--check`, on what `check` would fail in what
+/// is left, or on a file that is not UTF-8; else 0.
+fn code_of(found: &Found, write: bool) -> u8 {
     let drifted = !write && !found.changed.is_empty();
     let failed = drifted
         || found_code(&found.unmapped) != 0
         || unreadable_code(&found.skips) != 0;
-    Report {
-        text: render::fix(format, &changes, &kept, &skipped),
-        code: u8::from(failed),
-    }
+    u8::from(failed)
 }
 
 /// One file's rewrites as the rows `render` borrows.

@@ -273,7 +273,18 @@ fn fixed(run: &Run<'_>) -> Outcome {
 }
 
 fn fix_report_of(report: &fix::Report) -> Outcome {
-    reported(&report.text, report.code)
+    let outcome = reported(&report.text, report.code);
+    noted(&report.note);
+    outcome
+}
+
+/// A report's one-line tally, on STDERR so stdout stays rows a script
+/// can read (`src/render:V123`). Written after the rows, so a terminal
+/// shows it last.
+fn noted(note: &str) {
+    if !note.is_empty() {
+        eprintln!("{note}");
+    }
 }
 
 /// `--bpe` asks for the real tokenizer. The default is the estimate,

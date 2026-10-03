@@ -14,12 +14,16 @@ $ ctrm fix notes.md
 notes.md:1:6 U+2014 -> "--"
 notes.md:1:12 U+201C -> "\""
 notes.md:1:19 U+201D -> "\""
+rewrote 3, nothing left
 ```
 
 - `ascii` is the **set the file was judged against**, printed on every row,
   so the answer says what the rule was and not only that one was broken.
 - `U+2014` rather than the character itself: a report about invisible and
   confusable characters cannot be written in them.
+- The last line is a tally on stderr; stdout stays one row per finding.
+  What `fix` cannot rewrite is listed as `left: <path:line:col ...>`, at
+  its place in the file as written.
 
 <!-- BEGIN badges -->
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

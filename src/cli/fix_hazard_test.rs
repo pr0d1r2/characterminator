@@ -36,7 +36,7 @@ fn a_control_character_is_rewritten_only_through_the_map() {
     let text = "a\u{7}b\n";
     let (left, out, code) = fixed("ctrm-fixhz-bell", "* any\n", text);
     assert_eq!((left.as_str(), code), (text, 1), "{out}");
-    assert_eq!(out, "notes.md:1:2 U+0007 hazard");
+    assert_eq!(out, "left: notes.md:1:2 U+0007 hazard");
     let files = [
         (".ctrm", "* any\n"),
         (".ctrm-map", "U+0007 !\n"),
