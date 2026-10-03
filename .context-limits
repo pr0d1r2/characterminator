@@ -251,9 +251,9 @@ src/render/SPEC.md   1680
 src                2490
 src/charset          4460
 src/charset/locale   5490
-src/cli              3940
+src/cli              4430
 src/cli/explain      4200
-src/cli/guard        4770
+src/cli/guard        5420
 src/fix              3720
 src/fix/emoji        4950
 src/fix/words        4100
@@ -261,10 +261,10 @@ src/lint             2990
 src/lint/hazard      4220
 src/lint/pedantic    3890
 src/render           3460
-src/rules            3650
+src/rules            4140
 src/scan             2700
-src/tokens           2830
-src/judge            2990
+src/tokens           3290
+src/judge            3380
 
 # The judge node (src/judge), extracted from src/cli for the 0.1.0 API
 # work: ~12% over its measured spec.
