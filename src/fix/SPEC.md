@@ -31,7 +31,7 @@ R11|`words` map saving (V51)|112 caveman `SPEC*.md` (this repo + public `itok` `
 
 ## §V INVARIANTS
 
-V4: `fix` replaces only via declared transliteration map. char w/o mapping → kept & reported as `check` row (json `unmapped`), exit 1. ⊥ silent drop.
+V4: `fix` replaces only via declared transliteration map. char w/o mapping → kept & reported as `check` row (json `unmapped`), exit 1. ⊥ silent drop. target judged AFTER its whole chain (V5): ∃ char ∉ set → match refused ∴ source kept & reported, ⊥ written (B40).
 V5: `fix` idempotent: `fix(fix(x)) == fix(x)`, property-tested.
 V6: `fix` touches ⊥ allowed char: bytes outside violations ! identical pre/post, asserted before write.
 V26: typography = builtin map targets, ⊥ default grant (`src/charset:R4`: 45.1% of non-ASCII files need no grant after map): `—`→`--` · `–` `−`→`-` · curly quotes → straight · `…`→`...` · `«»`→`"` · NBSP → space · ZWSP & BOM → delete. `typography` set SHIPS ∴ prose that wants real typography grants it & `fix` leaves those chars (V6). per-locale `typography-<code>` from CLDR punctuation (`src/charset:R6`): CLDR now vendored (`src/charset:T60`) ∴ open as T61.
@@ -63,3 +63,4 @@ B14|2026-10-02|stray VS16 or skin tone in a ZWJ seq (`U+1F469 U+FE0F U+200D U+1F
 B24|2026-10-02|V65 later pass reported @ intermediate text (earlier rewrites shifted it) & mixed into 1 list ∴ rows ⊥ resolve in the file on disk. via review|V65
 B34|2026-10-02|curated ZWJ table had 3 of UTS #51 §2.6's groupings ∴ mixed-tone men holding hands → U+1F468 while same-tone → U+1F46C (V60); handshake → U+1FAF1|V62
 B35|2026-10-02|scan matched a flag at ANY regional indicator ∴ `X`,`US` adjacent → `X` + `US` (shown: `XU` + lone `S`); plain region code fused w/ neighbours (`PLDE`, `APLB`)|V76
+B40|2026-10-03|replacement re-run through the map (V5), inner run's unmapped dropped & result ⊥ judged ∴ `--map 'U+2261 U+2295'` wrote U+2295 into an `ascii` file, reported ⊥, exit 0; ZWJ seq → 1 emoji under `ascii` alike. via release review|V4

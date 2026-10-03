@@ -124,11 +124,15 @@ fn holding_hands_lands_on_its_grouping() {
     assert_eq!(fixed("\u{1F46C}\u{1F3FB}", true), "\u{1F46C}");
 }
 
-/// Under `ascii` a ZWJ sequence still compresses: one finding is
-/// left where there were several, since the target has no ASCII.
+/// Under `ascii` a ZWJ sequence is KEPT, every code point reported: its
+/// target is an emoji `ascii` does not grant, and writing it would
+/// write a violation and report none (V4, B40). It used to compress.
 #[test]
-fn under_ascii_a_zwj_sequence_leaves_one_emoji() {
-    assert_eq!(fixed(FAMILY, false), "\u{1F46A}");
+fn under_ascii_a_zwj_sequence_is_kept_and_reported() {
+    assert_eq!(fixed(FAMILY, false), FAMILY);
+    let done = fix(FAMILY, &MAP, &|c: char| c.is_ascii());
+    let kept = done.unwrap_or_default().report.unmapped.len();
+    assert_eq!(kept, FAMILY.chars().count());
 }
 
 /// A joiner in no RGI sequence is not a sequence: it stays, and

@@ -12,7 +12,7 @@
 //! Whether a character is ALLOWED is not decided here. It arrives as a
 //! predicate, because that answer belongs to the charset and rules nodes.
 
-use crate::fix::map::{Map, Match};
+use crate::fix::map::{Map, Match, violates};
 use crate::fix::{Error, Rewrite};
 use crate::scan::{Hit, Position, located};
 
@@ -325,7 +325,10 @@ impl Run<'_> {
     }
 
     /// The span to rewrite here, if any. A zero-length match is refused: it
-    /// would leave the cursor where it is.
+    /// would leave the cursor where it is. So is a match whose replacement,
+    /// rewritten to its fixed point, still holds a character the file may
+    /// not: that would WRITE a violation, so the character stays and is
+    /// reported (V4, B40).
     fn matched<'b>(&self, rest: &'b str) -> Found<'b> {
         if self.paired && rest.chars().next().is_some_and(regional) {
             return Ok(None);
@@ -337,7 +340,11 @@ impl Run<'_> {
         else {
             return Ok(None);
         };
-        Ok(Some((source, found)))
+        let to = self.expand(&found.to)?;
+        if violates(&to, self.allowed) {
+            return Ok(None);
+        }
+        Ok(Some((source, Match { to, ..found })))
     }
 
     fn rewrite(
@@ -346,7 +353,7 @@ impl Run<'_> {
         ch: char,
         found: Match,
     ) -> Result<(), Error> {
-        let to = self.spaced(self.expand(&found.to)?, found.word);
+        let to = self.spaced(found.to, found.word);
         let hit = Hit {
             position: self.at.position(),
             character: ch,

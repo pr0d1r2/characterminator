@@ -198,6 +198,30 @@ fn the_longest_declared_sequence_wins_and_chains() {
     assert!(report.drifted());
 }
 
+/// B40: a target outside the set leaves the character unmapped (V4),
+/// and it did not -- the replacement was never judged, so `fix` wrote
+/// a disallowed character, reported nothing, and `check` then failed it.
+#[test]
+fn a_target_outside_the_set_keeps_the_character_and_reports_it() {
+    let lone = Map::parse("U+2261 U+2295\n", &|line| Origin::Builtin { line });
+    let done = fix("c\u{2261}d", &lone.unwrap_or_default(), &ascii);
+    let done = done.unwrap_or_default();
+    assert_eq!(done.output, "c\u{2261}d");
+    assert!(!done.report.drifted());
+    let kept = done.report.unmapped.first().map(|hit| hit.character);
+    assert_eq!(kept, Some('\u{2261}'));
+}
+
+/// The judgement is of the WHOLE chain: a target outside the set that the
+/// map rewrites again, into the set, is still a rewrite (V5).
+#[test]
+fn a_chain_that_ends_inside_the_set_still_rewrites() {
+    let source = "U+2261 U+2295\nU+2295 x\n";
+    let chain = Map::parse(source, &|line| Origin::Builtin { line });
+    let done = fix("c\u{2261}d", &chain.unwrap_or_default(), &ascii);
+    assert_eq!(done.map(|fixed| fixed.output), Ok(String::from("cxd")));
+}
+
 #[test]
 fn a_sequence_opening_with_an_allowed_character_is_a_violation() {
     let report = check("1\u{20E3}", &map(), &ascii).unwrap_or_default();
