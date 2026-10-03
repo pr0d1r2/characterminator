@@ -51,6 +51,23 @@ fn a_later_line_wins_for_the_same_source() {
     assert_eq!(map.entries().first().map(|e| e.to.as_str()), Some("-"));
 }
 
+/// The winner sits where it was LAST declared, within a layer and across
+/// layers -- the order the per-line removal used to leave, and the one
+/// `explain` lists entries in.
+#[test]
+fn a_redeclared_source_moves_to_its_last_declaration() {
+    let first = parsed("U+2014 a\nU+2013 b\nU+2014 c\nU+2012 d\n");
+    let layered = first.layer("U+2013 e\n", &|line| Origin::Builtin { line });
+    let held = layered.unwrap_or_default();
+    let pairs: Vec<(&str, &str)> = held
+        .entries()
+        .iter()
+        .map(|e| (e.from.as_str(), e.to.as_str()))
+        .collect();
+    let want = [("\u{2014}", "c"), ("\u{2012}", "d"), ("\u{2013}", "e")];
+    assert_eq!(pairs, want);
+}
+
 #[test]
 fn holds_the_longest_source_first() {
     let map = parsed("U+1F44D +1\nU+1F44D+U+1F3FD U+1F44D\n");

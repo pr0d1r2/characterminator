@@ -22,7 +22,7 @@ use crate::fix::family::{ROOT, Tree};
 use crate::fix::{Class, Error, Family, MapEntry};
 use crate::rules::Origin;
 use std::cmp::Reverse;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 /// The builtin map, in the `.ctrm-map` grammar (`src/charset:V22`).
 ///
@@ -128,6 +128,7 @@ impl Map {
         for (index, line) in source.lines().enumerate() {
             self.read(line, index.saturating_add(1), origin)?;
         }
+        self.dedupe();
         self.entries.sort_by_key(|entry| Reverse(entry.from.len()));
         self.tree.validate()?;
         self.validate_classes()?;
@@ -302,9 +303,23 @@ impl Map {
         number: usize,
     ) -> Result<(), Error> {
         let entry = entry.ok_or(Error::Syntax { line: number })?;
-        self.entries.retain(|held| held.from != entry.from);
         self.entries.push(entry);
         Ok(())
+    }
+
+    /// Keep the LAST entry for each source, where its last push left it:
+    /// what dropping the earlier one on every push kept, in one walk from
+    /// the end rather than one walk of every entry per line -- quadratic
+    /// over the two thousand builtin lines.
+    fn dedupe(&mut self) {
+        let mut seen = HashSet::new();
+        let mut kept: Vec<MapEntry> = std::mem::take(&mut self.entries)
+            .into_iter()
+            .rev()
+            .filter(|entry| seen.insert(entry.from.clone()))
+            .collect();
+        kept.reverse();
+        self.entries = kept;
     }
 
     /// Every family a class member names has to be in the tree, or that
