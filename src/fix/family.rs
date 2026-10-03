@@ -9,9 +9,10 @@
 
 use crate::fix::{Error, Family};
 
-/// The intrinsic root. It is code rather than data, so a zero-file run
-/// still has somewhere for every chain to end (`src/rules:V21`).
-pub(crate) const ROOT: &str = "ascii";
+/// The intrinsic root: the `ascii` set's own name (`src/charset`). It is
+/// code rather than data, so a zero-file run still has somewhere for every
+/// chain to end (`src/rules:V21`).
+pub(crate) use crate::charset::ASCII as ROOT;
 
 /// The declared families. `ascii` is not among them: it is intrinsic, and
 /// declaring a parent for it is refused.

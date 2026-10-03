@@ -9,18 +9,15 @@
 use super::Config;
 use crate::charset::{CharSet, SetCatalog};
 use crate::lint::{
-    CHAR_LINTS, Finding, Hazards, LINE_LINTS, Level, Levels, Lint, TEXT_LINTS,
-    Target, char_lints, line_hits, one_claim, text_hits, unicode_space,
+    CHAR_LINTS, Finding, Hazards, LINE_LINTS, Level, Levels, Lint, OUTSIDE_SET,
+    TEXT_LINTS, Target, char_lints, line_hits, one_claim, text_hits,
+    unicode_space,
 };
 use crate::rules::{self, Resolution, Rule};
 use crate::scan::{Hit, Unreadable, decode, scan_str};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-
-/// The lint a character outside its set is reported under. Named for what
-/// is true of the character, not for its group (`src/lint` registry).
-const OUTSIDE: &str = "outside-set";
 
 /// One file's contribution to the report.
 pub(crate) enum Looked {
@@ -39,7 +36,6 @@ pub(crate) struct Checker {
     /// The hazard classes, from the COMPILED-IN data (`src/lint:V34`) and
     /// never from `catalog`: nothing a run configures can reach them.
     hazards: Hazards,
-    outside: Lint,
     /// `--strict`: warn counts as deny (`src/lint:V36`).
     strict: bool,
     /// Each union [`Checker::granted`] resolved, by family, then sets.
@@ -54,7 +50,6 @@ type Unions = HashMap<String, HashMap<Vec<String>, Rc<CharSet>>>;
 pub(crate) struct Judge<'a> {
     set: &'a CharSet,
     hazards: &'a Hazards,
-    outside: Lint,
     /// The offsets of this text's joiners and tags that sit inside an
     /// RGI emoji sequence, and so are no hazard (`src/lint:V63`).
     exempt: Vec<usize>,
@@ -62,15 +57,10 @@ pub(crate) struct Judge<'a> {
 
 impl<'a> Judge<'a> {
     /// A judge for one set, before any text is read.
-    const fn new(
-        set: &'a CharSet,
-        hazards: &'a Hazards,
-        outside: Lint,
-    ) -> Self {
+    const fn new(set: &'a CharSet, hazards: &'a Hazards) -> Self {
         Self {
             set,
             hazards,
-            outside,
             exempt: Vec::new(),
         }
     }
@@ -125,7 +115,7 @@ impl Judge<'_> {
         let hazard =
             self.hazards.lint_at(hit, &self.exempt).filter(|_| !excused);
         let outside =
-            (!self.set.contains(hit.character)).then_some(self.outside);
+            (!self.set.contains(hit.character)).then_some(OUTSIDE_SET);
         let pedantic = std::iter::once_with(move || char_lints(hit.character));
         [hazard, outside]
             .into_iter()
@@ -151,8 +141,6 @@ impl Checker {
             rules,
             hazards: Hazards::builtin().vouched_by(&catalog),
             catalog,
-            outside: Lint::named(OUTSIDE)
-                .ok_or_else(|| String::from("no `outside-set` lint"))?,
             strict: config.strict,
             unions: RefCell::default(),
         })
@@ -174,7 +162,7 @@ impl Checker {
 
     /// What one file's characters are judged against.
     pub(crate) fn judge<'a>(&'a self, set: &'a CharSet) -> Judge<'a> {
-        Judge::new(set, &self.hazards, self.outside)
+        Judge::new(set, &self.hazards)
     }
 
     /// [`Checker::shared_law`], with the set copied out, as a test reads it.

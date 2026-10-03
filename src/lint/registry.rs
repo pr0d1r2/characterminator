@@ -37,6 +37,12 @@ pub struct Lint {
 /// Every pedantic row is the constant `pedantic.rs` detects under, so the
 /// name is spelled once: four need no data (V55), four read Unicode's
 /// tables (V58).
+/// The tool's ordinary violation: a character outside the set the rules
+/// granted its path. Named for what is true of the character rather than
+/// for its group, because `charset` is already the group's name. A
+/// constant, so the judge reports under it without a lookup that could fail.
+pub(crate) const OUTSIDE_SET: Lint = Lint::new("outside-set", Group::Charset);
+
 pub(crate) const LINTS: &[Lint] = &[
     // V34's classes, one lint each, in the order `hazard.rs` tries them.
     // One lint per class rather than one `hazard` lint: the json names
@@ -47,10 +53,7 @@ pub(crate) const LINTS: &[Lint] = &[
     Lint::new("stray-bom", Group::Hazard),
     Lint::new("control-character", Group::Hazard),
     Lint::new("invisible", Group::Hazard),
-    // The tool's ordinary violation: a character outside the set the rules
-    // granted this path. Named for what is true of the character rather
-    // than for its group, because `charset` is already the group's name.
-    Lint::new("outside-set", Group::Charset),
+    OUTSIDE_SET,
     // V37's candidates, in the order that spec lists them.
     pedantic::NOT_NFC,
     pedantic::NFKC_COMPAT,

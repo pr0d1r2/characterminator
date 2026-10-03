@@ -98,7 +98,7 @@ mod tests {
     }
 
     fn charset() -> Lint {
-        Lint::new("outside-set", Group::Charset)
+        crate::lint::OUTSIDE_SET
     }
 
     fn pedantic() -> Lint {

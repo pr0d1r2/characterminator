@@ -280,7 +280,7 @@ mod tests {
 #[cfg(test)]
 mod spelled_once {
     use super::{Format, Violation, check};
-    use crate::lint::{Finding, Group, Level, Lint};
+    use crate::lint::{Finding, Level};
     use crate::scan::{Hit, Position};
 
     /// U+202E RIGHT-TO-LEFT OVERRIDE, in a file name.
@@ -293,8 +293,7 @@ mod spelled_once {
             position,
             character,
         };
-        let (lint, level) =
-            (Lint::new("outside-set", Group::Charset), Level::Deny);
+        let (lint, level) = (crate::lint::OUTSIDE_SET, Level::Deny);
         let (finding, set) = (Finding { hit, lint, level }, "ascii");
         Violation { path, finding, set }
     }
@@ -346,7 +345,7 @@ mod spelled_once {
 #[cfg(test)]
 mod batched {
     use super::{Batch, Format, Violation, check, check_batches};
-    use crate::lint::{Finding, Group, Level, Lint};
+    use crate::lint::{Finding, Level};
     use crate::scan::{Hit, Position};
 
     fn finding(byte: usize) -> Finding {
@@ -356,7 +355,7 @@ mod batched {
             position,
             character,
         };
-        let lint = Lint::new("outside-set", Group::Charset);
+        let lint = crate::lint::OUTSIDE_SET;
         let level = Level::Deny;
         Finding { hit, lint, level }
     }

@@ -24,7 +24,7 @@ pub(crate) use pedantic::{
     CHAR_LINTS, LINE_LINTS, TEXT_LINTS, char_lints, line_hits, text_hits,
     unicode_space,
 };
-pub(crate) use registry::LINTS;
 pub use registry::Lint;
+pub(crate) use registry::{LINTS, OUTSIDE_SET};
 pub(crate) use resolve::Levels;
 pub(crate) use target::Target;

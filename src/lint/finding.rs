@@ -74,7 +74,7 @@ mod tests {
             position,
             character: 'x',
         };
-        let lint = Lint::new("outside-set", Group::Charset);
+        let lint = crate::lint::OUTSIDE_SET;
         Finding { hit, lint, level }
     }
 

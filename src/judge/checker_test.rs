@@ -7,10 +7,10 @@
 //! helpers as `super` and nothing is widened for them: the hazards and
 //! their exemptions, and the pedantic lints' fixtures (V37, V58).
 
-use super::{Checker, Config, Judge, Looked, OUTSIDE, inspect, levels_for};
+use super::{Checker, Config, Judge, Looked, inspect, levels_for};
 use crate::charset::{CharSet, builtin};
 use crate::fix as engine;
-use crate::lint::{Finding, Hazards, Level, Levels, Lint};
+use crate::lint::{Finding, Hazards, Level, Levels};
 use crate::rules::{self, Rule, Sources};
 use std::rc::Rc;
 
@@ -19,15 +19,6 @@ mod hazard;
 #[path = "checker_pedantic_test.rs"]
 mod pedantic;
 
-fn lint() -> Lint {
-    match Lint::named(OUTSIDE) {
-        Some(found) => found,
-        None => Lint::named("outside-set").unwrap_or_else(|| {
-            unreachable!("the registry always carries this lint")
-        }),
-    }
-}
-
 fn hazards() -> Hazards {
     Hazards::builtin()
 }
@@ -35,7 +26,7 @@ fn hazards() -> Hazards {
 /// What `check` finds in `bytes` when the file is granted `set`.
 fn found_in(bytes: &[u8], set: &CharSet) -> Looked {
     let hazards = hazards();
-    let judge = Judge::new(set, &hazards, lint());
+    let judge = Judge::new(set, &hazards);
     inspect(bytes, &judge, &Levels::new())
 }
 
@@ -236,7 +227,7 @@ fn one_preset_grants_differently_under_two_fidelities() {
 #[test]
 fn every_lint_a_hit_could_fire_is_listed_strongest_first() {
     let (set, hazards) = (builtin::ascii(), hazards());
-    let judge = Judge::new(&set, &hazards, lint());
+    let judge = Judge::new(&set, &hazards);
     let position = crate::scan::Position {
         line: 1,
         column: 1,

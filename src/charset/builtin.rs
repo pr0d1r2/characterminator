@@ -18,7 +18,9 @@ use super::{
     parse_line,
 };
 
-/// The name of the intrinsic set.
+/// The name of the intrinsic set, and the ONE spelling of `ascii` in code:
+/// the set every unmatched path gets (`src/rules:V1`) and the root of the
+/// fidelity tree (`src/fix:V27`) are this name, so they cannot drift apart.
 pub(crate) const ASCII: &str = "ascii";
 
 /// Tab and newline: the two control characters ASCII text is made of.

@@ -11,6 +11,7 @@ pub(crate) mod parse;
 pub(crate) mod range;
 pub(crate) mod set;
 
+pub(crate) use builtin::ASCII;
 pub use compose::{ComposeError, SetCatalog};
 pub(crate) use parse::{
     ParseError, SetDefinition, SetMember, code_points, parse_line,

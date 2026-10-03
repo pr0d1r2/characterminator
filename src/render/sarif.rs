@@ -273,10 +273,8 @@ mod tests {
 
     /// The registered lint, so the result's `ruleId` names a row of the
     /// `rules` array the way a real run's does.
-    fn outside_set() -> Lint {
-        Lint::named("outside-set").unwrap_or_else(|| {
-            unreachable!("the registry always carries this lint")
-        })
+    const fn outside_set() -> Lint {
+        crate::lint::OUTSIDE_SET
     }
 
     /// U+2014 EM DASH, written as an escape because the source is ASCII.

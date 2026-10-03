@@ -3,7 +3,7 @@
 //! child of the `checker` tests, for their helpers.
 
 use super::super::{Judge, Looked, inspect};
-use super::{any, findings, hazards, lint, summary};
+use super::{any, findings, hazards, summary};
 use crate::charset::{CharSet, builtin};
 use crate::lint::{Group, Level, Levels, Target};
 
@@ -17,7 +17,7 @@ fn pedantic(text: &str, set: &CharSet, charset: Level) -> Vec<Fired> {
     levels.set(Target::Group(Group::Pedantic), Level::Warn);
     levels.set_charset(charset);
     let hazards = hazards();
-    let judge = Judge::new(set, &hazards, lint());
+    let judge = Judge::new(set, &hazards);
     let mut all = match inspect(text.as_bytes(), &judge, &levels) {
         Looked::Findings(all) => all.iter().map(summary).collect(),
         Looked::Unread(_) => Vec::new(),

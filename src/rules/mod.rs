@@ -29,7 +29,7 @@ use std::path::PathBuf;
 /// run given no files at all (V21) must still be able to say what a path
 /// may contain. A default that lives in a file is not a default; it is a
 /// file that is usually present.
-pub(crate) const ASCII: &str = "ascii";
+pub(crate) use crate::charset::ASCII;
 
 /// The fidelity family a rule gets when none is named (V29).
 ///
