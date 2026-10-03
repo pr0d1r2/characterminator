@@ -20,14 +20,14 @@ fn tag_smuggling_in_a_web_fetch_result_is_tainted() {
         let block = r#"{"decision":"block","reason":"#;
         assert!(got.starts_with(block), "{got}");
         assert!(got.contains(first), "{got}");
-        assert!(got.contains("holds 2 hazard"), "{got}");
+        assert!(got.contains("holds 2 bidi override or tag"), "{got}");
     }
 }
 
 /// `src/lint/hazard:V63`: the joiners of an RGI family and the tags of the
 /// England flag are no hazard in tool output; a joiner between two
-/// emoji that form no listed sequence, and tags after U+1F3F4 that
-/// spell no listed subdivision, still block.
+/// emoji that form no listed sequence is noted (V110), and tags after
+/// U+1F3F4 that spell no listed subdivision still block.
 #[test]
 fn only_a_listed_emoji_sequence_lets_its_joiners_and_tags_off() {
     let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
@@ -35,11 +35,45 @@ fn only_a_listed_emoji_sequence_lets_its_joiners_and_tags_off() {
         "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
     let ok = format!("{{\"result\":\"{family} {england}\"}}");
     assert_eq!(answer(&output_payload("WebFetch", &ok)), "");
+    let body = |bad: &str| format!("{{\"result\":\"{bad}\"}}");
     let smuggled = "\u{1F3F4}\u{E0069}\u{E0067}\u{E006E}\u{E007F}";
-    for bad in ["\u{1F600}\u{200D}\u{1F600}", smuggled] {
-        let body = format!("{{\"result\":\"{bad}\"}}");
+    let got = answer(&output_payload("WebFetch", &body(smuggled)));
+    assert!(got.starts_with(r#"{"decision":"block""#), "{got}");
+    let joined = body("\u{1F600}\u{200D}\u{1F600}");
+    let got = answer(&output_payload("WebFetch", &joined));
+    assert!(got.contains("U+200D invisible"), "{got}");
+    assert!(got.contains(r#""additionalContext""#), "{got}");
+}
+
+/// V110: ordinary content is noted, never blocked -- terminal colour in
+/// a shell's output, and a soft hyphen or a right-to-left mark on a web
+/// page -- and each note says what the characters ARE.
+#[test]
+fn colour_and_soft_hyphens_in_output_are_noted_not_blocked() {
+    let colour = r#"{"stdout":"\u001b[31mFAIL\u001b[0m"}"#;
+    let got = answer(&output_payload("Bash", colour));
+    assert!(got.contains("2 terminal or control character(s)"), "{got}");
+    assert!(got.contains("Informational"), "{got}");
+    assert!(!got.contains("decision"), "{got}");
+    let page = r#"{"result":"Donau\u00addampf \u200fx"}"#;
+    let got = answer(&output_payload("WebFetch", page));
+    assert!(got.contains("2 invisible formatting character(s)"), "{got}");
+    assert!(!got.contains("decision"), "{got}");
+}
+
+/// V110: every bidi embedding, override and isolate blocks; the marks
+/// do not.
+#[test]
+fn every_embedding_override_and_isolate_blocks_and_no_mark_does() {
+    for point in ["202a", "202b", "202c", "202d", "202e", "2066", "2069"] {
+        let body = format!(r#"{{"result":"a\u{point}b"}}"#);
         let got = answer(&output_payload("WebFetch", &body));
         assert!(got.starts_with(r#"{"decision":"block""#), "{got}");
+    }
+    for point in ["200e", "200f", "061c"] {
+        let body = format!(r#"{{"result":"a\u{point}b"}}"#);
+        let got = answer(&output_payload("WebFetch", &body));
+        assert!(got.contains("additionalContext"), "{got}");
     }
 }
 
@@ -70,12 +104,13 @@ fn clean_or_merely_non_ascii_output_passes_in_silence() {
 }
 
 /// B16: tool output has no file start, so a BOM opening a string of it
-/// is a stray, not an encoding signature (V53).
+/// is a stray, not an encoding signature (V53): noted, never silent
+/// (V110).
 #[test]
-fn a_bom_opening_a_string_of_output_is_tainted() {
+fn a_bom_opening_a_string_of_output_is_noted() {
     for result in [r#"{"result":"\ufeffhi"}"#, "\"\u{FEFF}hi\""] {
         let got = answer(&output_payload("WebFetch", result));
-        assert!(got.starts_with(r#"{"decision":"block""#), "{got}");
+        assert!(got.contains(r#""additionalContext""#), "{got}");
         assert!(got.contains("U+FEFF stray-bom"), "{got}");
     }
 }

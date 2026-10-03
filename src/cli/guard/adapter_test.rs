@@ -87,9 +87,23 @@ fn a_read_of_a_bidi_control_is_denied_by_name() {
     let files = [("trojan.rs", "ok\nx\u{202E}y\u{2066}\n")];
     let got = read_of("ctrm-guard-bidi", &files, "trojan.rs");
     assert!(got.contains(r#""permissionDecision":"deny""#), "{got}");
-    let row = "trojan.rs:2:2 U+202E bidi-control -- 2 hazard";
+    let row = "trojan.rs:2:2 U+202E bidi-control -- 2 bidi override or tag";
     assert!(got.contains(row), "{got}");
     assert!(got.is_ascii(), "{got}");
+}
+
+/// V110: a soft hyphen, terminal colour and a form feed are hazards
+/// `check` forbids, and ordinary content: the read goes ahead, with a
+/// note that says what they are and asks for no change.
+#[test]
+fn a_read_of_ordinary_hazards_passes_with_a_note() {
+    let files = [("a.c", "Donau\u{00AD}dampf \u{1B}[1m\u{0C}\n")];
+    let got = read_of("ctrm-guard-tier-note", &files, "a.c");
+    assert!(!got.contains("permissionDecision"), "{got}");
+    let note = "a.c:1:6 U+00AD invisible -- 3 invisible formatting or \
+                control character(s)";
+    assert!(got.contains(note), "{got}");
+    assert!(got.contains("do not change the file unless asked"), "{got}");
 }
 
 /// An em dash is outside `ascii` and no hazard: the read goes ahead,
