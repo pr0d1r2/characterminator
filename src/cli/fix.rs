@@ -129,7 +129,7 @@ impl Pass {
         let Some(text) = text_of(full, &shown, found)? else {
             return Ok(());
         };
-        let fixed = engine::fix(&text, &self.map, &|point| set.contains(point))
+        let fixed = engine::fix(&text, &self.map, |point| set.contains(point))
             .map_err(|bad| format!("{shown}: {bad}"))?;
         let kept = self.left(&shown, &text, &fixed)?;
         found.unmapped.extend(kept);

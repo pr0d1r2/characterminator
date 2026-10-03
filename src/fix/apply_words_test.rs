@@ -109,6 +109,6 @@ fn the_space_is_reported_as_part_of_the_rewrite() {
 fn a_plain_entry_is_never_spaced() {
     let map = Map::parse("U+00E9 e\n", &|line| Origin::Builtin { line })
         .unwrap_or_default();
-    let done = fix("caf\u{00E9}s", &map, &ascii).unwrap_or_default();
+    let done = fix("caf\u{00E9}s", &map, ascii).unwrap_or_default();
     assert_eq!(done.output, "cafes");
 }

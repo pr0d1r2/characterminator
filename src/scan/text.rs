@@ -78,10 +78,16 @@ pub(crate) fn located(text: &str) -> impl Iterator<Item = Hit> + '_ {
 /// `false` makes a hit, a `true` makes nothing. Hits come out in byte
 /// order, which is the within-a-file half of V12's sort order; ordering
 /// ACROSS files is `src/render`'s.
-pub fn scan_str<F>(text: &str, allowed: F) -> Vec<Hit>
-where
-    F: Fn(char) -> bool,
-{
+///
+/// ```
+/// use characterminator::scan_str;
+///
+/// let hits = scan_str("caf\u{e9}\n", |c| c.is_ascii());
+/// let first = hits.first().map(|h| (h.character, h.position.column));
+/// assert_eq!(first, Some(('\u{e9}', 4)));
+/// ```
+#[must_use]
+pub fn scan_str(text: &str, allowed: impl Fn(char) -> bool) -> Vec<Hit> {
     located(text)
         .filter(|hit| !allowed(hit.character))
         .collect()

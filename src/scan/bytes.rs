@@ -32,10 +32,24 @@ pub(crate) fn looks_binary(bytes: &[u8]) -> bool {
 /// Lossy decoding is not an option here (`V8`): it would invent
 /// replacement characters and then this node would report positions for
 /// characters that are not in the file.
-pub fn scan_bytes<F>(bytes: &[u8], allowed: F) -> Result<Vec<Hit>, Unreadable>
-where
-    F: Fn(char) -> bool,
-{
+///
+/// ```
+/// use characterminator::{Unreadable, scan_bytes};
+///
+/// let hits = scan_bytes("a\u{2014}b".as_bytes(), |c| c.is_ascii());
+/// assert_eq!(hits.map(|h| h.len()), Ok(1));
+/// let binary = scan_bytes(b"a\0b", |c| c.is_ascii());
+/// assert_eq!(binary, Err(Unreadable::Binary));
+/// ```
+///
+/// # Errors
+///
+/// [`Unreadable::Binary`] for a NUL byte anywhere, else
+/// [`Unreadable::NotUtf8`] at the first byte that does not decode.
+pub fn scan_bytes(
+    bytes: &[u8],
+    allowed: impl Fn(char) -> bool,
+) -> Result<Vec<Hit>, Unreadable> {
     decode(bytes).map(|text| scan_str(text, allowed))
 }
 

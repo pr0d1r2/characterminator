@@ -165,7 +165,7 @@ fn an_allowed_text_keeps_every_byte() {
 #[test]
 fn an_empty_map_keeps_every_byte() {
     for input in INPUTS {
-        let fixed = fix(input, &Map::default(), &ascii);
+        let fixed = fix(input, &Map::default(), ascii);
         let text = fixed.map(|done| done.output).unwrap_or_default();
         assert_eq!(&text, input, "input {input:?}");
     }
@@ -204,7 +204,7 @@ fn the_longest_declared_sequence_wins_and_chains() {
 #[test]
 fn a_target_outside_the_set_keeps_the_character_and_reports_it() {
     let lone = Map::parse("U+2261 U+2295\n", &|line| Origin::Builtin { line });
-    let done = fix("c\u{2261}d", &lone.unwrap_or_default(), &ascii);
+    let done = fix("c\u{2261}d", &lone.unwrap_or_default(), ascii);
     let done = done.unwrap_or_default();
     assert_eq!(done.output, "c\u{2261}d");
     assert!(!done.report.drifted());
@@ -218,7 +218,7 @@ fn a_target_outside_the_set_keeps_the_character_and_reports_it() {
 fn a_chain_that_ends_inside_the_set_still_rewrites() {
     let source = "U+2261 U+2295\nU+2295 x\n";
     let chain = Map::parse(source, &|line| Origin::Builtin { line });
-    let done = fix("c\u{2261}d", &chain.unwrap_or_default(), &ascii);
+    let done = fix("c\u{2261}d", &chain.unwrap_or_default(), ascii);
     assert_eq!(done.map(|fixed| fixed.output), Ok(String::from("cxd")));
 }
 
@@ -245,7 +245,7 @@ fn a_cyclic_map_is_an_error_rather_than_a_half_rewrite() {
     let source = "U+2014 U+2013\nU+2013 U+2014\n";
     let cyclic = Map::parse(source, &|line| Origin::Builtin { line })
         .unwrap_or_default();
-    assert_eq!(fix("\u{2014}", &cyclic, &ascii), Err(Error::MapCycle));
+    assert_eq!(fix("\u{2014}", &cyclic, ascii), Err(Error::MapCycle));
 }
 
 #[test]
@@ -266,7 +266,7 @@ fn the_untouched_guard_catches_a_changed_byte() {
 
 #[test]
 fn a_fix_with_nothing_to_do_reports_nothing() {
-    let done = fix("plain", &map(), &ascii).unwrap_or_default();
+    let done = fix("plain", &map(), ascii).unwrap_or_default();
     assert_eq!(done, Fixed::default_with("plain"));
 }
 

@@ -10,6 +10,21 @@
 //! string against a set, rewrite it, and read the hazards in it. Everything
 //! else -- rule resolution, config assembly, rendering -- is the binary's
 //! business until a release decides to promise it.
+//!
+//! Every function that judges a character takes the caller's rule as one
+//! predicate, `impl Fn(char) -> bool` (`.:I`): a set's `contains`, or any
+//! closure.
+//!
+//! ```
+//! use characterminator::{Map, SetCatalog, fix, scan_str};
+//!
+//! let ascii = SetCatalog::builtin().resolve("ascii", "text")?;
+//! let hits = scan_str("a\u{2014}b", |c| ascii.contains(c));
+//! assert_eq!(hits.len(), 1);
+//! let fixed = fix("a\u{2014}b", &Map::builtin(), |c| ascii.contains(c))?;
+//! assert_eq!(fixed.output, "a--b");
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
 mod charset;
 mod cli;

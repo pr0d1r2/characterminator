@@ -119,7 +119,7 @@ impl Pass {
     fn counted(&self, shown: &str, text: &str) -> Result<Row, String> {
         let (set, _) = self.checker.effective(shown)?;
         let allowed = |point: char| set.contains(point);
-        let fixed = engine::fix(text, &self.map, &allowed)
+        let fixed = engine::fix(text, &self.map, allowed)
             .map_err(|bad| format!("{shown}: {bad}"))?;
         let outside = text.chars().filter(|point| !allowed(*point)).count();
         Ok(Row {

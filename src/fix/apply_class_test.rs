@@ -30,19 +30,19 @@ fn ascii_or_nerd(ch: char) -> bool {
 
 #[test]
 fn a_class_falls_back_along_the_path_to_ascii() {
-    let done = fix("a\u{2713}b", &classed("emoji"), &ascii);
+    let done = fix("a\u{2713}b", &classed("emoji"), ascii);
     assert_eq!(done.map(|f| f.output).unwrap_or_default(), "a[x]b");
 }
 
 #[test]
 fn a_class_compresses_into_the_fidelity_family() {
-    let done = fix("\u{2713}", &classed("emoji"), &ascii_or_emoji);
+    let done = fix("\u{2713}", &classed("emoji"), ascii_or_emoji);
     assert_eq!(done.map(|f| f.output).unwrap_or_default(), "\u{2705}");
 }
 
 #[test]
 fn a_declared_family_takes_part_in_resolution() {
-    let done = fix("\u{2713}", &classed("nerd"), &ascii_or_nerd);
+    let done = fix("\u{2713}", &classed("nerd"), ascii_or_nerd);
     assert_eq!(done.map(|f| f.output).unwrap_or_default(), "\u{F00C}");
 }
 
@@ -63,6 +63,6 @@ fn a_class_with_no_allowed_member_is_kept_and_reported() {
     let report = check("\u{2713}", &map, &ascii).unwrap_or_default();
     assert_eq!(report.unmapped.len(), 1);
     assert!(!report.drifted());
-    let done = fix("\u{2713}", &map, &ascii).unwrap_or_default();
+    let done = fix("\u{2713}", &map, ascii).unwrap_or_default();
     assert_eq!(done.output, "\u{2713}");
 }

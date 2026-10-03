@@ -202,7 +202,7 @@ fn replacement(
     allowed: &CharSet,
     source: &str,
 ) -> Result<Option<String>, String> {
-    let fixed = engine::fix(source, map, &|c| allowed.contains(c));
+    let fixed = engine::fix(source, map, |c| allowed.contains(c));
     let fixed = fixed.map_err(|bad| format!("{}: {bad}", points(source)))?;
     Ok((fixed.output != source)
         .then(|| format!("{} -> {:?}", points(source), fixed.output)))

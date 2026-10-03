@@ -26,7 +26,7 @@ fn emoji() -> CharSet {
 /// `text` fixed by the builtin map, with `emoji` granted or not.
 fn fixed(text: &str, grant_emoji: bool) -> String {
     let allowed = |c: char| c.is_ascii() || grant_emoji && EMOJI.contains(c);
-    fix(text, &MAP, &allowed)
+    fix(text, &MAP, allowed)
         .map(|done| done.output)
         .unwrap_or_else(|why| format!("<{why}>"))
 }
@@ -130,7 +130,7 @@ fn holding_hands_lands_on_its_grouping() {
 #[test]
 fn under_ascii_a_zwj_sequence_is_kept_and_reported() {
     assert_eq!(fixed(FAMILY, false), FAMILY);
-    let done = fix(FAMILY, &MAP, &|c: char| c.is_ascii());
+    let done = fix(FAMILY, &MAP, |c: char| c.is_ascii());
     let kept = done.unwrap_or_default().report.unmapped.len();
     assert_eq!(kept, FAMILY.chars().count());
 }
@@ -141,7 +141,7 @@ fn under_ascii_a_zwj_sequence_is_kept_and_reported() {
 fn a_joiner_outside_any_listed_sequence_stays_reported() {
     let set = emoji();
     let text = "\u{1F600}\u{200D}\u{1F600}";
-    let done = fix(text, &builtin_map(), &|c| set.contains(c));
+    let done = fix(text, &builtin_map(), |c| set.contains(c));
     let done = done.unwrap_or_default();
     assert_eq!(done.output, text);
     let unmapped = done.report.unmapped.first().map(|h| h.character);
@@ -152,7 +152,7 @@ fn a_joiner_outside_any_listed_sequence_stays_reported() {
 #[test]
 fn a_granted_sequence_is_left_alone() {
     let text = format!("x{COUPLE}y");
-    let all = fix(&text, &builtin_map(), &|_| true);
+    let all = fix(&text, &builtin_map(), |_| true);
     assert_eq!(all.map(|done| done.output).ok(), Some(text));
 }
 
@@ -185,7 +185,7 @@ fn a_sequence_revealed_by_a_deletion_still_settles() {
 fn every_row_of_a_multi_pass_fix_resolves_in_the_original() {
     let text = "ab\u{2014}\u{1F469}\u{FE0F}\u{200D}\u{1F4BB}\u{2014}\
             \u{1F1F5}\u{FE0F}\u{1F1F1} z\n";
-    let done = fix(text, &MAP, &|c: char| c.is_ascii());
+    let done = fix(text, &MAP, |c: char| c.is_ascii());
     assert!(done.is_ok());
     let report = done.unwrap_or_default().report;
     let rows = report.rewrites.iter().map(|r| r.hit);
@@ -221,7 +221,7 @@ fn every_listed_sequence_settles_and_is_idempotent() {
 fn many_multi_pass_rows_each_resolve_on_their_own_line() {
     let line = "a\u{2014} \u{1F469}\u{FE0F}\u{200D}\u{1F4BB} \u{2261}\n";
     let text = line.repeat(40);
-    let done = fix(&text, &MAP, &|c: char| c.is_ascii()).unwrap_or_default();
+    let done = fix(&text, &MAP, |c: char| c.is_ascii()).unwrap_or_default();
     let rows = done.report.rewrites.iter().map(|r| r.hit);
     let hits: Vec<Hit> = rows.chain(done.report.unmapped).collect();
     let truth: Vec<Hit> = crate::scan::located(&text).collect();

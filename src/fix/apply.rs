@@ -65,11 +65,26 @@ impl Fixed {
 /// positions are mapped back through each earlier pass (B24). A text that
 /// settles in one pass -- every text before the sequence map -- maps
 /// through nothing and is reported exactly as before.
+///
+/// ```
+/// use characterminator::{Map, fix};
+///
+/// let fixed = fix("a \u{2026} b", &Map::builtin(), |c| c.is_ascii())?;
+/// assert_eq!(fixed.output, "a ... b");
+/// assert_eq!(fixed.report.rewrites.len(), 1);
+/// # Ok::<(), characterminator::FixError>(())
+/// ```
+///
+/// # Errors
+///
+/// A rewrite that would touch an allowed byte (V6) or would not settle
+/// (V5): nothing is returned to write.
 pub fn fix(
     text: &str,
     map: &Map,
-    allowed: &dyn Fn(char) -> bool,
+    allowed: impl Fn(char) -> bool,
 ) -> Result<Fixed, Error> {
+    let allowed: &dyn Fn(char) -> bool = &allowed;
     let mut seen = History::new(text);
     let mut pass = guarded(text, map, allowed)?;
     for _ in 0..SETTLE {
