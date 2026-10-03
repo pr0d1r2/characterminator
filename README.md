@@ -171,6 +171,56 @@ steps:
 Without `args` it runs `ctrm check` and fails the job on a violation.
 Pin both actions to a commit SHA in real use.
 
+## Quick start
+
+Adopting `ctrm` in a repository that already has text in it: check, let
+`init` draft the grants, let `fix` rewrite the rest, then gate it. Two
+tracked files, a note with an accented letter, a dash and curly quotes,
+and a Rust file hiding a right-to-left override:
+
+```text
+$ ctrm check
+main.rs:1:17 U+202E hazard
+notes.md:1:4 U+00E9 ascii
+notes.md:1:12 U+2014 ascii
+notes.md:1:14 U+201C ascii
+notes.md:1:20 U+201D ascii
+5 findings in 2 files; most: U+00E9 x1, U+2014 x1, U+201C x1 -- see 'ctrm sets --containing U+00E9' or 'ctrm init'
+
+$ ctrm init
+wrote .ctrm: review it, then `ctrm check`
+```
+
+`init` grants only what nothing can rewrite, and says why on each line.
+The hazard is never granted; it is listed to fix:
+
+```text
+# *.md, files: 1.
+# en-aux for U+00E9
+# `ctrm fix` rewrites, no grant needed: U+2014 U+201C U+201D
+*.md ascii+en-aux
+
+# *.rs, files: 1.
+# Needs no grant.
+# Hazards, never granted -- fix these: U+202E bidi-control in main.rs
+```
+
+```text
+$ ctrm fix
+main.rs:1:17 U+202E -> ""
+notes.md:1:12 U+2014 -> "--"
+notes.md:1:14 U+201C -> "\""
+notes.md:1:20 U+201D -> "\""
+rewrote 4, nothing left
+
+$ ctrm check            # silent, exit 0
+```
+
+Commit `.ctrm` and the rewritten files, then keep it that way with the
+[pre-commit hook](#as-a-pre-commit-hook) or the
+[GitHub Action](#in-github-actions). `ctrm explain <path>` says which line
+decides a file; [Configuring it](#configuring-it) has the full grammar.
+
 ## The verbs
 
 | | |
