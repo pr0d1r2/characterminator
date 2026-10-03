@@ -248,23 +248,23 @@ src/render/SPEC.md   1680
 # ~12% over the measured 3323. The sub-nodes get rows of their own, ~12%
 # over their measured chains (emoji 4417, words 3664), for the reason the
 # cli sub-nodes did: emoji's chain is over the parent's lowered 3720.
-src                2490
-src/charset          4460
-src/charset/locale   5490
-src/cli              4430
-src/cli/explain      4200
-src/cli/guard        5420
-src/fix              3720
-src/fix/emoji        4950
-src/fix/words        4100
-src/lint             2990
-src/lint/hazard      4220
-src/lint/pedantic    3890
-src/render           3460
-src/rules            4140
-src/scan             2700
-src/tokens           3290
-src/judge            3380
+src                  2390
+src/charset          4210
+src/charset/locale   5180
+src/cli              3960
+src/cli/explain      4190
+src/cli/guard        4920
+src/fix              3490
+src/fix/emoji        4660
+src/fix/words        3840
+src/lint             2790
+src/lint/hazard      4000
+src/lint/pedantic    3660
+src/render           3450
+src/rules            3650
+src/scan             2580
+src/tokens           2970
+src/judge            3050
 
 # The judge node (src/judge), extracted from src/cli for the 0.1.0 API
 # work: ~12% over its measured spec.
