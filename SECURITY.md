@@ -19,26 +19,34 @@ payload, or a workflow -- is the most useful thing a report can carry.
 ## In scope
 
 - **Hazard detection bypasses.** A bidi control, an invisible character,
-  tag smuggling or another hazard class (`src/lint/hazard:V34`) that
-  `ctrm check` does not report, under any configuration.
-- **Guard bypasses.** A `Read`, web fetch, web search, shell or MCP output
-  holding a hazard that `ctrm guard` passes, or an input that makes the
-  guard exit `2` (which Claude Code reads as "block every call") or crash
-  where it should decide (`src/cli/guard`).
+  a tag character, a stray byte order mark or a control character that
+  `ctrm check` does not report, under any configuration. Every hazard is
+  reported at `forbid`, and no `.ctrm` line or flag lowers it.
+- **Guard bypasses.** `ctrm guard` decides in two tiers. It **blocks** a
+  tag character (U+E0000-U+E007F) or a bidi embedding, override or isolate
+  (U+202A-U+202E, U+2066-U+2069): a `Read` holding one is denied, and tool
+  output holding one is flagged as tainted. Every other hazard -- the
+  direction marks, soft hyphens, zero-width characters, a stray byte order
+  mark, control characters -- it lets through with a note to the model. In
+  scope: a `Read`, web fetch, web search, shell, grep, subagent or MCP output
+  holding a blocked character that the guard passes, a note-tier hazard it
+  passes without a note, or an input that makes the guard exit `2` (which
+  Claude Code reads as "block every call") or crash where it should decide.
+  A note-tier hazard passing with its note is the design, not a bypass.
 - **The sequence exemptions.** A joiner, tag or variation selector that
-  escapes the hazard lints through the emoji sequence exemption
-  (`src/lint/hazard:V63`) or the script joiner exemption for Persian and Hindi
-  (`src/lint/hazard:V57`) when it is not part of what those rules exempt.
+  escapes the hazard lints through the emoji sequence exemption or the
+  script joiner exemption for Persian and Hindi where that exemption does
+  not apply: outside a listed emoji sequence, or in a file whose rule does
+  not name the shipped `persian` or `hindi` set.
 - **`fix` writing a disallowed character.** A rewrite that leaves, or
   introduces, a character outside the set the file is granted, or a hazard,
   while reporting success.
 - **The GitHub Action's template-injection surface.** Any input or path
-  that reaches a shell as code rather than as data (`action.yml`, root
-  `SPEC.md` V52).
+  that reaches a shell as code rather than as data (`action.yml`).
 
 Out of scope: findings that are working as specified -- a character the
-configuration grants, a hazard reported at `warn` because a `.ctrm` said
-so -- and the cost of pathological inputs already documented in
+configuration grants, a note-tier hazard the guard notes rather than
+blocks -- and the cost of pathological inputs already documented in
 [docs/MEMORY.md](docs/MEMORY.md).
 
 ## Supported versions
