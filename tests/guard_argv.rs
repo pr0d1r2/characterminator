@@ -58,6 +58,8 @@ fn tree(name: &str, files: &[(&str, &str)]) -> Option<PathBuf> {
 /// A flag no verb knows, a format guard does not take and a stray path:
 /// any one of them stops every other verb with exit 2. Guard decides
 /// anyway -- here a bidi override in fetched text, blocked, exit 0.
+/// `--help` too (`src/cli:V101`): a hook that printed the usage instead
+/// of a decision would let the hazard through.
 #[test]
 fn guard_with_a_bogus_command_line_still_decides() {
     let payload = format!(
@@ -66,7 +68,7 @@ fn guard_with_a_bogus_command_line_still_decides() {
         '\u{202E}'
     );
     let here = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let argv = ["--bogus", "--format", "sarif", "stray.md"];
+    let argv = ["--bogus", "--help", "--format", "sarif", "stray.md"];
     let got = guard(here, &argv, &payload);
     assert_eq!(got.code, Some(0), "{}", got.stdout);
     let block = r#""decision":"block""#;

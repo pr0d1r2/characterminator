@@ -60,6 +60,7 @@ struct Run<'a> {
 pub fn run(args: &[String]) -> ExitCode {
     match verb_of(args) {
         Some("--version" | "-V") => version(),
+        Some("--help" | "-h") => help().code(),
         // Before argv is parsed: a hook must never exit 2
         // (`src/cli/guard:V53`), even when its command line carries a flag
         // the parser would refuse.
@@ -77,6 +78,9 @@ fn verb_of(args: &[String]) -> Option<&str> {
 
 /// Read argv, build the configuration, run the verb.
 fn invoked(verb: &str, argv: &[String]) -> Outcome {
+    if asks_help(argv) {
+        return help();
+    }
     match prepared(verb, argv) {
         Ok((args, config, format)) => {
             let run = Run {
@@ -88,6 +92,14 @@ fn invoked(verb: &str, argv: &[String]) -> Outcome {
         }
         Err(message) => failed(&message),
     }
+}
+
+/// `<verb> --help` (V101). Read through the flag table, so a `--help`
+/// that is a VALUE (`--rule --help`) or a path after `--` is not a
+/// request, and before the configuration loads, so a broken `.ctrm`
+/// cannot stand between a reader and the usage that explains it.
+fn asks_help(argv: &[String]) -> bool {
+    args::parse(argv).is_ok_and(|read| read.has("--help") || read.has("-h"))
 }
 
 /// Everything a verb is handed. Anything wrong here is a usage error,
@@ -287,6 +299,13 @@ fn version() -> ExitCode {
     .code()
 }
 
+/// Asked for, the usage is the ANSWER: stdout, exit 0 (V101), so
+/// `ctrm --help | less` pages it and a script probing for the tool does
+/// not read a usage error.
+fn help() -> Outcome {
+    out::shown(USAGE, Outcome::Ok)
+}
+
 /// Exit 2 names the surface rather than pretending to offer it.
 fn usage() -> Outcome {
     eprintln!("{USAGE}");
@@ -304,6 +323,7 @@ pub(super) const USAGE: &str =
   ctrm fix [--check] [<path>...] rewrite them, or report the drift
   ctrm stats [--bpe] [<path>...] what they cost now, and after a fix
   ctrm guard                     agent hook: hook JSON in, decision out
+  ctrm --help | -h               this text; also after any verb but guard
 
 configuration, any verb, repeatable, later wins:
   --rule <line>     one .ctrm line       --rules-file <f>

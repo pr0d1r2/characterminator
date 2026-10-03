@@ -32,7 +32,7 @@ sib|src/render|human & json output, stable json contract
 - cmd: `ctrm stats [--bpe] [paths]` → per file: chars outside set, bytes, tokens now vs after `fix`, via `itok`. report-only.
 - cmd: `ctrm explain [<path>] [--as args|lines|prompt]` → effective set + winning rule + its config line; `--as` renders effective config as flags, data-file lines, or agent prompt (`src/cli/explain:V32`).
 - cmd: `ctrm sets [--fidelity <f>]` → ∀ set the run can name: builtin (∀ locale) & declared (`.ctrm-sets`, `--set`), w/ members, at the family the rules give (`src/rules:V29`).
-- cmd: `ctrm --version` | `-V` → `characterminator <version>`, exit 0 (test `tests/surface.rs`).
+- cmd: `ctrm --version` | `-V` → `characterminator <version>`, exit 0 (test `tests/surface.rs`). `--help` | `-h`: V101.
 - cmd: `ctrm guard` → hook adapter: harness hook JSON stdin → decision JSON stdout; fuse on hazard (`src/cli/guard:V35`).
 - flag: `--format human|json` ∀ verb ∖ `guard` (argv ignored, `src/cli/guard:V93`); `sarif` `check` only (`src/render:V50`); `explain --as` refuses any `--format`, exit 2 (`src/cli/explain:V32`) · `-C <dir>`.
 - flag (file twins, repeatable, `src/rules:V18`): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (`src/rules:V29`) · `--strict` (`src/lint:V36`) · `--pedantic` (`src/lint:V37`) · `--no-color` (∀ verb, no-op: output ⊥ ever coloured; accepted ∵ unknown flags exit 2) · env `NO_COLOR` honoured, same reason, ⊥ code (test `tests/surface.rs`).
@@ -46,6 +46,7 @@ V72: bare `fix` = 2 phases: judge ∀ file, THEN write ∴ a refusal (`src/fix:V
 V73: path arity: `sets` 0, `explain` (any `--as`) ≤ 1, other verbs any. extra path → exit 2 naming it ∵ `explain a.md b.txt` answered for `a.md` only & `sets a.md` ignored it, each read as an answer about what was asked.
 V74: ∀ verb ⊥ `guard`: whole config (rules, sets, map) parsed & validated (`src/judge` `Config::validate`) before dispatch; any kind broken → exit 2, naming its origin ∵ a verb reading only its own kind reported on a config that ⊥ parsed (B29). ∀ rule: every set it names resolves, matched or ⊥ (B47). `--map` value = 1 line, as `--set` & `--rule` (`src/rules:V18`).
 V80: `fix` & `fix --check` judge what they LEAVE via `check`'s `Checker` (`src/judge:V99`) (levels, `--strict`, hazards), rows @ ORIGINAL pos (`src/fix:V65`) ∴ exit = drift (`--check`) ∨ `check`(output) ∨ not-UTF-8 skip.
+V101: `--help` | `-h`, bare or ∀ verb ∖ `guard` → usage on STDOUT, exit 0 ∵ asked-for help ⊥ error. read via flag table (`--rule --help` = value, `-- --help` = path) & BEFORE config loads ∴ broken `.ctrm` ⊥ hides it. unknown flag beside it → exit 2 (V74). bare `ctrm` → stderr, exit 2. `guard --help` ignored (`src/cli/guard:V93`) ∵ a hook printing usage ⊥ decides.
 
 ## §T TASKS
 

@@ -40,6 +40,11 @@ const SWITCHES: &[&str] = &[
     // tool it runs should not get exit 2 for asking politely. `NO_COLOR`
     // needs no code for the same reason.
     "--no-color",
+    // A request for the usage, answered by dispatch before the verb runs
+    // (`src/cli:V101`). In the table so `check --help` is not an unknown
+    // flag; every other unknown word stays refused (V74).
+    "--help",
+    "-h",
 ];
 
 /// The flags only one verb means anything to. Accepted elsewhere they

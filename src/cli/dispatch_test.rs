@@ -153,3 +153,17 @@ fn paths_are_the_words_that_are_not_flags_or_their_values() {
     let both = vec![String::from("src"), String::from("docs")];
     assert_eq!(read, Ok(both));
 }
+
+/// V101: `--help` read through the flag table. A VALUE spelled `--help`
+/// and a path after `--` are not requests; an unknown flag beside it is
+/// still refused (V74), so the table did not open for every word.
+#[test]
+fn help_is_a_flag_and_only_a_flag() {
+    assert!(super::asks_help(&argv(&["check", "--help"])));
+    assert!(super::asks_help(&argv(&["stats", "src", "-h"])));
+    assert!(!super::asks_help(&argv(&["check", "--rule", "--help"])));
+    assert!(!super::asks_help(&argv(&["check", "--", "--help"])));
+    assert!(!super::asks_help(&argv(&["check", "--stirct", "--help"])));
+    let asked = argv(&["check", "--hepl"]);
+    assert!(prepared("check", &asked).is_err());
+}

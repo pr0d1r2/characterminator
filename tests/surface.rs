@@ -42,3 +42,39 @@ fn no_color_changes_nothing() {
     assert!(!plain.is_empty());
     assert_eq!(plain, asked);
 }
+
+/// `src/cli:V101`: asked for, the usage is the answer -- stdout, exit 0,
+/// bare and after a verb. A broken `.ctrm` cannot stand in the way: help
+/// is answered before the configuration loads.
+#[test]
+fn help_is_printed_to_stdout_and_exits_zero() {
+    let asks: [&[&str]; 5] = [
+        &["--help"],
+        &["-h"],
+        &["check", "--help"],
+        &["explain", "-h"],
+        &["fix", "--rule", "* asci", "--help"],
+    ];
+    for words in asks {
+        let got = ctrm(words, false);
+        let code = got.as_ref().and_then(|o| o.status.code());
+        let text = got.map(|o| o.stdout).unwrap_or_default();
+        assert_eq!(code, Some(0), "{words:?}");
+        let text = String::from_utf8_lossy(&text);
+        assert!(text.contains("ctrm check"), "{words:?}: {text}");
+    }
+}
+
+/// No arguments is still a usage ERROR: stderr, exit 2. And `--help`
+/// after `--` is a path, not a request for help.
+#[test]
+fn no_arguments_and_a_help_that_is_not_a_flag_stay_errors() {
+    let asks: [&[&str]; 2] = [&[], &["sets", "--", "--help"]];
+    for words in asks {
+        let got = ctrm(words, false);
+        let code = got.as_ref().and_then(|o| o.status.code());
+        let text = got.map(|o| o.stdout).unwrap_or_default();
+        assert_eq!(code, Some(2), "{words:?}");
+        assert!(text.is_empty(), "{words:?}");
+    }
+}
