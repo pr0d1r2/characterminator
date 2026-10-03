@@ -452,6 +452,9 @@ saves a measured few percent when you ask it to. A saving figure that
 flattered the tool would be the first number to re-measure, so the ones
 above are printed as found.
 
+Memory follows the same honesty rule: [docs/MEMORY.md](docs/MEMORY.md)
+says how much RAM a run takes, measured, and what makes it grow.
+
 ## It gates itself
 
 `ctrm check` runs over this repository's own tracked files on every commit,
