@@ -1,30 +1,5 @@
 # characterminator
 
-<!-- BEGIN badges -->
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![edition 2024](https://img.shields.io/badge/edition-2024-000000?logo=rust&logoColor=white)](Cargo.toml)
-[![MSRV 1.95](https://img.shields.io/badge/MSRV-1.95-000000?logo=rust&logoColor=white)](Cargo.toml)
-[![direct dependencies 3](https://img.shields.io/badge/direct_dependencies-3-brightgreen)](docs/THIRD-PARTY-NOTICES.md)
-[![runtime closure 26](https://img.shields.io/badge/runtime_closure-26-brightgreen)](docs/THIRD-PARTY-NOTICES.md)
-[![coverage 97.7%](https://img.shields.io/badge/coverage-97.7%25-brightgreen)](.coverage)
-[![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-brightgreen)](Cargo.toml)
-[![gate hk](https://img.shields.io/badge/gate-hk-6E4AFF)](hk.pkl)
-[![nix flake](https://img.shields.io/badge/nix-flake-5277C3?logo=nixos&logoColor=white)](flake.nix)
-
-[![built with Claude Code](https://img.shields.io/badge/built_with-Claude_Code-D97757)](https://claude.com/claude-code)
-[![built with Opus 5](https://img.shields.io/badge/built_with-Opus_5-D97757)](https://www.anthropic.com/claude)
-[![built with SDD](https://img.shields.io/badge/built_with-spec--driven_development-D97757)](SPEC.md)
-<!-- END badges -->
-
-Read [LLM-DISCLAIMER](docs/LLM-DISCLAIMER.md) first.
-
-**Status: 0.1.0, functional but not yet for production.** Every verb below
-runs and is tested, and the tool gates its own tree. An odd minor version
-is that promise and no more ([the version ladder](CHANGELOG.md#version-ladder)):
-the json contract and the library surface may still move before 0.2. Linux
-and macOS are tested in CI; Windows is not. See
-[what is not done](#what-is-not-done).
-
 Find and eliminate characters outside an allowed set, per file type and per
 file. The default is pure ASCII; anything wider is a grant somebody wrote
 down.
@@ -46,6 +21,32 @@ notes.md:1:19 U+201D -> "\""
 - `U+2014` rather than the character itself: a report about invisible and
   confusable characters cannot be written in them.
 
+<!-- BEGIN badges -->
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![edition 2024](https://img.shields.io/badge/edition-2024-000000?logo=rust&logoColor=white)](Cargo.toml)
+[![MSRV 1.95](https://img.shields.io/badge/MSRV-1.95-000000?logo=rust&logoColor=white)](Cargo.toml)
+[![direct dependencies 3](https://img.shields.io/badge/direct_dependencies-3-brightgreen)](docs/THIRD-PARTY-NOTICES.md)
+[![runtime closure 26](https://img.shields.io/badge/runtime_closure-26-brightgreen)](docs/THIRD-PARTY-NOTICES.md)
+[![coverage 97.7%](https://img.shields.io/badge/coverage-97.7%25-brightgreen)](.coverage)
+[![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-brightgreen)](Cargo.toml)
+[![gate hk](https://img.shields.io/badge/gate-hk-6E4AFF)](hk.pkl)
+[![nix flake](https://img.shields.io/badge/nix-flake-5277C3?logo=nixos&logoColor=white)](flake.nix)
+
+[![built with Claude Code](https://img.shields.io/badge/built_with-Claude_Code-D97757)](https://claude.com/claude-code)
+[![built with Opus 5](https://img.shields.io/badge/built_with-Opus_5-D97757)](https://www.anthropic.com/claude)
+[![built with SDD](https://img.shields.io/badge/built_with-spec--driven_development-D97757)](SPEC.md)
+<!-- END badges -->
+
+**Status: 0.1.0, functional but not yet for production.** Every verb below
+runs and is tested, and the tool gates its own tree. An odd minor version
+is that promise and no more ([the version ladder](CHANGELOG.md#version-ladder)):
+the json contract and the library surface may still move before 0.2. Linux
+and macOS are tested in CI; Windows is not. See
+[what is not done](#what-is-not-done).
+
+How it was built, and how to check that for yourself:
+[LLM-DISCLAIMER](docs/LLM-DISCLAIMER.md).
+
 ## Why
 
 Three reasons, and the third is the one that is easy to get wrong.
@@ -64,6 +65,39 @@ where a tool like this one is most tempted to overclaim. See
 [what it costs](#what-it-costs), which reports what was measured rather
 than what would sell the tool.
 
+## Concepts
+
+The words the rest of this page uses, each in a line or two.
+
+- **set** -- a named group of characters: `ascii`, `typography`, `emoji`,
+  a locale's letters such as `pl`, or one you declare. `a+b` is the union.
+  `ctrm sets` lists every set and what it holds.
+- **grant** -- one `.ctrm` line, saying which sets a path may use. The last
+  matching line wins. A path no line matches gets `ascii`.
+- **the three dotfiles**, one entry per line, `#` for a comment:
+
+  | file | one line is |
+  |---|---|
+  | `.ctrm` | `<glob> <set>[+<set>...] [@<family>] [!<level>] [!<lint>=<level>]`; the set may be left out of a line that only sets a family or a level |
+  | `.ctrm-sets` | `<name> <member>...` -- a character, `U+XXXX`, a range, or another set |
+  | `.ctrm-map` | `<from> <to>` -- what `fix` rewrites a character to; no `<to>` deletes it |
+
+- **family** (also **fidelity**) -- which spelling of a character a set
+  grants where there are two: `text` (the default) or `emoji`. `@emoji` on
+  a grant, or `--fidelity emoji`, switches it.
+- **level** -- how loud a lint is, spelled as rustc and clippy spell it:
+  `allow` (silent), `warn` (reported, exit 0 unless `--strict`), `deny`
+  (reported, exit 1), `forbid` (deny, and no later line or flag lowers it).
+  A bare `!<level>` sets the level of a path's out-of-set findings;
+  `!<lint>=<level>` sets one lint, or a whole group such as `pedantic`.
+- **hazard** -- a character that hides or reorders text: bidi controls, zero
+  width and tag characters, stray byte order marks, control characters.
+  Always `forbid`, whatever the set grants, `any` included.
+- **pedantic** -- an opt-in lint group, `allow` until asked for with
+  `--pedantic` or `!pedantic=warn`: `not-nfc`, `nfkc-compat`,
+  `unicode-space`, `mixed-script`, `confusable`, `crlf`,
+  `trailing-whitespace`, `final-newline`.
+
 ## Install
 
 ```bash
@@ -76,6 +110,8 @@ From a clone:
 cargo install --path .           # or
 nix develop                      # the dev shell, with the gate's tooling
 ```
+
+Working on `ctrm` itself: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### As a pre-commit hook
 
