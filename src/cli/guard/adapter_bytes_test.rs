@@ -32,6 +32,16 @@ fn a_hazard_in_a_file_that_is_not_text_is_denied() {
     }
 }
 
+/// V111: `fix` skips a file that is not text, so its denial points at
+/// looking (escaped) or asking instead.
+#[test]
+fn a_denied_binary_read_points_at_cat_v_not_fix() {
+    let got = read_of_bytes("ctrm-guard-bin-step", "", b"a\0\xe2\x80\xae");
+    assert!(got.contains("view it escaped (`cat -v "), "{got}");
+    assert!(got.contains("or ask the user."), "{got}");
+    assert!(!got.contains("run `ctrm fix"), "{got}");
+}
+
 /// No hazard but the NUL and the bytes a binary is made of: the read
 /// goes ahead, with a note that no rule could apply.
 #[test]

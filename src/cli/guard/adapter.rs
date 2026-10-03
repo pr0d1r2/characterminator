@@ -18,7 +18,7 @@
 //! leaves every hazard judged; only the note about it changes.
 
 use super::hook::{self, Call, Event, Verdict};
-use super::reason::{denied, file_note, output_note, tainted};
+use super::reason::{denied, denied_binary, file_note, output_note, tainted};
 use super::tier::blocks;
 use crate::judge::{Checker, Unruled, hazards_in, shown_path, unruled};
 use crate::lint::{Finding, Group, Hazards};
@@ -211,14 +211,15 @@ fn judged_file(shown: &str, found: &[Finding]) -> Verdict {
 /// not text is still READ, lossily, so it is judged as read (V66); a
 /// broken `.ctrm` must not open the door to a Trojan Source file.
 fn hazards_only(shown: &str, unruled: Unruled, why: Option<&str>) -> Verdict {
-    let (found, note) = match unruled {
-        Unruled::NotText(found) => (found, not_text(shown)),
-        Unruled::Text(found) => (found, unconfigured(shown, why)),
+    type Denial = fn(&str, &Finding, usize) -> String;
+    let (found, note, deny): (_, _, Denial) = match unruled {
+        Unruled::NotText(found) => (found, not_text(shown), denied_binary),
+        Unruled::Text(found) => (found, unconfigured(shown, why), denied),
     };
     let (blocking, noted): (Vec<&Finding>, Vec<&Finding>) =
         found.iter().partition(|f| blocks(f));
     match blocking.first() {
-        Some(first) => Verdict::Block(denied(shown, first, blocking.len())),
+        Some(first) => Verdict::Block(deny(shown, first, blocking.len())),
         None => notes([Some(note), file_note(shown, &noted)]),
     }
 }

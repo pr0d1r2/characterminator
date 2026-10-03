@@ -92,6 +92,20 @@ fn a_read_of_a_bidi_control_is_denied_by_name() {
     assert!(got.is_ascii(), "{got}");
 }
 
+/// V111: a denial says how to get past it -- `fix` the file, then Read
+/// again -- so the agent neither retries the same Read nor quits.
+#[test]
+fn a_denied_read_names_the_next_step() {
+    let files = [("t.md", "a\u{E0041}\n")];
+    let got = read_of("ctrm-guard-next-step", &files, "t.md");
+    let step = "Read denied: run `ctrm fix ";
+    assert!(got.contains(step), "{got}");
+    assert!(
+        got.contains("t.md` to remove them, then Read again."),
+        "{got}"
+    );
+}
+
 /// V110: a soft hyphen, terminal colour and a form feed are hazards
 /// `check` forbids, and ordinary content: the read goes ahead, with a
 /// note that says what they are and asks for no change.
