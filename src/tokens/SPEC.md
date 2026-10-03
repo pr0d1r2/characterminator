@@ -40,6 +40,8 @@ V69: run root (`-C`) ⊥ a directory → error naming it, exit 2. bare run w/ ro
 
 V70: tracked path ⊥ on disk (deleted, deletion unstaged) ⊥ in V9 fileset nor V43 expansion ∵ ⊥ bytes to judge; reading it aborted the WHOLE run.
 
+V83: named paths folded LEXICALLY (`lexical`, owned here; `src/cli:V71` form) before dedup & before V43 prefix test ∴ `sub/../a.md a.md` = 1 file, `d/e/../e` expands as `d/e`.
+
 ## §T TASKS
 
 id|status|task|cites
@@ -52,3 +54,4 @@ id|date|cause|fix
 B4|2026-09-27|V9 fileset took `itok::walk::tracked` as-is, symlinks incl. ∴ tracked link to a dir → `Is a directory`, exit 2, WHOLE run aborted (R7)|V48
 B25|2026-10-02|tracked file deleted from the tree stayed in V9 fileset ∴ read failed → exit 2, WHOLE run aborted, & bare `fix` had already written the files before it. via review|V70,`src/cli:V72`
 B27|2026-10-02|`-C /nonexistent`, `-C <file>` & a bare run outside git → V9 fileset empty ∴ clean report, exit 0, about ⊥ file. via review|V69
+B45|2026-10-03|dedup & V43 prefix test on raw `root.join(path)` ∴ `check sub/../a.md a.md` judged it twice (`stats`, `fix --check` too) & `check d/e/../e` → "holds no git-tracked file", exit 2. via release review|V83

@@ -14,8 +14,8 @@ use crate::charset::CharSet;
 use crate::lint::{Finding, Group, exit_code};
 use crate::render::{self, Format, Skipped, Violation};
 use crate::scan::Unreadable;
-use crate::tokens;
-use std::path::{Component, Path, PathBuf};
+use crate::tokens::{self, lexical};
+use std::path::Path;
 
 /// A violation with the strings it is reported against, owned so the
 /// borrowed `render` rows can point at them.
@@ -50,24 +50,6 @@ pub(super) fn shown_path(root: &Path, full: &Path) -> String {
         .unwrap_or(&full)
         .to_string_lossy()
         .into_owned()
-}
-
-/// `path` with every `.` dropped and every `..` folded into the name
-/// before it. A `..` with no name before it is kept: it leaves the tree.
-fn lexical(path: &Path) -> PathBuf {
-    let mut out = PathBuf::new();
-    for part in path.components() {
-        let named =
-            matches!(out.components().next_back(), Some(Component::Normal(_)));
-        match part {
-            Component::CurDir => {}
-            Component::ParentDir if named => {
-                out.pop();
-            }
-            other => out.push(other),
-        }
-    }
-    out
 }
 
 fn gather(

@@ -189,3 +189,44 @@ fn a_file_reached_two_ways_appears_once() {
     let hits = set.iter().filter(|p| p.ends_with("src/lib.rs")).count();
     assert_eq!(hits, 1, "{set:?}");
 }
+
+/// B45: two spellings of one file are one file (V83), not a file
+/// judged twice.
+#[test]
+fn two_spellings_of_one_path_are_one_file() {
+    let Some(root) = spelled("twice") else {
+        return;
+    };
+    let asked = ["sub/../a.md".to_owned(), "a.md".to_owned()];
+    assert_eq!(select(&root, &asked).map(|set| set.len()), Ok(1));
+}
+
+/// B45: a named directory spelled with `..` still expands (V83, V43),
+/// rather than being refused as holding nothing tracked.
+#[test]
+fn a_directory_spelled_with_dot_dot_still_expands() {
+    let Some(root) = spelled("dotdot") else {
+        return;
+    };
+    let set = select(&root, &["d/e/../e".to_owned()]).unwrap_or_default();
+    assert_eq!(set.len(), 1, "{set:?}");
+    assert!(set.iter().all(|p| p.ends_with("x.md")), "{set:?}");
+}
+
+/// A repository under `target/` tracking `a.md`, `sub/b.md` and
+/// `d/e/x.md`, one per test so parallel tests never share one. `None`
+/// without git.
+fn spelled(name: &str) -> Option<PathBuf> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("target")
+        .join(format!("ctrm-spelling-{name}"));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("sub")).ok()?;
+    std::fs::create_dir_all(root.join("d/e")).ok()?;
+    for file in ["a.md", "sub/b.md", "d/e/x.md"] {
+        std::fs::write(root.join(file), "x").ok()?;
+    }
+    git(&root, &["init", "-q"])?;
+    git(&root, &["add", "."])?;
+    Some(root)
+}

@@ -10,7 +10,7 @@ mod fileset;
 mod label;
 
 pub use count::{of_file, of_text};
-pub use fileset::select;
+pub use fileset::{lexical, select};
 
 use std::path::PathBuf;
 

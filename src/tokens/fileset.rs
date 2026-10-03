@@ -11,7 +11,7 @@
 
 use crate::tokens::Error;
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 /// A named directory holding nothing git tracks (V43). An error rather
 /// than an empty run, which would report a clean answer about no files.
@@ -26,6 +26,9 @@ const EMPTY: &str = "holds no git-tracked file -- name a file inside it, \
 /// for twice is still one file, and a count that added it twice would be
 /// wrong rather than merely repetitive.
 ///
+/// Two SPELLINGS of one path are one path too (V83): `sub/../a.md` and
+/// `a.md` are folded [`lexical`]ly before they are compared (B45).
+///
 /// # Errors
 /// When a named path is not readable, or is a directory holding nothing
 /// git tracks.
@@ -38,7 +41,7 @@ pub fn select(root: &Path, paths: &[String]) -> Result<Vec<PathBuf>, Error> {
     let mut chosen = Vec::new();
     for shown in paths {
         for full in named(root, shown)? {
-            if seen.insert(full.clone()) {
+            if seen.insert(lexical(&full)) {
                 chosen.push(full);
             }
         }
@@ -127,10 +130,15 @@ fn named(root: &Path, shown: &str) -> Result<Vec<PathBuf>, Error> {
 /// Filtered from the git-tracked set rather than walked: `ctrm check src/`
 /// then answers about exactly the files a bare run would, and a build
 /// directory inside the named one does not quietly join the set.
+///
+/// Both sides of the prefix test are folded [`lexical`]ly (V83): a raw
+/// `d/e/../e` is no prefix of `d/e/x.md`, so the directory was refused
+/// as holding nothing tracked (B45).
 fn under(root: &Path, full: PathBuf) -> Result<Vec<PathBuf>, Error> {
+    let dir = lexical(&full);
     let inside: Vec<PathBuf> = tracked(root)
         .into_iter()
-        .filter(|path| path.starts_with(&full))
+        .filter(|path| lexical(path).starts_with(&dir))
         .collect();
     if inside.is_empty() {
         return Err(Error {
@@ -139,6 +147,29 @@ fn under(root: &Path, full: PathBuf) -> Result<Vec<PathBuf>, Error> {
         });
     }
     Ok(inside)
+}
+
+/// `path` with every `.` dropped and every `..` folded into the name
+/// before it. A `..` with no name before it is kept: it leaves the tree.
+///
+/// Lexical, not canonical (`src/cli:V71`): a symlink is not resolved, so
+/// a path stays the one typed. The crate's one folding, so the fileset
+/// and the path a report shows cannot disagree about a spelling (V83).
+#[must_use]
+pub fn lexical(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for part in path.components() {
+        let named =
+            matches!(out.components().next_back(), Some(Component::Normal(_)));
+        match part {
+            Component::CurDir => {}
+            Component::ParentDir if named => {
+                out.pop();
+            }
+            other => out.push(other),
+        }
+    }
+    out
 }
 
 #[cfg(test)]
