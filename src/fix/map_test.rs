@@ -214,10 +214,11 @@ fn the_builtin_map_deletes_the_invisibles() {
     }
 }
 
-/// `src/lint:V34`: a bidi control is REPORTED, never auto-removed. A
-/// Trojan Source override deleted by `fix` would leave code that now
-/// reads as it runs and no record that anyone tried to hide it, so
-/// the map has no entry for any of them and they stay unmapped (V4).
+/// `src/lint:V34`: the builtin MAP has no entry for a bidi control.
+/// `fix` still deletes one, but as a hazard (V104), not as a mapping:
+/// a `.ctrm-map` line for it wins, and either way the deletion is a
+/// reported rewrite row -- the record that a Trojan Source override was
+/// there.
 #[test]
 fn the_builtin_map_leaves_every_bidi_control_alone() {
     let map = parsed(super::BUILTIN);

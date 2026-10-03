@@ -19,6 +19,7 @@ mod ucd;
 pub(crate) use finding::{Finding, exit_code, one_claim};
 pub use group::Group;
 pub use hazard::Hazards;
+pub(crate) use hazard::carries_no_text;
 pub use level::Level;
 pub(crate) use pedantic::{
     CHAR_LINTS, LINE_LINTS, TEXT_LINTS, char_lints, line_hits, text_hits,

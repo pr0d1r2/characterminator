@@ -19,12 +19,15 @@
   language: rust
   types: [text]
 
-# Rewrite what the map can rewrite, then report what it could not. A file
-# it changed fails the hook the way every pre-commit fixer does, so the
-# rewrite is staged by a person rather than committed unseen.
+# Rewrite what the map can rewrite, remove the hazards -- invisible and
+# reordering characters, even where the file's set grants them, by their
+# map entry or else deleted; a control character only through a map entry
+# -- then report what it could not. A file it changed fails the hook the
+# way every pre-commit fixer does, so the rewrite is staged by a person
+# rather than committed unseen.
 - id: ctrm-fix
   name: ctrm fix
-  description: rewrite characters outside each file's set via the map
+  description: rewrite characters outside each file's set via the map, and strip hazards
   entry: ctrm fix
   language: rust
   types: [text]

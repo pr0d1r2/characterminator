@@ -386,6 +386,9 @@ fn heard(hits: Vec<(Lint, Hit)>, levels: &Levels) -> Vec<Finding> {
         .collect()
 }
 
+#[path = "rewrite.rs"]
+mod rewrite;
+
 #[cfg(test)]
 #[path = "checker_test.rs"]
 mod tests;

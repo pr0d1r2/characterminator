@@ -37,6 +37,20 @@ const CLASSES: [(&str, &str); 5] = [
 /// The lint whose ONE exemption is positional.
 const STRAY_BOM: &str = "stray-bom";
 
+/// The one hazard class that may carry MEANING: a C0 or C1 control (a
+/// form feed, an escape sequence in a captured log). Every other class
+/// holds characters that draw nothing -- they hide or reorder text and
+/// add none -- so `fix` may delete one; this one it rewrites only through
+/// a map entry (`src/fix:V104`).
+const CONTROL: &str = "control-character";
+
+/// Whether a hazard lint's characters carry no visible text, so `fix`
+/// deletes one no map entry covers (`src/fix:V104`): every class but
+/// `control-character`.
+pub(crate) fn carries_no_text(lint: Lint) -> bool {
+    lint.group == crate::lint::Group::Hazard && lint.name != CONTROL
+}
+
 /// The fidelity the classes are resolved at. They carry no labelled
 /// member (`src/charset:V41`), so any family answers the same; this is
 /// the default one, named rather than imported because a family is an

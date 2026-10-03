@@ -115,14 +115,13 @@ impl Pass {
     /// One file: judge it, rewrite it, queue the write when asked.
     fn visit(&self, file: File, found: &mut Found) -> Result<(), String> {
         let File { full, shown, text } = file;
-        let (set, _) = self.checker.effective(&shown)?;
+        let (set, _) = self.checker.shared_law(&shown)?;
         let Some(text) = text_of(text, &shown, found) else {
             return Ok(());
         };
-        let fixed = engine::fix(&text, &self.map, |point| set.contains(point))
-            .map_err(|bad| format!("{shown}: {bad}"))?;
-        let kept = self.left(&shown, &text, &fixed)?;
-        found.unmapped.extend(kept);
+        let fixed = self.checker.judge(&set).fix(&text, &self.map);
+        let fixed = fixed.map_err(|e| format!("{shown}: {e}"))?;
+        found.unmapped.extend(self.left(&shown, &text, &fixed)?);
         if self.write && fixed.output != text {
             found.pending.push((full, fixed.output));
         }
@@ -260,13 +259,17 @@ fn skip(held: &Skip) -> Skipped<'_> {
 }
 
 #[cfg(test)]
+#[path = "fix_hazard_test.rs"]
+mod hazard_tests;
+
+#[cfg(test)]
 mod tests {
     use super::run;
     use crate::cli::testkit::fixture;
     use crate::render::Format;
     use std::path::Path;
 
-    fn ran(root: &Path, write: bool) -> (String, u8) {
+    pub(super) fn ran(root: &Path, write: bool) -> (String, u8) {
         let asked = ["notes.md".to_owned()];
         match run(
             &crate::cli::config::discovered(root),
@@ -279,7 +282,7 @@ mod tests {
         }
     }
 
-    fn read(root: &Path) -> String {
+    pub(super) fn read(root: &Path) -> String {
         std::fs::read_to_string(root.join("notes.md")).unwrap_or_default()
     }
 
@@ -384,23 +387,29 @@ mod tests {
         assert!(out.contains("U+2261"), "{out}");
     }
 
+    /// `src/fix:V104` (B59): a hazard is rewritten even where the set
+    /// grants it, so `--check` fails on the DRIFT -- the row a person
+    /// acts on -- where it used to fail on a hazard only a hand could
+    /// remove. A control character `fix` may not delete is still left
+    /// and judged as `check` judges it.
     #[test]
-    fn a_hazard_the_set_grants_still_fails_fix_check() {
+    fn a_hazard_the_set_grants_is_drift_for_fix_check() {
         let text = "a\u{202E}b\n";
+        let gone = "notes.md:1:2 U+202E -> \"\"";
         let any = "* any\n";
         let (out, code) = left_behind("ctrm-fix-hazard-any", any, text);
-        assert_eq!(code, 1, "{out}");
-        assert_eq!(out, "notes.md:1:2 U+202E hazard");
+        assert_eq!((out.as_str(), code), (gone, 1));
         let ascii = "* ascii\n";
         let (out, code) = left_behind("ctrm-fix-hazard-ascii", ascii, text);
-        assert_eq!(code, 1, "{out}");
-        assert_eq!(out, "notes.md:1:2 U+202E hazard");
-        // Judged in the REWRITTEN text, placed in the original: the em
-        // dash before it became `--`, one column wider, and the row still
-        // names column 3, where the override sits in the file on disk.
+        assert_eq!((out.as_str(), code), (gone, 1));
+        // Placed in the original: the em dash before it became `--`, and
+        // the row still names column 3, where the override sits on disk.
         let shifted = "a\u{2014}\u{202E}b\n";
         let (out, _) = left_behind("ctrm-fix-hazard-shift", ascii, shifted);
-        assert!(out.ends_with("\nnotes.md:1:3 U+202E hazard"), "{out}");
+        assert!(out.ends_with("\nnotes.md:1:3 U+202E -> \"\""), "{out}");
+        let bell = "a\u{7}b\n";
+        let (out, code) = left_behind("ctrm-fix-hazard-bell", any, bell);
+        assert_eq!((out.as_str(), code), ("notes.md:1:2 U+0007 hazard", 1));
     }
 
     /// B41: a file that is not UTF-8 fails both forms, as it fails

@@ -12,6 +12,7 @@ mod error;
 mod family;
 mod map;
 
+pub(crate) use apply::fix_under;
 pub use apply::{Fixed, Report, fix};
 pub use error::Error;
 pub(crate) use map::BUILTIN;
@@ -65,4 +66,33 @@ pub(crate) struct MapEntry {
 pub struct Rewrite {
     pub hit: Hit,
     pub to: String,
+}
+
+/// What `fix` asks of the file it rewrites (V6, V104): which characters
+/// its set grants, and where a text holds a HAZARD -- a character that is
+/// rewritten whatever the set grants, because a grant was never meant to
+/// let in what hides or reorders text (`src/lint:V34`).
+///
+/// Both arrive from outside: whether a character is allowed, or a hazard
+/// at that place in that file, is the judge's answer, not this node's
+/// (`src:V39`). `hazards` is asked once per pass, of the text that pass
+/// reads, so a later pass (V65) sees the hazards where they now sit.
+#[derive(Clone, Copy)]
+pub(crate) struct Law<'a> {
+    pub allowed: &'a dyn Fn(char) -> bool,
+    pub hazards: &'a HazardsIn<'a>,
+}
+
+/// The hazards of one text, ascending by byte.
+pub(crate) type HazardsIn<'a> = dyn Fn(&str) -> Vec<Hazard> + 'a;
+
+/// One hazard in one text: its byte offset, and whether it may be DELETED
+/// when no map entry covers it. A hazard that carries no visible text --
+/// a bidi control, a tag, a stray BOM, an invisible -- may; a control
+/// character may not, since what it meant is not this tool's to guess
+/// (V104).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Hazard {
+    pub byte: usize,
+    pub delete: bool,
 }

@@ -23,6 +23,7 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
 - `Config` = 3 `Sources` (rules, sets, map) + root + `--strict`; FILLED by `src/cli` (argv, dotfiles), ASSEMBLED here: `validate` (`src/cli:V74`), `rules`, `catalog`, `listing`, `map`.
 - `Checker` = one run's rules, catalog & hazards: `shared_law(path)` → set + levels; `effective(path)` → set + winning rule (`explain`); `findings(path, bytes)` (`guard`); `declared(family)` (`sets`).
+- `Judge::fix(text, map)` = `src/fix` under the file's law: set + its hazards as `check` judges them (`src/fix:V104`) ∴ `fix` & `stats` ⊥ 2nd hazard verdict.
 - `inspect(bytes, judge, levels)` → findings | `Unreadable`; `judged(text, …)` the same on text already decoded. pure, ⊥ fs.
 - `files(root, paths)` = THE walk of `check`, `fix` & `stats`: select (`src/tokens`), read, decode ONCE (`src/scan:V8`), `shown_path` (V71).
 - `unruled(bytes, hazards)` = hazards only, ⊥ rules (`guard`): text as is; not text → its lossy decode ∖ `control-character` (`src/cli/guard:V66`).

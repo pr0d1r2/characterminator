@@ -16,6 +16,8 @@ use crate::scan::{Hit, Position};
 
 #[path = "apply_class_test.rs"]
 mod classes;
+#[path = "apply_hazards_test.rs"]
+mod hazards;
 #[path = "apply_sequences_test.rs"]
 mod sequences;
 #[path = "apply_words_test.rs"]

@@ -1,8 +1,9 @@
 //! Applying a map: the `fix` pass and the `--check` reporting mode.
 //!
 //! One pass walks the text and rewrites a span ONLY when the span covers a
-//! character the caller's predicate disallows, so every other byte is copied
-//! through untouched (V6). A character with no mapping is copied through and
+//! character the caller's predicate disallows, or starts at a hazard the
+//! caller's law names (V104), so every other byte is copied through
+//! untouched (V6). A character with no mapping is copied through and
 //! reported rather than dropped (V4). A replacement is itself run through
 //! the map before it is emitted, so a chain (skin tone to thumbs up to `+1`)
 //! lands on its fixed point in one pass and a second run changes nothing
@@ -13,7 +14,7 @@
 //! predicate, because that answer belongs to the charset and rules nodes.
 
 use crate::fix::map::{Map, Match, violates};
-use crate::fix::{Error, Rewrite};
+use crate::fix::{Error, Hazard, Law, Rewrite};
 use crate::scan::{Hit, Position, located};
 
 /// What `fix` found, with no text to write: the `fix --check` answer.
@@ -84,11 +85,30 @@ pub fn fix(
     map: &Map,
     allowed: impl Fn(char) -> bool,
 ) -> Result<Fixed, Error> {
-    let allowed: &dyn Fn(char) -> bool = &allowed;
+    let law = Law {
+        allowed: &allowed,
+        hazards: &|_| Vec::new(),
+    };
+    fix_under(text, map, law)
+}
+
+/// [`fix`], under a law that also knows the file's hazards (V104): each
+/// one is rewritten whatever the set grants -- by the map where it maps,
+/// else deleted when it carries no visible text. Every guard of [`fix`]
+/// holds unchanged; V6 spares the hazards and nothing else.
+///
+/// # Errors
+///
+/// As [`fix`].
+pub(crate) fn fix_under(
+    text: &str,
+    map: &Map,
+    law: Law<'_>,
+) -> Result<Fixed, Error> {
     let mut seen = History::new(text);
-    let mut pass = guarded(text, map, allowed)?;
+    let mut pass = guarded(text, map, law)?;
     for _ in 0..SETTLE {
-        let again = guarded(&pass.output, map, allowed)?;
+        let again = guarded(&pass.output, map, law)?;
         if again.output == pass.output {
             return Ok(seen.settled(pass));
         }
@@ -262,12 +282,13 @@ impl Layer {
 const SETTLE: usize = 3;
 
 /// One pass, refused if it touched a byte outside a violation (V6).
-fn guarded(
-    text: &str,
-    map: &Map,
-    allowed: &dyn Fn(char) -> bool,
-) -> Result<Pass, Error> {
-    let pass = run(text, map, allowed, map.budget())?;
+fn guarded(text: &str, map: &Map, law: Law<'_>) -> Result<Pass, Error> {
+    let ground = Ground {
+        map,
+        allowed: law.allowed,
+        budget: map.budget(),
+    };
+    let pass = run(text, ground, (law.hazards)(text))?;
     if untouched_bytes_match(text, &pass) {
         Ok(pass)
     } else {
@@ -313,17 +334,27 @@ impl Span {
     }
 }
 
-fn run<'a>(
-    text: &'a str,
+/// What a walk reads besides its text: the map, the set's predicate, and
+/// how deep a replacement may still be rewritten (V5).
+#[derive(Clone, Copy)]
+struct Ground<'a> {
     map: &'a Map,
     allowed: &'a dyn Fn(char) -> bool,
     budget: usize,
+}
+
+fn run(
+    text: &str,
+    ground: Ground<'_>,
+    hazards: Vec<Hazard>,
 ) -> Result<Pass, Error> {
     let mut walk = Run {
         text,
-        map,
-        allowed,
-        budget,
+        map: ground.map,
+        allowed: ground.allowed,
+        budget: ground.budget,
+        hazards,
+        next: 0,
         at: Cursor::start(),
         pass: Pass::default(),
         gap: false,
@@ -342,6 +373,9 @@ struct Run<'a> {
     map: &'a Map,
     allowed: &'a dyn Fn(char) -> bool,
     budget: usize,
+    /// This text's hazards, ascending, and the first one not yet passed.
+    hazards: Vec<Hazard>,
+    next: usize,
     at: Cursor,
     pass: Pass,
     /// The last thing written was a word ending in a letter or a digit, so
@@ -357,7 +391,8 @@ impl Run<'_> {
     fn walk(&mut self) -> Result<(), Error> {
         while let Some(rest) = self.text.get(self.at.byte..) {
             let Some(ch) = rest.chars().next() else { break };
-            let found = self.matched(rest)?;
+            let hazard = self.hazard_here();
+            let found = self.matched(rest, hazard)?;
             self.paired = found.is_none() && !self.paired && regional(ch);
             match found {
                 Some((source, found)) => self.rewrite(source, ch, found)?,
@@ -367,16 +402,43 @@ impl Run<'_> {
         Ok(())
     }
 
-    /// The span to rewrite here, if any. A zero-length match is refused: it
-    /// would leave the cursor where it is. So is a match whose replacement,
-    /// rewritten to its fixed point, still holds a character the file may
-    /// not: that would WRITE a violation, so the character stays and is
-    /// reported (V4, B40).
-    fn matched<'b>(&self, rest: &'b str) -> Found<'b> {
+    /// The hazard at the cursor, if any (V104). The list is ascending and
+    /// the cursor only moves forward, so this is one walk of the list.
+    fn hazard_here(&mut self) -> Option<Hazard> {
+        let byte = self.at.byte;
+        while self.hazards.get(self.next).is_some_and(|h| h.byte < byte) {
+            self.next = self.next.saturating_add(1);
+        }
+        self.hazards
+            .get(self.next)
+            .filter(|h| h.byte == byte)
+            .copied()
+    }
+
+    /// The span to rewrite here, if any: what the map makes of it, else,
+    /// for a hazard that carries no visible text, its deletion (V104).
+    fn matched<'b>(&self, rest: &'b str, hazard: Option<Hazard>) -> Found<'b> {
         if self.paired && rest.chars().next().is_some_and(regional) {
             return Ok(None);
         }
-        let Some(found) = self.map.resolve_at(rest, self.allowed)? else {
+        if let Some(found) = self.mapped(rest, hazard)? {
+            return Ok(Some(found));
+        }
+        Ok(hazard.filter(|h| h.delete).and_then(|_| deleted(rest)))
+    }
+
+    /// What the map makes of the span here, if anything. A zero-length
+    /// match is refused: it would leave the cursor where it is. So is a
+    /// match whose replacement, rewritten to its fixed point, still holds
+    /// a character the file may not: that would WRITE a violation, so the
+    /// character stays and is reported (V4, B40).
+    ///
+    /// A hazard is matched as though its set did not grant it, so a map
+    /// entry for it fires where the file allows it too (V104).
+    fn mapped<'b>(&self, rest: &'b str, hazard: Option<Hazard>) -> Found<'b> {
+        let here = rest.chars().next().filter(|_| hazard.is_some());
+        let allowed = |c: char| Some(c) != here && (self.allowed)(c);
+        let Some(found) = self.map.resolve_at(rest, &allowed)? else {
             return Ok(None);
         };
         let Some(source) = rest.get(..found.len).filter(|s| !s.is_empty())
@@ -451,7 +513,12 @@ impl Run<'_> {
         let Some(budget) = self.budget.checked_sub(1) else {
             return Err(Error::MapCycle);
         };
-        Ok(run(to, self.map, self.allowed, budget)?.output)
+        let ground = Ground {
+            map: self.map,
+            allowed: self.allowed,
+            budget,
+        };
+        Ok(run(to, ground, Vec::new())?.output)
     }
 
     fn keep(&mut self, ch: char) {
@@ -464,6 +531,19 @@ impl Run<'_> {
         self.emit(ch.encode_utf8(&mut [0; 4]));
         self.at.advance(ch);
     }
+}
+
+/// The first character of `rest`, deleted: a hazard no map entry covers
+/// that carries no visible text (V104).
+fn deleted(rest: &str) -> Option<(&str, Match)> {
+    let ch = rest.chars().next()?;
+    let source = rest.get(..ch.len_utf8())?;
+    let found = Match {
+        len: source.len(),
+        to: String::new(),
+        word: false,
+    };
+    Some((source, found))
 }
 
 /// Whether a character on one side of a word boundary would read as part

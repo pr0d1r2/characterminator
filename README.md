@@ -82,7 +82,7 @@ repos:
     rev: <tag or commit>
     hooks:
       - id: ctrm-check    # refuse; writes nothing
-      # - id: ctrm-fix    # rewrite what the map can, then refuse the rest
+      # - id: ctrm-fix    # rewrite what the map can, strip hazards, refuse the rest
 ```
 
 ### In GitHub Actions
@@ -275,9 +275,17 @@ Source attack), tag characters (invisible ASCII a model still reads), C0
 and C1 controls other than tab, newline and carriage return, and a byte
 order mark anywhere but byte 0 -- generated from the Unicode Character
 Database. One of them is reported at `forbid` whatever the file's set says,
-`any` included, and no later rule or flag lowers that. `fix` does not
-silently strip a bidi control either: it is reported, and a person removes
-it.
+`any` included, and no later rule or flag lowers that.
+
+`fix` removes them the same way, whatever the set grants: a hazard is
+rewritten by its map entry if it has one, and otherwise deleted, because a
+character that only hides or reorders text draws nothing a reader would
+miss. What `check` lets off is left alone -- a byte order mark at byte 0,
+the joiners inside an emoji sequence, the joiner a `persian` or `hindi`
+file spells with. The one exception is a C0 or C1 control character, which
+may mean something (a form feed, an escape sequence in a captured log): it
+is kept and reported unless a `.ctrm-map` line says what it becomes.
+`fix --check` lists each removal as a rewrite to `""`.
 
 `marks` is the one to look at twice. One name holds both spellings of the
 same mark, and which one you get depends on the fidelity in force:
@@ -429,8 +437,8 @@ tokenizer's answer, not a promise.
 A word never fuses with the letter beside it: `U+22A5owns` becomes
 `not owns`, not `notowns`.
 
-`fix` only rewrites characters **outside** the file's set, so a file that
-grants the notation keeps it. To get the rewrite, narrow the grant. Here it
+`fix` only rewrites characters **outside** the file's set -- and hazards,
+wherever they are -- so a file that grants the notation keeps it. To get the rewrite, narrow the grant. Here it
 is on a scratch copy of this repository's own ten `SPEC.md` files, which
 normally grant `ascii+spec`:
 

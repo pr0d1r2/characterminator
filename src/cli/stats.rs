@@ -10,7 +10,7 @@
 //! reports has to be the same number `itok` reports elsewhere. The
 //! rewriting is `src/fix`'s. This node asks both and prints the pair.
 
-use crate::fix::{self as engine, Map};
+use crate::fix::Map;
 use crate::judge::{Checker, Config, File, files};
 use crate::render::{self, FileStats, Format, Skipped};
 use crate::scan::Unreadable;
@@ -101,9 +101,12 @@ impl Pass {
 
     /// One text's numbers: outside its set, and the cost before and after.
     fn counted(&self, shown: &str, text: &str) -> Result<Row, String> {
-        let (set, _) = self.checker.effective(shown)?;
+        let (set, _) = self.checker.shared_law(shown)?;
         let allowed = |point: char| set.contains(point);
-        let fixed = engine::fix(text, &self.map, allowed)
+        let fixed = self
+            .checker
+            .judge(&set)
+            .fix(text, &self.map)
             .map_err(|bad| format!("{shown}: {bad}"))?;
         let outside = text.chars().filter(|point| !allowed(*point)).count();
         Ok(Row {
