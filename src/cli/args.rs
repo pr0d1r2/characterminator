@@ -140,6 +140,25 @@ pub(super) fn parse(args: &[String]) -> Result<Args, String> {
     Ok(parsed)
 }
 
+/// The verb a command line names even when it does not parse: the first
+/// word that is neither a flag nor a valued flag's value, stopping at
+/// `--`. A refusal reports it, so `ctrm --format json check --bad` names
+/// `check` rather than `json`, the value of `--format`.
+pub(super) fn verb_in(args: &[String]) -> Option<&str> {
+    let mut words = args.iter().map(String::as_str);
+    while let Some(word) = words.next() {
+        if word == END {
+            return None;
+        }
+        if VALUED.contains(&word) {
+            words.next();
+        } else if !word.starts_with('-') {
+            return Some(word);
+        }
+    }
+    None
+}
+
 /// The flag a word names, `None` for a positional word, or why it is
 /// refused.
 ///

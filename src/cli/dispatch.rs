@@ -72,14 +72,11 @@ pub fn run(args: &[String]) -> ExitCode {
     }
 }
 
-/// The first word that is not a flag: the verb a refused command line was
-/// aimed at, so a `--format json` run still answers in json
-/// (`src/render:V122`). Empty when there is none.
+/// The verb a refused command line was aimed at, so a `--format json` run
+/// still answers in json under its own verb (`src/render:V122`). Empty
+/// when there is none.
 fn named_verb(args: &[String]) -> &str {
-    args.iter()
-        .map(String::as_str)
-        .find(|word| !word.starts_with('-'))
-        .unwrap_or_default()
+    args::verb_in(args).unwrap_or_default()
 }
 
 fn verb_of(args: &[String]) -> Option<&str> {

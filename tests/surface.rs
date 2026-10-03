@@ -162,3 +162,16 @@ fn flags_may_precede_the_verb_and_guard_has_help() {
     assert_eq!(code, Some(0));
     assert!(String::from_utf8_lossy(&text).contains("ctrm guard"));
 }
+
+/// B77 / `src/render:V122`: with flags before the verb, the error document
+/// names the verb, not the value of `--format`.
+#[test]
+fn a_json_error_names_the_verb_after_leading_flags() {
+    let got = ctrm(&["--format", "json", "check", "--stirct"], false);
+    let text = got.map(|o| o.stdout).unwrap_or_default();
+    let text = String::from_utf8_lossy(&text);
+    assert!(
+        text.starts_with("{\"schema\":1,\"verb\":\"check\""),
+        "{text}"
+    );
+}
