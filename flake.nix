@@ -193,8 +193,8 @@
           # `nixpkgs-lock` bump.
           LLVM_COV = "${coverageLlvm pkgs}/bin/llvm-cov";
           LLVM_PROFDATA = "${coverageLlvm pkgs}/bin/llvm-profdata";
-          # Entering installs the git hooks, unconditionally rewriting them,
-          # so the hook a contributor has is always the one this file
+          # Entering installs the git hooks, rewriting any that differ, so
+          # the hook a contributor has is always the one this file
           # describes.
           #
           # `git rev-parse --git-path hooks` rather than a literal
@@ -220,12 +220,18 @@
             elif git -C "$ctrm_root" ls-files --error-unmatch "$ctrm_hooks" >/dev/null 2>&1; then
               echo "characterminator(shell): $ctrm_hooks is TRACKED -- refusing to overwrite a reviewed hook (B1)" >&2
             elif [ -n "$ctrm_hooks" ] && [ -d "$ctrm_hooks" ]; then
-              install -m 755 ${gitHook pkgs "pre-commit"} "$ctrm_hooks/pre-commit"
-              install -m 755 ${gitHook pkgs "pre-push"} "$ctrm_hooks/pre-push"
+              # Written only when missing, different or not executable, and
+              # SAID only then: entering an up-to-date shell stays silent.
+              ctrm_new=
+              { cmp -s ${gitHook pkgs "pre-commit"} "$ctrm_hooks/pre-commit" && [ -x "$ctrm_hooks/pre-commit" ]; } ||
+                { install -m 755 ${gitHook pkgs "pre-commit"} "$ctrm_hooks/pre-commit" && ctrm_new=1; }
+              { cmp -s ${gitHook pkgs "pre-push"} "$ctrm_hooks/pre-push" && [ -x "$ctrm_hooks/pre-push" ]; } ||
+                { install -m 755 ${gitHook pkgs "pre-push"} "$ctrm_hooks/pre-push" && ctrm_new=1; }
+              [ -z "$ctrm_new" ] || echo "ctrm: git hooks installed (pre-commit, pre-push)" >&2
             else
               echo "characterminator(shell): no git hooks directory -- nothing is gating" >&2
             fi
-            unset ctrm_root ctrm_hooks
+            unset ctrm_root ctrm_hooks ctrm_new
           '';
         };
       });
