@@ -36,8 +36,8 @@ V99: ∀ verb & `guard` judge bytes through ONE `Checker` ∴ ⊥ two verdicts o
 ## §T TASKS
 
 id|status|task|cites
-T65|x|extract the judge from `src/cli` (`checker`, config assembly) ∴ `guard` & `explain` import `src/judge`, ⊥ their parent's privates|V99,`src:V39`
-T66|x|ONE walk → read → decode (`files`) for `check`, `fix` & `stats`; guard's hazards-only path → `unruled`; `scan_bytes` returns its text ∴ ⊥ 2nd decode|V71,`src/scan:V8`
+T65|x|ARCHIVED to SPEC-ARCHIVE.md|V99,`src:V39`
+T66|x|ARCHIVED to SPEC-ARCHIVE.md|V71,`src/scan:V8`
 
 ## §B BUGS
 
