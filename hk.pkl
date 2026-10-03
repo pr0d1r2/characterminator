@@ -74,7 +74,7 @@ local fast = new Mapping<String, Step> {
     check = """
       command -v mth >/dev/null 2>&1 || { echo 'hk: mth is not on PATH and nothing else checks SPEC.md structure. Enter the dev shell (`nix develop`, or `direnv reload`), which provides it from a pinned flake input.' >&2; exit 1; }
       for f in SPEC.md $(find src -name SPEC.md | sort); do
-        mth fmt --check "$f" || { echo "hk: $f is not formatted -- one line per statement, no line over the cap. Run \\`mth fmt $f\\`; splitting an over-long statement is the fix, raising the cap is a reviewed decision." >&2; exit 1; }
+        mth fmt --check "$f" || { printf 'hk: %s is not formatted -- one line per statement, no line over the cap. Run `mth fmt %s`; splitting an over-long statement is the fix, raising the cap is a reviewed decision.\n' "$f" "$f" >&2; exit 1; }
       done
       """
   }
@@ -118,8 +118,14 @@ local fast = new Mapping<String, Step> {
   // THE FEDERATION. `sherd check` reads the whole node tree: every declared
   // resolves to a directory, sibling lenses stay disjoint, and no node
   // outgrows its ceiling.
+  //
+  // After `mth-check`, so a SPEC.md that is malformed is reported FIRST by
+  // the format's owner, with its why-and-fix text. sherd parses the same
+  // files, and under `fail_fast` its terser complaint about a broken file
+  // would otherwise be the only line a contributor sees.
   ["sherd-check"] {
     glob = List("SPEC.md", "src/**/SPEC.md", "**/*.rs")
+    depends = List("mth-check")
     check = """
       command -v sherd >/dev/null 2>&1 || { echo 'hk: sherd is not on PATH, so the federation was NOT checked -- re-enter the dev shell. Examined nothing; this is not a pass.' >&2; exit 1; }
       sherd check || { echo 'hk: sherd check found a structural violation -- it names the file, line and rule.' >&2; exit 1; }
@@ -137,7 +143,7 @@ local fast = new Mapping<String, Step> {
     depends = List("sherd-check")
     check = """
       command -v sherd >/dev/null 2>&1 || { echo 'hk: sherd is not on PATH, so the chain budgets were NOT checked -- re-enter the dev shell. Examined nothing; this is not a pass.' >&2; exit 1; }
-      sherd budget >/dev/null || { sherd budget >&2; echo 'hk: a node chain is over its ceiling in .context-limits (the directory rows). Compacting the chain is the fix -- `mth archive` the finished rows; raising a ceiling is a reviewed decision and belongs in its own commit.' >&2; exit 1; }
+      sherd budget >/dev/null || { sherd budget >&2 || true; echo 'hk: a node chain is over its ceiling in .context-limits (the directory rows). Compacting the chain is the fix -- `mth archive` the finished rows; raising a ceiling is a reviewed decision and belongs in its own commit.' >&2; exit 1; }
       """
   }
   // THE CAP ON CEILINGS (V103). A ceiling below the cap rises by the ~12%
@@ -165,7 +171,10 @@ local fast = new Mapping<String, Step> {
   ["sherd-sync"] {
     glob = List("SPEC.md", "src/**/SPEC.md")
     depends = List("sherd-check")
-    check = "sherd sync --check || { echo 'hk: a NAV section is stale against the FEDERATION section above it. Run `sherd sync`, then `git add` the result.' >&2; exit 1; }"
+    check = """
+      command -v sherd >/dev/null 2>&1 || { echo 'hk: sherd is not on PATH, so NAV was NOT checked -- re-enter the dev shell. Examined nothing; this is not a pass.' >&2; exit 1; }
+      sherd sync --check || { echo 'hk: a NAV section is stale against the FEDERATION section above it. Run `sherd sync`, then `git add` the result.' >&2; exit 1; }
+      """
   }
   // THE PINS ARE TAGS (V44). A flake input that follows a branch moves the
   // rules this gate enforces with no diff to read, so every `url` line in
