@@ -528,20 +528,21 @@ notation would make it unreadable.
 
 ## What is not done
 
-`SPEC.md` is the authority and `mth tasks SPEC.md` prints the backlog; this
-list goes stale and that one does not.
+The specs are the authority and this list is a summary of them, so it can
+lag. [CONTRIBUTING.md](CONTRIBUTING.md#finding-something-to-do) shows how to
+list every open task, and the issue tracker is the place to ask about one.
 
 - **`guard` speaks Claude Code only.** Another agent harness is a second
   mapping in one file (`src/cli/guard/hook.rs`), and none is written yet.
 - **One pedantic lint is not built**: `locale-literal` needs a notion of
   which files are code and how each language spells a string literal.
-- **No per-locale typography yet.** `typography-<code>` -- a locale's own
-  quotes and punctuation from CLDR (Polish `U+201E` and `U+201D`) -- is
-  task T61 in `src/fix/SPEC.md`. CLDR is vendored for the letter presets;
-  the punctuation is not generated from it yet.
+- **No per-locale typography yet.** A `typography-<code>` set -- a
+  locale's own quotes and punctuation from CLDR (Polish `U+201E` and
+  `U+201D`) -- is planned. CLDR is vendored for the letter presets; the
+  punctuation is not generated from it yet.
 - **Dogfooding has one wave.** The presets were sized from a scan of many
   repositories, but `ctrm` gates only this one; rolling it out across the
-  rest is T28 in `SPEC.md`.
+  rest is planned.
 - **Windows is untested.** CI (`.github/workflows/ci.yml`) runs the gate on
   Linux (x86 and arm) and macOS, and the action on Linux.
 

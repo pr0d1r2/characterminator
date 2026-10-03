@@ -56,8 +56,7 @@ the rewritten text would still be reported for, judged the same way `check`
 judges it. Both are held the way `check` holds its findings -- the path
 once per file, each row moved rather than copied -- so on the mixed file it
 peaks at 385 MB, about 1.45 times `check`. It used to copy the path, the
-set and every row on the way to the report, and peaked at over 900 MB;
-`src/fix/SPEC.md` R18 records the before and after.
+set and every row on the way to the report, and peaked at over 900 MB.
 
 ## Why the report is built before it is printed
 
@@ -68,7 +67,7 @@ script -- could not tell it from a whole one.
 
 Piping into `head` does not reduce memory for the same reason: the report
 exists in full before the first line is written. `ctrm check | head` still
-exits with the right verdict (`src/cli:V47`).
+exits with the right verdict.
 
 ## The guard reads at most 16 MiB
 
@@ -77,8 +76,7 @@ multi-GB file read whole would put GBs in a hook. It judges at most the
 first 16 MiB, cut back to the last line break inside that, and says so: a
 hazard in the prefix still denies the read; otherwise the read goes ahead
 with a note that the rest was not judged. It never denies for size alone
-and never passes a capped file in silence (`src/cli/guard:V102`). `ctrm
-check` has no cap and judges the whole file.
+and never passes a capped file in silence. `ctrm check` has no cap and judges the whole file.
 
 The cap bounds the file's bytes, and with them the findings, so it also
 bounds the pathological case above: a guard read costs at most what
@@ -102,8 +100,7 @@ The first measurements of the 2.06-million-finding case were far worse:
 753 MB for human output, about 2 GB for json and 2.8 GB for SARIF. Every
 finding carried its own copy of the path and the set name, and the path was
 re-escaped character by character for every finding. Those copies are gone;
-a path is held and escaped once per file. The research row
-`src/render:R17` records the before and after.
+a path is held and escaped once per file.
 
 What remains is the price of building the whole report first. Halving it
 again would mean streaming, with a per-file buffer so a failure never cuts a
