@@ -170,7 +170,7 @@ src/scan/SPEC.md      400
 # measured 461.
 # 940 -> 1150: R7, the wave 1 corpus scan, moves here from the root. ~12%
 # over the measured 1027.
-src/tokens/SPEC.md   1150
+src/tokens/SPEC.md   1310
 # RAISED 315 -> 630, reviewed. The node gains its second output form: V50,
 # the SARIF log `check --format sarif` writes for code scanning, and T52,
 # the row that builds it. The rule is long because SARIF is exacting about
