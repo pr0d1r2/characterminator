@@ -16,6 +16,7 @@ mod remedy;
 mod stats;
 #[cfg(test)]
 pub(crate) mod testkit;
+mod usage;
 
 use dispatch::Outcome;
 

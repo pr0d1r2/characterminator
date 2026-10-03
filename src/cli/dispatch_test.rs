@@ -156,13 +156,36 @@ fn paths_are_the_words_that_are_not_flags_or_their_values() {
 /// V101: `--help` read through the flag table. A VALUE spelled `--help`
 /// and a path after `--` are not requests; an unknown flag beside it is
 /// still refused (V74), so the table did not open for every word.
+fn asks(words: &[&str]) -> bool {
+    args::parse(&argv(words)).is_ok_and(|read| super::asks_help(&read))
+}
+
 #[test]
 fn help_is_a_flag_and_only_a_flag() {
-    assert!(super::asks_help(&argv(&["check", "--help"])));
-    assert!(super::asks_help(&argv(&["stats", "src", "-h"])));
-    assert!(!super::asks_help(&argv(&["check", "--rule", "--help"])));
-    assert!(!super::asks_help(&argv(&["check", "--", "--help"])));
-    assert!(!super::asks_help(&argv(&["check", "--stirct", "--help"])));
+    let cases: [(&[&str], bool); 6] = [
+        (&["check", "--help"], true),
+        (&["stats", "src", "-h"], true),
+        (&["check", "--rule", "--help"], false),
+        (&["check", "--", "--help"], false),
+        (&["check", "--stirct", "--help"], false),
+        (&["--help", "--bogus"], false),
+    ];
+    for (words, expected) in cases {
+        assert_eq!(asks(words), expected, "{words:?}");
+    }
     let asked = argv(&["check", "--hepl"]);
     assert!(prepared("check", &asked).is_err());
+}
+
+/// B70 / `src/cli/usage:V119`: a mistyped verb says so on its first
+/// line, with the nearest verb, and points at the help instead of
+/// dumping it.
+#[test]
+fn an_unknown_verb_is_named_with_the_nearest_one() {
+    let said = crate::cli::usage::unknown_verb("chek");
+    let first = said.lines().next().unwrap_or_default();
+    assert_eq!(first, "unknown verb 'chek' (did you mean 'check'?)");
+    assert_eq!(said.lines().count(), 2);
+    let far = crate::cli::usage::unknown_verb("deploy");
+    assert!(far.starts_with("unknown verb 'deploy'\n"), "{far}");
 }

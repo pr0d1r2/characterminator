@@ -10,7 +10,7 @@
 //! a flag's value from being taken for a path in one verb and not another.
 
 use super::args::{self, Args};
-use super::{check, config, explain, fix, guard, init, out, stats};
+use super::{check, config, explain, fix, guard, init, out, stats, usage};
 use crate::judge::Config;
 use crate::render::{self, Format, Shape};
 use std::io::Read;
@@ -60,28 +60,66 @@ struct Run<'a> {
 #[must_use]
 pub fn run(args: &[String]) -> ExitCode {
     match verb_of(args) {
-        Some("--version" | "-V") => version(),
-        Some("--help" | "-h") => help().code(),
+        None => usage().code(),
         // Before argv is parsed: a hook must never exit 2
         // (`src/cli/guard:V53`), even when its command line carries a flag
         // the parser would refuse.
-        Some("guard") => guarded().code(),
-        Some(
-            verb @ ("check" | "explain" | "sets" | "fix" | "stats" | "init"),
-        ) => invoked(verb, args).code(),
-        _ => usage().code(),
+        Some("guard") => hooked(args).code(),
+        Some(_) => match args::parse(args) {
+            Ok(read) => routed(&read, args).code(),
+            Err(message) => refused(named_verb(args), args, &message).code(),
+        },
     }
+}
+
+/// The first word that is not a flag: the verb a refused command line was
+/// aimed at, so a `--format json` run still answers in json
+/// (`src/render:V122`). Empty when there is none.
+fn named_verb(args: &[String]) -> &str {
+    args.iter()
+        .map(String::as_str)
+        .find(|word| !word.starts_with('-'))
+        .unwrap_or_default()
 }
 
 fn verb_of(args: &[String]) -> Option<&str> {
     args.first().map(String::as_str)
 }
 
+/// `guard`, which reads no argv (`src/cli/guard:V93`) -- except a lone
+/// `--help` or `-h`, which no hook ever passes (`src/cli/usage:V119`).
+/// Any other company and the word is ignored like the rest, so a stray
+/// `--help` in a hook line still decides.
+fn hooked(args: &[String]) -> Outcome {
+    match args.get(1..) {
+        Some([only]) if only == "--help" || only == "-h" => {
+            out::shown(usage::GUARD, Outcome::Ok)
+        }
+        _ => guarded(),
+    }
+}
+
+/// A command line that parsed: the version, help, or a verb
+/// (`src/cli/usage:V119`). Help is read through the flag table, so a
+/// `--help` that is a value or follows `--` asks for nothing, and before
+/// the configuration loads, so a broken `.ctrm` cannot hide it (V101).
+fn routed(read: &Args, argv: &[String]) -> Outcome {
+    if read.has("--version") || read.has("-V") {
+        return version();
+    }
+    match read.verb.as_deref() {
+        Some(verb) if !usage::VERBS.contains(&verb) => {
+            failed(&usage::unknown_verb(verb))
+        }
+        _ if asks_help(read) => help(),
+        Some("guard") => guarded(),
+        Some(verb) => invoked(verb, argv),
+        None => failed(&usage::missing_verb()),
+    }
+}
+
 /// Read argv, build the configuration, run the verb.
 fn invoked(verb: &str, argv: &[String]) -> Outcome {
-    if asks_help(argv) {
-        return help();
-    }
     match prepared(verb, argv) {
         Ok((args, config, format)) => {
             let run = Run {
@@ -96,12 +134,10 @@ fn invoked(verb: &str, argv: &[String]) -> Outcome {
     }
 }
 
-/// `<verb> --help` (V101). Read through the flag table, so a `--help`
-/// that is a VALUE (`--rule --help`) or a path after `--` is not a
-/// request, and before the configuration loads, so a broken `.ctrm`
-/// cannot stand between a reader and the usage that explains it.
-fn asks_help(argv: &[String]) -> bool {
-    args::parse(argv).is_ok_and(|read| read.has("--help") || read.has("-h"))
+/// `--help` or `-h` as a FLAG (V101): a `--help` that is a value
+/// (`--rule --help`) or a path after `--` is not a request.
+fn asks_help(read: &Args) -> bool {
+    read.has("--help") || read.has("-h")
 }
 
 /// Everything a verb is handed. Anything wrong here is a usage error,
@@ -382,55 +418,25 @@ fn reported(text: &str, code: u8) -> Outcome {
     out::shown(text, verdict)
 }
 
-fn version() -> ExitCode {
+fn version() -> Outcome {
     let name = env!("CARGO_PKG_NAME");
-    out::shown(
-        &format!("{name} {}", env!("CARGO_PKG_VERSION")),
-        Outcome::Ok,
-    )
-    .code()
+    let line = format!("{name} {}", env!("CARGO_PKG_VERSION"));
+    out::shown(&line, Outcome::Ok)
 }
 
 /// Asked for, the usage is the ANSWER: stdout, exit 0 (V101), so
 /// `ctrm --help | less` pages it and a script probing for the tool does
 /// not read a usage error.
 fn help() -> Outcome {
-    out::shown(USAGE, Outcome::Ok)
+    out::shown(usage::USAGE, Outcome::Ok)
 }
 
-/// Exit 2 names the surface rather than pretending to offer it.
+/// Bare `ctrm`: exit 2 names the surface rather than pretending to offer
+/// it.
 fn usage() -> Outcome {
-    eprintln!("{USAGE}");
+    eprintln!("{}", usage::USAGE);
     Outcome::Usage
 }
-
-/// The surface, in one place so a test can hold it to the flag table.
-pub(super) const USAGE: &str =
-    "ctrm -- eliminate characters outside an allowed set
-
-  ctrm check [<path>...]         report characters outside the set
-    [--summary] [--max <n>]      one row per file and code point; at most n
-  ctrm explain [<path>]          the set in force, and the rule behind it
-    [--as args|lines|prompt]     or the config as flags, files, a prompt
-  ctrm sets [<name>...]          the presets, what each is for, members
-    [--locales]                  the CLDR locale sets instead
-    [--containing <c>]           only the sets holding c (or U+XXXX)
-  ctrm fix [--check] [<path>...] rewrite them, or report the drift
-  ctrm stats [--bpe] [<path>...] what they cost now, and after a fix
-  ctrm init [--print]            draft a .ctrm from the tracked files
-  ctrm guard                     agent hook: hook JSON in, decision out
-  ctrm --help | -h               this text; also after any verb but guard
-
-configuration, any verb, repeatable, later wins:
-  --rule <line>     one .ctrm line       --rules-file <f>
-  --map <line>      one .ctrm-map line   --map-file <f>
-  --set <line>      one .ctrm-sets line  --sets-file <f>
-  --no-files  --no-builtin-map  --no-builtin-sets
-  --fidelity <family>  --strict  --pedantic  --no-color  -C <dir>
-
-any verb but guard takes --format json; check also takes --format sarif;
-an unknown flag is refused; `--` ends the flags; guard reads no flags;
-ctrm never prints colour: --no-color and NO_COLOR are accepted, no-ops";
 
 #[cfg(test)]
 #[path = "dispatch_test.rs"]

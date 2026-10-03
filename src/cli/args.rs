@@ -50,6 +50,10 @@ const SWITCHES: &[&str] = &[
     // flag; every other unknown word stays refused (V74).
     "--help",
     "-h",
+    // The version, answered by dispatch like `--help` (`src/cli/usage:V119`):
+    // in the table so `ctrm --version --bogus` is refused, not answered.
+    "--version",
+    "-V",
 ];
 
 /// The flags only one verb means anything to. Accepted elsewhere they
@@ -83,9 +87,12 @@ pub(super) struct Flag {
     pub index: usize,
 }
 
-/// A whole command line, verb excluded.
+/// A whole command line: the verb, the flags and the paths.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(super) struct Args {
+    /// The first word that is neither a flag nor a flag's value
+    /// (`src/cli/usage:V119`), so a flag may come before it.
+    pub verb: Option<String>,
     pub flags: Vec<Flag>,
     pub paths: Vec<String>,
 }
@@ -106,46 +113,64 @@ impl Args {
     }
 }
 
-/// Read `args` -- argv WITHOUT the program name, so `args[0]` is the
-/// verb -- into flags and paths.
+/// Read `args` -- argv WITHOUT the program name -- into the verb, the
+/// flags and the paths. The verb is the first word that is not a flag or
+/// a flag's value, so `-C .. check` reads as `check -C ..`; every flag
+/// keeps its own process-argv position either way.
 ///
 /// # Errors
 ///
 /// A word that looks like a flag and is not one, a valued flag with no
 /// word after it, or a flag that belongs to another verb.
 pub(super) fn parse(args: &[String]) -> Result<Args, String> {
-    let verb = args.first().map_or("", String::as_str);
     let mut parsed = Args::default();
-    let mut words = args.iter().enumerate().skip(1);
+    let mut words = args.iter().enumerate();
     while let Some((at, word)) = words.next() {
         if word == END {
             parsed.paths.extend(words.map(|(_, rest)| rest.clone()));
             break;
         }
-        match flag_of(word, verb)? {
+        match flag_of(word)? {
+            None if parsed.verb.is_none() => parsed.verb = Some(word.clone()),
             None => parsed.paths.push(word.clone()),
             Some(name) => parsed.flags.push(take(name, at, &mut words)?),
         }
     }
+    owned(&parsed)?;
     Ok(parsed)
 }
 
-/// The flag a word names, `None` for a path, or why it is refused.
+/// The flag a word names, `None` for a positional word, or why it is
+/// refused.
 ///
 /// A lone dash is refused rather than read as standard input: no verb
 /// reads standard input, and a path called `-` is spelled `-- -`.
-fn flag_of(word: &str, verb: &str) -> Result<Option<&'static str>, String> {
+fn flag_of(word: &str) -> Result<Option<&'static str>, String> {
     if !word.starts_with('-') {
         return Ok(None);
     }
     let known = VALUED.iter().chain(SWITCHES).find(|name| **name == word);
     let name = known.ok_or_else(|| format!("unknown flag `{word}`"))?;
-    match OWNED.iter().find(|(owned, _)| owned == name) {
-        Some((_, owner)) if *owner != verb => {
-            Err(format!("`{word}` belongs to `{owner}`, not `{verb}`"))
-        }
-        _ => Ok(Some(*name)),
+    Ok(Some(*name))
+}
+
+/// A flag only another verb means anything to is refused: accepted, it
+/// would be silently ignored. Checked once the verb is known, which may
+/// be after the flag.
+fn owned(read: &Args) -> Result<(), String> {
+    let verb = read.verb.as_deref().unwrap_or_default();
+    if !super::usage::VERBS.contains(&verb) {
+        // No verb, or an unknown one: dispatch names THAT, which is the
+        // mistake, rather than a flag's owner.
+        return Ok(());
     }
+    for flag in &read.flags {
+        let owner = OWNED.iter().find(|(name, _)| *name == flag.name);
+        if let Some((name, owner)) = owner.filter(|(_, o)| *o != verb) {
+            return Err(format!("`{name}` belongs to `{owner}`, not `{verb}`"));
+        }
+    }
+    Ok(())
 }
 
 /// Build one flag, reading its value off `words` when it takes one.
@@ -226,6 +251,21 @@ mod tests {
         assert!(parsed(&["stats", "--bpe"]).has("--bpe"));
     }
 
+    /// B70 / `src/cli/usage:V119`: a flag before the verb is a flag, the
+    /// verb is the first word that is neither, and each flag keeps the
+    /// process-argv position a reader would count to.
+    #[test]
+    fn a_flag_may_come_before_the_verb() {
+        let read = parsed(&["-C", "..", "check", "--rule", "* box", "a.md"]);
+        assert_eq!(read.verb.as_deref(), Some("check"));
+        assert_eq!(read.value("-C"), Some(".."));
+        assert_eq!(read.paths, vec!["a.md"]);
+        let at: Vec<usize> = read.flags.iter().map(|f| f.index).collect();
+        assert_eq!(at, vec![2, 5]);
+        assert!(refused(&["--bpe", "check"]).contains("`stats`"));
+        assert_eq!(parsed(&["--strict"]).verb, None);
+    }
+
     #[test]
     fn a_double_dash_ends_the_flags() {
         let read = parsed(&["check", "--", "-odd", "--strict"]);
@@ -238,7 +278,7 @@ mod tests {
     #[test]
     fn the_usage_names_every_flag() {
         for flag in super::VALUED.iter().chain(super::SWITCHES) {
-            assert!(crate::cli::dispatch::USAGE.contains(flag), "{flag}");
+            assert!(crate::cli::usage::USAGE.contains(flag), "{flag}");
         }
     }
 

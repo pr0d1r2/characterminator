@@ -13,6 +13,7 @@ up|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 self|src/cli/init|`init` verb: survey tracked files by type, greedy preset cover, draft `.ctrm`
 sib|src/cli/guard|`guard` hook adapter: harness payload in, hook decision out, JSON reader
 sib|src/cli/explain|`explain` & `sets` answers, `explain --as` forms: args, lines, agent prompt
+sib|src/cli/usage|help text, verb detection, did-you-mean, message style
 
 ## §V INVARIANTS
 

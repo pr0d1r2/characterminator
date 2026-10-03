@@ -10,6 +10,7 @@ dir|owns|⊥owns|tokens
 guard|`guard` hook adapter: harness payload in, hook decision out, JSON reader|dispatch, hazard detection|-
 explain|`explain` & `sets` answers, `explain --as` forms: args, lines, agent prompt|dispatch, rule resolution|-
 init|`init` verb: survey tracked files by type, greedy preset cover, draft `.ctrm`|dispatch, set contents|-
+usage|help text, verb detection, did-you-mean, message style|dispatch, exit codes, a verb's logic|-
 
 ## §N NAV
 
@@ -48,7 +49,7 @@ V72: bare `fix` = 2 phases: judge ∀ file, THEN write ∴ a refusal (`src/fix:V
 V73: path arity: `explain` (any `--as`) ≤ 1, other verbs any; `sets` takes set names, ⊥ paths, each ! resolve (`src/cli/explain:V127`). extra path → exit 2 naming it ∵ `explain a.md b.txt` answered for `a.md` only & `sets a.md` ignored it, each read as an answer about what was asked.
 V74: ∀ verb ⊥ `guard`: whole config (rules, sets, map) parsed & validated (`src/judge` `Config::validate`) before dispatch; any kind broken → exit 2, naming its origin ∵ a verb reading only its own kind reported on a config that ⊥ parsed (B29). ∀ rule: every set it names resolves, matched or ⊥ (B47). `--map` value = 1 line, as `--set` & `--rule` (`src/rules:V18`).
 V80: `fix` & `fix --check` judge what they LEAVE via `check`'s `Checker` (`src/judge:V99`) (levels, `--strict`, hazards), rows @ pos in the file on disk AFTER the run: bare `fix` → output pos (B71), `--check` → ORIGINAL (`src/fix/emoji:V65`) ∴ exit = drift (`--check`) ∨ `check`(output) ∨ not-UTF-8 skip.
-V101: `--help` | `-h`, bare or ∀ verb ∖ `guard` → usage on STDOUT, exit 0 ∵ asked-for help ⊥ error. read via flag table (`--rule --help` = value, `-- --help` = path) & BEFORE config loads ∴ broken `.ctrm` ⊥ hides it. unknown flag beside it → exit 2 (V74). bare `ctrm` → stderr, exit 2. `guard --help` ignored (`src/cli/guard:V93`) ∵ a hook printing usage ⊥ decides.
+V101: `--help` | `-h`, bare or ∀ verb ∖ `guard` → usage on STDOUT, exit 0 ∵ asked-for help ⊥ error. read via flag table (`--rule --help` = value, `-- --help` = path) & BEFORE config loads ∴ broken `.ctrm` ⊥ hides it. unknown flag beside it → exit 2 (V74), bare as after a verb (`src/cli/usage:V119`). bare `ctrm` → stderr, exit 2. `guard --help` ALONE → guard help; ∀ other guard argv ignored (`src/cli/guard:V93`).
 V115: root w/o `-C` = 1st ancestor of cwd w/ `.git`, else cwd; `-C <dir>` = root as given. path & `--*-file` args typed in a subdir → prefixed w/ its place under root ∴ matched & shown root-relative. bare verb in a subdir judges the WHOLE repo, as `git status` ∵ same command, same verdict ∀ cwd. guard: `config::root_of`. runner `config_test.rs`.
 
 ## §T TASKS

@@ -114,3 +114,42 @@ fn a_json_run_that_fails_says_so_in_json() {
     let plain = ctrm(&["check", "--stirct"], false);
     assert!(plain.map(|o| o.stdout).unwrap_or_default().is_empty());
 }
+
+/// Exit code and stderr of one run.
+fn refused(words: &[&str]) -> (Option<i32>, String) {
+    let got = ctrm(words, false);
+    let code = got.as_ref().and_then(|o| o.status.code());
+    let err = got.map(|o| o.stderr).unwrap_or_default();
+    (code, String::from_utf8_lossy(&err).into_owned())
+}
+
+/// B70 / `src/cli/usage:V119`: a mistyped verb is NAMED on the first
+/// line, with a pointer rather than the whole usage; `--help` beside an
+/// unknown flag is refused bare, as it is after a verb.
+#[test]
+fn a_wrong_command_line_says_what_was_wrong() {
+    let (code, err) = refused(&["chek"]);
+    assert_eq!(code, Some(2));
+    assert!(
+        err.starts_with("ctrm: unknown verb 'chek' (did you mean 'check'?)\n")
+    );
+    assert_eq!(err.lines().count(), 2, "{err}");
+    for words in [&["--help", "--bogus"][..], &["check", "--help", "--bogus"]] {
+        let (code, err) = refused(words);
+        assert_eq!(code, Some(2), "{words:?}");
+        assert!(err.contains("--bogus"), "{words:?}: {err}");
+    }
+}
+
+/// A flag before the verb is a flag (`ctrm -C .. check`), and `guard
+/// --help` alone is help rather than a read of stdin.
+#[test]
+fn flags_may_precede_the_verb_and_guard_has_help() {
+    let got = ctrm(&["--no-color", "sets"], false);
+    assert_eq!(got.and_then(|o| o.status.code()), Some(0));
+    let got = ctrm(&["guard", "--help"], false);
+    let code = got.as_ref().and_then(|o| o.status.code());
+    let text = got.map(|o| o.stdout).unwrap_or_default();
+    assert_eq!(code, Some(0));
+    assert!(String::from_utf8_lossy(&text).contains("ctrm guard"));
+}
