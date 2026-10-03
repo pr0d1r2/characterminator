@@ -208,6 +208,31 @@ fn the_builtin_map_targets_what_v26_names() {
     rewrites('\u{00A0}', " ");
 }
 
+/// B73: the low-9 and reversed-9 quotes that OPEN a Polish or German
+/// quotation are straightened like their curly siblings.
+#[test]
+fn the_builtin_map_straightens_the_low_9_quotes() {
+    let map = parsed(super::BUILTIN);
+    for (from, to) in [('\u{201A}', "'"), ('\u{201B}', "'")] {
+        rewrites(&map, from, to);
+    }
+    for from in ['\u{201E}', '\u{201F}'] {
+        rewrites(&map, from, "\"");
+    }
+}
+
+/// B73: `Cytat <U+201E>to<U+201D>` under `ascii+pl` reaches clean. The opening quote
+/// was unmapped, so `fix` straightened the closing one alone and left a
+/// quotation `check` still refused.
+#[test]
+fn a_polish_quotation_is_straightened_whole() {
+    let pl = |c: char| c.is_ascii() || "\u{0105}\u{0119}\u{0142}".contains(c);
+    let text = "Cytat \u{201E}to\u{201D}";
+    let fixed = crate::fix::fix(text, &Map::builtin(), pl);
+    let output = fixed.map(|done| done.output).unwrap_or_default();
+    assert_eq!(output, "Cytat \"to\"");
+}
+
 /// The two that leave rather than change: they carry no glyph, so any
 /// visible replacement would put a character on the page the author
 /// never typed (V4 makes the delete explicit).

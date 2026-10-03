@@ -34,6 +34,17 @@ U+2019 U+0027
 U+201C U+0022
 U+201D U+0022
 
+# The LOW-9 and REVERSED-9 quotes, which open a quotation in Polish,
+# German, Czech and their neighbours and are closed by the curly ones
+# above (B73): SINGLE LOW-9 and SINGLE HIGH-REVERSED-9 QUOTATION MARK to
+# APOSTROPHE; DOUBLE LOW-9 and DOUBLE HIGH-REVERSED-9 to QUOTATION MARK.
+# Without them `fix` straightened only the closing quote and left a
+# half-converted quotation that `check` still refused.
+U+201A U+0027
+U+201B U+0027
+U+201E U+0022
+U+201F U+0022
+
 # The angle quotes used as quotation marks in several languages, to the
 # straight double. A locale that wants its own quotation marks grants
 # them; per-locale punctuation is `typography-<code>`, deferred until T32

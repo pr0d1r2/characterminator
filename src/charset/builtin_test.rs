@@ -217,6 +217,15 @@ fn typography_grants_what_the_builtin_map_targets() {
     assert!(set.contains('\u{2212}'));
 }
 
+/// B73: granting typography keeps a Polish quotation whole, the opening
+/// low-9 quote included, rather than rewriting that one alone.
+#[test]
+fn typography_grants_the_low_9_quotes_the_map_targets() {
+    let set = preset("typography");
+    let quotes = ['\u{201A}', '\u{201B}', '\u{201E}', '\u{201F}'];
+    assert!(quotes.iter().all(|quote| set.contains(*quote)));
+}
+
 #[test]
 fn emoji_grants_single_code_points_and_withholds_the_joiners() {
     let set = preset("emoji");

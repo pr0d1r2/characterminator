@@ -51,8 +51,11 @@ legal U+00A9 U+00AE U+2122
 #
 # EM DASH, EN DASH, LEFT and RIGHT SINGLE QUOTATION MARK, LEFT and RIGHT
 # DOUBLE QUOTATION MARK, HORIZONTAL ELLIPSIS, LEFT-POINTING and
-# RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK, NO-BREAK SPACE, MINUS SIGN
-typography U+2014 U+2013 U+2018 U+2019 U+201C U+201D U+2026 U+00AB U+00BB U+00A0 U+2212
+# RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK, NO-BREAK SPACE, MINUS SIGN,
+# then SINGLE and DOUBLE LOW-9 and HIGH-REVERSED-9 QUOTATION MARK: the
+# map targets those too (B73), so a granted Polish quotation keeps both
+# of its quotes rather than losing the opening one alone.
+typography U+2014 U+2013 U+2018 U+2019 U+201C U+201D U+2026 U+00AB U+00BB U+00A0 U+2212 U+201A U+201B U+201E U+201F
 
 # Emoji as SINGLE code points only (V31). No variation selector, no skin
 # tone modifier, no zero-width joiner and no keycap: a sequence therefore
