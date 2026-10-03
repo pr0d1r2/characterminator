@@ -14,6 +14,7 @@
 use crate::charset::builtin;
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
+use std::sync::LazyLock;
 
 /// ZERO WIDTH JOINER.
 const ZWJ: char = '\u{200D}';
@@ -31,25 +32,37 @@ pub struct Sequences {
     /// The longest listed sequence, in bytes: how far before a joinable
     /// character a sequence holding it can start.
     widest: usize,
+    /// Whether this stands for the compiled-in list NOT YET READ: the
+    /// list is parsed on the first text that holds a joinable character,
+    /// once per process, and never for a run whose text holds none (R17).
+    deferred: bool,
 }
 
+/// The compiled-in list, read on first use.
+static BUILTIN: LazyLock<Sequences> = LazyLock::new(Sequences::builtin);
+
 impl Sequences {
+    /// The compiled-in list, as [`Sequences::builtin`] reads it, but read
+    /// only when a text first needs it. Parsing it costs about half a
+    /// millisecond, which every run paid before a byte was looked at.
+    pub fn deferred() -> Self {
+        Self {
+            deferred: true,
+            ..Self::default()
+        }
+    }
+
     /// The `zwj` and `tag` lines of the compiled-in list. A line this
     /// cannot read is skipped rather than guessed at: the test below
     /// counts every one, so a skipped line cannot ship.
     pub fn builtin() -> Self {
-        let mut by_first: BTreeMap<char, Vec<String>> = BTreeMap::new();
-        for text in builtin::EMOJI_SEQUENCES.lines().filter_map(exempting) {
-            if let Some(first) = text.chars().next() {
-                by_first.entry(first).or_default().push(text);
-            }
-        }
-        for held in by_first.values_mut() {
-            held.sort_by_key(|text| Reverse(text.len()));
-        }
+        let by_first = listed();
         let widest = by_first.values().flatten().map(String::len).max();
-        let widest = widest.unwrap_or(0);
-        Self { by_first, widest }
+        Self {
+            by_first,
+            widest: widest.unwrap_or(0),
+            deferred: false,
+        }
     }
 
     /// The byte offset of every joiner and tag character in `text` that
@@ -65,6 +78,19 @@ impl Sequences {
     /// left to right, a match consuming what it covers -- are exactly
     /// those of trying every position.
     pub fn exempt(&self, text: &str) -> Vec<usize> {
+        if self.deferred {
+            let wanted = next_joined(text, 0).is_some();
+            return if wanted {
+                BUILTIN.exempt(text)
+            } else {
+                Vec::new()
+            };
+        }
+        self.walk(text)
+    }
+
+    /// [`Sequences::exempt`], over this list.
+    fn walk(&self, text: &str) -> Vec<usize> {
         let mut found = Vec::new();
         let mut at = 0_usize;
         while let Some(next) = next_joined(text, at) {
@@ -102,6 +128,20 @@ impl Sequences {
             .map(String::as_str)
             .find(|s| rest.starts_with(s))
     }
+}
+
+/// The list's sequences by first character, longest first.
+fn listed() -> BTreeMap<char, Vec<String>> {
+    let mut by_first: BTreeMap<char, Vec<String>> = BTreeMap::new();
+    for text in builtin::EMOJI_SEQUENCES.lines().filter_map(exempting) {
+        if let Some(first) = text.chars().next() {
+            by_first.entry(first).or_default().push(text);
+        }
+    }
+    for held in by_first.values_mut() {
+        held.sort_by_key(|text| Reverse(text.len()));
+    }
+    by_first
 }
 
 /// Whether a character is one this exemption can let off.
@@ -288,8 +328,11 @@ mod windowed {
         text
     }
 
+    /// The windowed walk, the deferred list and the old walk agree.
     fn same(held: &Sequences, text: &str) {
-        assert_eq!(held.exempt(text), everywhere(held, text), "{text:?}");
+        let found = held.exempt(text);
+        assert_eq!(found, everywhere(held, text), "{text:?}");
+        assert_eq!(found, Sequences::deferred().exempt(text), "{text:?}");
     }
 
     #[test]

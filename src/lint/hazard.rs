@@ -66,7 +66,7 @@ impl Hazards {
     pub fn builtin() -> Result<Self, String> {
         let classes = classes()?;
         let excusing = excusing(&classes)?;
-        let sequences = Sequences::builtin();
+        let sequences = Sequences::deferred();
         Ok(Self {
             classes,
             excusing,
