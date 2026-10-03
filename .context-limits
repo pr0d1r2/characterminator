@@ -206,7 +206,7 @@ src/cli/SPEC.md      3100
 # from ~1880 to 1703 before this moved; nothing to archive (T37 is a
 # stub). ~12% over the measured 1703.
 src/cli/guard/SPEC.md 1910
-src/cli/explain/SPEC.md  590
+src/cli/explain/SPEC.md  910
 src/scan/SPEC.md     470
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
 # every other node already had, recording work that had invariants but no
@@ -294,7 +294,7 @@ src                  2390
 src/charset          4210
 src/charset/locale   5180
 src/cli              3960
-src/cli/explain      4190
+src/cli/explain      4830
 src/cli/guard        5370
 src/fix              3490
 src/fix/emoji        4660
