@@ -1,0 +1,11 @@
+# A blank issue skips the questions a bug report needs answered, so the
+# forms are the only way in. A vulnerability must not be filed in public
+# at all; the link sends it to private reporting (SECURITY.md).
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability
+    url: https://github.com/pr0d1r2/characterminator/security/advisories/new
+    about: A way past the hazard lints, the guard or the action. Reported privately, never as an issue.
+  - name: Questions and troubleshooting
+    url: https://github.com/pr0d1r2/characterminator/blob/main/docs/FAQ.md
+    about: The questions a first run raises, and the messages behind them.
