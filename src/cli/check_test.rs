@@ -12,6 +12,9 @@ use crate::cli::testkit::fixture;
 use crate::lint::Group;
 use crate::render::Format;
 
+#[path = "check_json_test.rs"]
+mod json;
+
 #[path = "check_judged_test.rs"]
 mod judged;
 
@@ -84,9 +87,9 @@ fn a_pedantic_finding_keeps_the_json_contract() {
     let report = run(&discovered(&root), &paths, Format::Json);
     let report = report.unwrap_or_else(|why| unreachable!("{why}"));
     let expected = concat!(
-        r#"{"verb":"check","violations":[{"path":"n.txt","line":1,"#,
+        r#"{"schema":1,"verb":"check","violations":[{"path":"n.txt","line":1,"#,
         r#""column":3,"byte":2,"codepoint":"U+000D","character":"\r","#,
-        r#""set":"ascii+cr","lint":"crlf","level":"deny"}],"skipped":[]}"#
+        r#""set":"ascii+cr","lint":"crlf","level":"deny","replacement":null,"fixable":false}],"skipped":[]}"#
     );
     assert_eq!((report.text.as_str(), report.code), (expected, 1));
 }

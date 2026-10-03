@@ -78,3 +78,24 @@ fn no_arguments_and_a_help_that_is_not_a_flag_stay_errors() {
         assert!(text.is_empty(), "{words:?}");
     }
 }
+
+/// `src/render:V122`: under `--format json` a refused run is ALSO a
+/// document on stdout, same exit 2; without it stdout stays empty.
+#[test]
+fn a_json_run_that_fails_says_so_in_json() {
+    let asks: [(&[&str], &str); 2] = [
+        (&["check", "--format", "json", "--stirct"], "check"),
+        (&["stats", "--rule", "* asci", "--format", "json"], "stats"),
+    ];
+    for (words, verb) in asks {
+        let got = ctrm(words, false);
+        let code = got.as_ref().and_then(|o| o.status.code());
+        let text = got.map(|o| o.stdout).unwrap_or_default();
+        let text = String::from_utf8_lossy(&text);
+        let head = format!("{{\"schema\":1,\"verb\":\"{verb}\",\"error\":\"");
+        assert_eq!(code, Some(2), "{words:?}");
+        assert!(text.starts_with(&head), "{words:?}: {text}");
+    }
+    let plain = ctrm(&["check", "--stirct"], false);
+    assert!(plain.map(|o| o.stdout).unwrap_or_default().is_empty());
+}

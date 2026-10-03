@@ -12,7 +12,7 @@
 use super::args::{self, Args};
 use super::{check, config, explain, fix, guard, out, stats};
 use crate::judge::Config;
-use crate::render::Format;
+use crate::render::{self, Format};
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -53,6 +53,7 @@ struct Run<'a> {
     args: &'a Args,
     config: &'a Config,
     format: Format,
+    verb: &'a str,
 }
 
 /// Parse argv and dispatch. The binary itself holds nothing.
@@ -87,10 +88,11 @@ fn invoked(verb: &str, argv: &[String]) -> Outcome {
                 args: &args,
                 config: &config,
                 format,
+                verb,
             };
             dispatched(verb, &run)
         }
-        Err(message) => failed(&message),
+        Err(message) => refused(verb, argv, &message),
     }
 }
 
@@ -193,6 +195,33 @@ fn failed(message: &str) -> Outcome {
     Outcome::Usage
 }
 
+/// [`failed`], and under `--format json` the error as a document on
+/// stdout as well (`src/render:V122`): a script that asked for json
+/// parses the failure instead of an empty stream. Same exit 2.
+fn failed_as(verb: &str, json: bool, message: &str) -> Outcome {
+    if json {
+        out::shown(&render::error(verb, message), Outcome::Usage);
+    }
+    failed(message)
+}
+
+/// A verb that failed after its arguments were read.
+fn failed_in(run: &Run<'_>, message: &str) -> Outcome {
+    failed_as(run.verb, run.format == Format::Json, message)
+}
+
+/// A command line refused before the run began. Whether json was asked
+/// for is read from the flags when they parse, and from the raw words
+/// when they do not, so `check --format json --stirct` still answers in
+/// json.
+fn refused(verb: &str, argv: &[String], message: &str) -> Outcome {
+    let json = args::parse(argv).map_or_else(
+        |_| argv.windows(2).any(|w| w == ["--format", "json"]),
+        |read| read.value("--format") == Some("json"),
+    );
+    failed_as(verb, json, message)
+}
+
 fn cwd() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
@@ -200,34 +229,37 @@ fn cwd() -> PathBuf {
 fn checked(run: &Run<'_>) -> Outcome {
     match check::run(run.config, &run.args.paths, run.format) {
         Ok(report) => report_of(&report),
-        Err(message) => failed(&message),
+        Err(message) => failed_in(run, &message),
     }
 }
 
 /// `explain` and `sets` REPORT and exit 0 whatever they find (V7): they
 /// answer questions about configuration, so there is nothing to fail at.
 /// A usage error is still a usage error.
-fn said(answer: Result<String, String>) -> Outcome {
+fn said(run: &Run<'_>, answer: Result<String, String>) -> Outcome {
     match answer {
         Ok(text) => out::shown(&text, Outcome::Ok),
-        Err(message) => failed(&message),
+        Err(message) => failed_in(run, &message),
     }
 }
 
 /// `--as` asks for the configuration in another form (`src/cli/explain:V32`).
 fn explained(run: &Run<'_>) -> Outcome {
     let (config, paths) = (run.config, &run.args.paths);
-    said(match run.args.value("--as") {
-        Some(form) => explain::exported(config, paths, run.format, form),
-        None => explain::run(config, paths, run.format),
-    })
+    said(
+        run,
+        match run.args.value("--as") {
+            Some(form) => explain::exported(config, paths, run.format, form),
+            None => explain::run(config, paths, run.format),
+        },
+    )
 }
 
 /// `sets` resolves at the family the run's rules give (`src/rules:V29`),
 /// where `--fidelity` is already the rule `* @<f>`: reading the flag here
 /// as well ignored a `--rule '* @emoji'` that meant the same (B30).
 fn listed(run: &Run<'_>) -> Outcome {
-    said(explain::sets(run.config, run.format))
+    said(run, explain::sets(run.config, run.format))
 }
 
 /// `fix` WRITES unless `--check` is given, which is V7's split: the verb
@@ -236,7 +268,7 @@ fn fixed(run: &Run<'_>) -> Outcome {
     let write = !run.args.has("--check");
     match fix::run(run.config, &run.args.paths, run.format, write) {
         Ok(report) => fix_report_of(&report),
-        Err(message) => failed(&message),
+        Err(message) => failed_in(run, &message),
     }
 }
 
@@ -248,7 +280,10 @@ fn fix_report_of(report: &fix::Report) -> Outcome {
 /// which the figure itself declares (`src/tokens:V10`).
 fn counted(run: &Run<'_>) -> Outcome {
     let bpe = run.args.has("--bpe");
-    said(stats::run(run.config, &run.args.paths, run.format, bpe))
+    said(
+        run,
+        stats::run(run.config, &run.args.paths, run.format, bpe),
+    )
 }
 
 /// `guard`: hook JSON on stdin, decision JSON on stdout

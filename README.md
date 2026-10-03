@@ -168,7 +168,8 @@ Pin both actions to a commit SHA in real use.
 
 Every verb but `guard` takes `--format json`, which is a stable contract:
 its keys and their meanings do not change under a caller, and the documents
-are asserted whole in tests. `check` also takes `--format sarif`, a SARIF
+are asserted whole in tests. [docs/JSON.md](docs/JSON.md) lists every key,
+unit and enum, and the version policy. `check` also takes `--format sarif`, a SARIF
 2.1.0 log that GitHub code scanning can upload, with the same exit code.
 
 Naming no path checks what git tracks. Naming a directory expands to the

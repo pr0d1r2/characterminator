@@ -69,11 +69,17 @@ fn key<'a>(line: &Line<'a>) -> (&'a str, usize) {
 
 /// One batch, as the violations it stands for.
 fn expand<'a>(batch: &'a Batch<'a>) -> impl Iterator<Item = Line<'a>> + 'a {
-    batch.findings.iter().map(|finding| Line {
-        path: batch.path,
-        set: batch.set,
-        finding,
-    })
+    let remedies = batch.remedies;
+    batch
+        .findings
+        .iter()
+        .enumerate()
+        .map(move |(at, finding)| Line {
+            path: batch.path,
+            set: batch.set,
+            finding,
+            remedy: remedies.get(at),
+        })
 }
 
 /// [`batches`]' answer: the lines, and how many are left, so a writer can

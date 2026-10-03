@@ -552,10 +552,7 @@ mod tests {
             hit: hit(),
             to: String::from("--"),
         };
-        let change = Change {
-            path: "a.rs",
-            rewrite: &rewrite,
-        };
+        let change = Change::plain("a.rs", &rewrite);
         assert_eq!(fix(&[change], [], &[]), "a.rs:2:5 U+2014 -> \"--\"");
     }
 
@@ -567,10 +564,7 @@ mod tests {
             hit: hit(),
             to: String::from("--"),
         };
-        let change = Change {
-            path: "a.rs",
-            rewrite: &rewrite,
-        };
+        let change = Change::plain("a.rs", &rewrite);
         let said =
             fix(&[change], crate::render::order::lines(&[em_dash()]), &[]);
         assert_eq!(

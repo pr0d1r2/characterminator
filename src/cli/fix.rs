@@ -14,12 +14,15 @@
 //! engine into the report; and what is left is held as `check` holds its
 //! findings, in batches the renderer borrows.
 
-use super::check::{Row, Skip, batches, found_code, skip, unreadable_code};
+use super::check::{
+    Row, Skip, batches, found_code, judged_against, skip, unreadable_code,
+};
+use super::remedy::Case;
 use crate::fix::{self as engine, Map};
-use crate::judge::{Checker, Config, File, Judge, Looked, files, inspect};
-use crate::lint::{Finding, Levels};
+use crate::judge::{Checker, Config, File, Judge, files, judged};
+use crate::lint::{Finding, Level, Lint, OUTSIDE_SET};
 use crate::render::{self, Batch, Change, Format, Skipped};
-use crate::scan::{Hit, Unreadable};
+use crate::scan::Unreadable;
 use std::path::PathBuf;
 
 /// What a run of `fix` produced.
@@ -32,7 +35,21 @@ pub(super) struct Report {
 /// them, with the path held once for all of them.
 struct Changed {
     path: String,
+    set: String,
     rewrites: Vec<engine::Rewrite>,
+    /// Parallel to `rewrites`: the verdict each character was judged at.
+    verdicts: Vec<Verdict>,
+}
+
+impl Changed {
+    fn new(path: String, set: &str) -> Self {
+        Self {
+            path,
+            set: set.to_owned(),
+            rewrites: Vec::new(),
+            verdicts: Vec::new(),
+        }
+    }
 }
 
 /// What the walk accumulated.
@@ -114,14 +131,31 @@ impl Pass {
         };
         let (set, levels) = self.checker.shared_law(&shown)?;
         let judge = self.checker.judge(&set);
-        let fixed = self.fixed(&judge, &text, &shown)?;
-        found.keep(&shown, &set.name, left(&judge, &levels, &text, &fixed));
-        let engine::Fixed { output, report, .. } = fixed;
+        let case = Case::new(&judge, &levels, &text);
+        let mut changed = Changed::new(shown, &set.name);
+        let output = self.rewritten(&case, &mut changed, found)?;
         if self.write && output != text {
             found.pending.push((full, output));
         }
-        found.absorb(shown, report.rewrites);
+        found.absorb(changed);
         Ok(())
+    }
+
+    /// One text's rewrite: what is left is kept, the rewrites are MOVED
+    /// into `changed` with the verdict each character was judged at, and
+    /// the output is handed back for writing.
+    fn rewritten(
+        &self,
+        case: &Case<'_>,
+        changed: &mut Changed,
+        found: &mut Found,
+    ) -> Result<String, String> {
+        let fixed = self.fixed(case.judge, case.text, &changed.path)?;
+        found.keep(&changed.path, &changed.set, case.left_in_place(&fixed));
+        changed.verdicts = verdicts(case, &fixed.report.rewrites);
+        let engine::Fixed { output, report, .. } = fixed;
+        changed.rewrites = report.rewrites;
+        Ok(output)
     }
 
     /// The engine's rewrite of one file, less its own unmapped list: what
@@ -142,49 +176,40 @@ impl Pass {
     }
 }
 
-/// What is LEFT once the rewrite is done, judged exactly as `check`
-/// judges it -- set, levels, `--strict` and hazards -- by `check`'s own
-/// judge, then placed IN PLACE where it sits in the file on disk (V80,
-/// B42). So `fix --check` and `check` cannot disagree about a character
-/// `fix` leaves alone.
-fn left(
-    judge: &Judge<'_>,
-    levels: &Levels,
-    text: &str,
-    fixed: &engine::Fixed,
-) -> Vec<Finding> {
-    let mut findings = match inspect(fixed.output.as_bytes(), judge, levels) {
-        Looked::Findings(found) => found,
-        Looked::Unread(_) => Vec::new(),
+/// The set, lint and level each rewritten character was judged at in the
+/// ORIGINAL text, so a rewrite carries a violation's shape
+/// (`src/render:V95`). A rewrite with no finding under it -- its lint set
+/// to `allow`, which `check` never reports -- says so: `outside-set` at
+/// `allow`.
+fn verdicts(case: &Case<'_>, rewrites: &[engine::Rewrite]) -> Vec<Verdict> {
+    let findings = judged(case.text, case.judge, case.levels);
+    let at = |byte: usize| {
+        findings
+            .binary_search_by_key(&byte, |f| f.hit.position.byte)
+            .ok()
+            .and_then(|i| findings.get(i))
+            .map_or((OUTSIDE_SET, Level::Allow), |f| (f.lint, f.level))
     };
-    fixed.place(text, &mut findings, hit_of);
-    findings
+    rewrites.iter().map(|r| at(r.hit.position.byte)).collect()
 }
 
-/// A finding's hit, for [`engine::Fixed::place`].
-fn hit_of(finding: &mut Finding) -> &mut Hit {
-    &mut finding.hit
-}
+/// A rewritten character's lint and level.
+type Verdict = (Lint, Level);
 
 impl Found {
     /// What one file left, as `check` would hold it: nothing for a clean
     /// file, else one row with its path and set once.
-    fn keep(&mut self, path: &str, set: &str, mut findings: Vec<Finding>) {
-        if findings.is_empty() {
-            return;
+    fn keep(&mut self, path: &str, set: &str, findings: Vec<Finding>) {
+        if !findings.is_empty() {
+            let row = Row::new(path.to_owned(), set, findings, Vec::new());
+            self.unmapped.push(row);
         }
-        findings.shrink_to_fit();
-        self.unmapped.push(Row {
-            path: path.to_owned(),
-            set: set.to_owned(),
-            findings,
-        });
     }
 
     /// One file's rewrites, MOVED out of the engine's report.
-    fn absorb(&mut self, path: String, rewrites: Vec<engine::Rewrite>) {
-        if !rewrites.is_empty() {
-            self.changed.push(Changed { path, rewrites });
+    fn absorb(&mut self, changed: Changed) {
+        if !changed.rewrites.is_empty() {
+            self.changed.push(changed);
         }
     }
 }
@@ -245,9 +270,18 @@ fn report_of(found: &Found, format: Format, write: bool) -> Report {
 
 /// One file's rewrites as the rows `render` borrows.
 fn changes(file: &Changed) -> impl Iterator<Item = Change<'_>> {
-    file.rewrites.iter().map(|rewrite| Change {
-        path: &file.path,
-        rewrite,
+    let verdict = |at: usize| file.verdicts.get(at).copied();
+    file.rewrites.iter().enumerate().map(move |(at, rewrite)| {
+        let (lint, level) = verdict(at).unwrap_or((OUTSIDE_SET, Level::Allow));
+        let set = judged_against(lint, &file.set);
+        let path = &file.path;
+        Change {
+            path,
+            rewrite,
+            set,
+            lint,
+            level,
+        }
     })
 }
 

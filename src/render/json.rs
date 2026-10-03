@@ -16,7 +16,7 @@
 //! added to a stable contract is a key that can never be taken back.
 
 use crate::charset::{CharRange, CharSet};
-use crate::lint::Level;
+use crate::lint::{Level, Lint};
 #[cfg(test)]
 use crate::render::Violation;
 use crate::render::escape::string;
@@ -36,7 +36,25 @@ use std::path::Path;
 
 /// About what one violation object costs, so a report of millions is
 /// sized once rather than grown by doubling (R17).
-const VIOLATION_BYTES: usize = 160;
+const VIOLATION_BYTES: usize = 200;
+
+/// The contract's version, the first key of every document (V122). It
+/// rises only when a key is renamed, retyped or dropped; a key ADDED
+/// leaves it alone, so a consumer ignores keys it does not know.
+pub(super) const SCHEMA: u32 = 1;
+
+/// A run that never reached a report, as a document (V122): `--format
+/// json` promises json on stdout, and a script parsing it should read the
+/// failure rather than choke on an empty stream.
+pub(super) fn error(verb: &str, message: &str) -> String {
+    let mut out = String::new();
+    let mut doc = Fields::open(&mut out);
+    doc.number("schema", SCHEMA);
+    doc.text("verb", verb);
+    doc.text("error", message);
+    doc.close();
+    out
+}
 
 /// `check`: every violation, and every file that could not be read.
 #[cfg(test)]
@@ -54,6 +72,7 @@ pub(super) fn check_lines<'a>(
 ) -> String {
     let mut out = String::new();
     let mut doc = Fields::open(&mut out);
+    doc.number("schema", SCHEMA);
     doc.text("verb", "check");
     violations(doc.key("violations"), lines);
     doc.raw("skipped", &unread(skipped));
@@ -81,10 +100,32 @@ fn violation(out: &mut String, path: &str, item: Line<'_>) {
     let mut fields = Fields::open(out);
     fields.raw("path", path);
     hit_fields(&mut fields, item.finding.hit);
-    fields.text("set", item.set);
-    fields.text("lint", item.finding.lint.name);
-    fields.text("level", level_name(item.finding.level));
+    let (lint, level) = (item.finding.lint, item.finding.level);
+    verdict_fields(&mut fields, item.set, lint, level);
+    let to = item.remedy.and_then(|remedy| remedy.to.as_deref());
+    let fixable = item.remedy.is_some_and(|remedy| remedy.fixable);
+    remedy_fields(&mut fields, to, fixable);
     fields.close();
+}
+
+/// The set it was judged against, the lint, and the level: the same three
+/// keys on a violation and a rewrite (V95).
+fn verdict_fields(
+    fields: &mut Fields<'_>,
+    set: &str,
+    lint: Lint,
+    level: Level,
+) {
+    fields.text("set", set);
+    fields.text("lint", lint.name);
+    fields.text("level", level_name(level));
+}
+
+/// What `fix` would write here, `null` when no rewrite starts here, and
+/// whether a `fix` run clears it (V122).
+fn remedy_fields(fields: &mut Fields<'_>, to: Option<&str>, fixable: bool) {
+    fields.raw("replacement", &optional(to));
+    fields.raw("fixable", if fixable { "true" } else { "false" });
 }
 
 /// The position in all three units, plus the character itself: a consumer
@@ -133,6 +174,7 @@ pub(super) fn fix<'a>(
 ) -> String {
     let mut out = String::new();
     let mut doc = Fields::open(&mut out);
+    doc.number("schema", SCHEMA);
     doc.text("verb", "fix");
     let mut path = Spelled::new(literal);
     let rewrites = order::changes(items);
@@ -150,6 +192,8 @@ fn change(out: &mut String, path: &str, item: &Change<'_>) {
     fields.raw("path", path);
     hit_fields(&mut fields, item.rewrite.hit);
     fields.text("to", &item.rewrite.to);
+    verdict_fields(&mut fields, item.set, item.lint, item.level);
+    remedy_fields(&mut fields, Some(&item.rewrite.to), true);
     fields.close();
 }
 
@@ -160,6 +204,7 @@ pub(super) fn stats(
 ) -> String {
     let rows: Vec<String> = order::stats(files).into_iter().map(row).collect();
     object(&[
+        field("schema", &number(SCHEMA)),
         field("verb", &string("stats")),
         field("files", &array(&rows)),
         field("total", &total::of(files).map_or_else(null, total_row)),
@@ -201,6 +246,7 @@ fn count(value: Count) -> String {
 /// `explain`: the effective set, and the rule that won.
 pub(super) fn explain(item: &Explanation<'_>) -> String {
     object(&[
+        field("schema", &number(SCHEMA)),
         field("verb", &string("explain")),
         field("path", &optional(item.path)),
         field("set", &char_set(item.set)),
@@ -247,6 +293,7 @@ fn sourced_level(item: &Sourced<'_, LevelChoice>) -> String {
 pub(super) fn sets(items: &[CharSet]) -> String {
     let rendered: Vec<String> = items.iter().map(char_set).collect();
     object(&[
+        field("schema", &number(SCHEMA)),
         field("verb", &string("sets")),
         field("sets", &array(&rendered)),
     ])

@@ -11,6 +11,7 @@ mod explain;
 mod fix;
 mod guard;
 mod out;
+mod remedy;
 mod stats;
 #[cfg(test)]
 pub(crate) mod testkit;

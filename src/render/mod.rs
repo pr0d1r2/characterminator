@@ -50,7 +50,7 @@ pub(crate) use name::codepoint;
 
 use crate::charset::CharSet;
 use crate::fix::Rewrite;
-use crate::lint::{Finding, Level};
+use crate::lint::{Finding, Level, Lint};
 use crate::rules::{LevelChoice, Origin, Rule, Sourced};
 use crate::scan::Unreadable;
 use crate::tokens::Count;
@@ -108,6 +108,25 @@ pub(crate) struct Change<'a> {
     pub path: &'a str,
     /// BORROWED: a run of a million rewrites holds each one once (R18).
     pub rewrite: &'a Rewrite,
+    /// The set, lint and level the rewritten character was judged at, so a
+    /// rewrite carries a violation's shape (V95).
+    pub set: &'a str,
+    pub lint: Lint,
+    pub level: Level,
+}
+
+#[cfg(test)]
+impl<'a> Change<'a> {
+    /// A rewrite of an `outside-set` character under `ascii` at `deny`.
+    pub(crate) const fn plain(path: &'a str, rewrite: &'a Rewrite) -> Self {
+        Self {
+            path,
+            rewrite,
+            set: "ascii",
+            lint: crate::lint::OUTSIDE_SET,
+            level: Level::Deny,
+        }
+    }
 }
 
 /// One file's row in `stats`: how much sits outside the set, how big the
@@ -183,6 +202,21 @@ pub(crate) struct Batch<'a> {
     pub path: &'a str,
     pub set: &'a str,
     pub findings: &'a [Finding],
+    /// What `fix` would do with each finding, PARALLEL to `findings`
+    /// (V122). Empty when the run did not ask, which reads as nothing to
+    /// write and not fixable -- true of what `fix` leaves.
+    pub remedies: &'a [Remedy],
+}
+
+/// What `fix` would write for one finding, and whether a `fix` run clears
+/// it (V122): the json `replacement` and `fixable`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct Remedy {
+    /// The text written in place of the span that STARTS at this
+    /// character; `None` when no rewrite starts here.
+    pub to: Option<String>,
+    /// The next `check` after `fix` would not report this character.
+    pub fixable: bool,
 }
 
 /// [`check`], over batches: the same report, byte for byte, as over the
@@ -239,6 +273,12 @@ pub(crate) fn explain(format: Format, explanation: &Explanation<'_>) -> String {
     }
 }
 
+/// A run that failed before it could report, as the json document a
+/// `--format json` caller parses instead of an empty stdout (V122).
+pub(crate) fn error(verb: &str, message: &str) -> String {
+    json::error(verb, message)
+}
+
 /// `sets`: the builtin sets and their members.
 pub(crate) fn sets(format: Format, sets: &[CharSet]) -> String {
     match format {
@@ -266,7 +306,7 @@ mod tests {
         };
         let one = std::slice::from_ref(&ascii);
         assert_eq!(sets(Format::Human, one), "ascii none");
-        assert!(sets(Format::Json, one).starts_with("{\"verb\""));
+        assert!(sets(Format::Json, one).starts_with("{\"schema\":1,\"verb\""));
     }
 
     /// SARIF carries results, so only `check` has a log; every other verb
@@ -374,6 +414,7 @@ mod batched {
             path,
             set,
             findings,
+            remedies: &[],
         }
     }
 

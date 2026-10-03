@@ -8,7 +8,7 @@
 //! per file.
 
 use crate::lint::Finding;
-use crate::render::Violation;
+use crate::render::{Remedy, Violation};
 use std::borrow::Cow;
 
 /// One violation as a writer reads it: nothing owned, so producing one
@@ -18,6 +18,8 @@ pub(super) struct Line<'a> {
     pub path: &'a str,
     pub set: &'a str,
     pub finding: &'a Finding,
+    /// What `fix` would do with it; `None` reads as nothing (V122).
+    pub remedy: Option<&'a Remedy>,
 }
 
 impl<'a> From<&'a Violation<'_>> for Line<'a> {
@@ -26,6 +28,7 @@ impl<'a> From<&'a Violation<'_>> for Line<'a> {
             path: item.path,
             set: item.set,
             finding: &item.finding,
+            remedy: None,
         }
     }
 }
