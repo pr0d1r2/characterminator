@@ -36,7 +36,7 @@ self|.|-
 - adopt: `.pre-commit-hooks.yaml` (ids `ctrm-check`, `ctrm-fix`) · `action.yml` (composite; inputs `args`, `output`, `working-directory`). both run the SAME `ctrm` binary (V52).
 - file grammars live w/ their parser: `.ctrm` → `src/rules` §I · `.ctrm-map` → `src/fix` §I · `.ctrm-sets` & builtin presets → `src/charset` §I.
 - flag: full list, per-verb `--format` & refusal rules → `src/cli` §I.
-- lib: `characterminator::{scan, fix, resolve}` — pure fn over `&str`.
+- lib: `characterminator::scan::scan_str`, `fix::fix`, `rules::resolve` — pure fns, ⊥ I/O. API rework pending; this line = the paths that exist today.
 - exit: 0 ok · 1 violation | drift · 2 = ⊥ verdict reached: usage, config (`src/cli:V74`), write error (`src/cli:V47`), dir w/ ⊥ tracked file (`src/tokens:V43`), ⊥ git work tree (`src/tokens:V69`) · `guard`: 0 decided | 1 adapter failure, 2 ⊥ EVER (`src/cli/guard:V53`).
 
 ## §V INVARIANTS
