@@ -143,15 +143,13 @@ impl Checker {
     ///
     /// # Errors
     ///
-    /// A line that cannot be parsed, named at its origin, or a compiled-in
-    /// preset that cannot be -- the second is a defect in this crate
-    /// rather than in the tree being checked, and it says so.
+    /// A line that cannot be parsed, named at its origin.
     pub(super) fn configured(config: &Config) -> Result<Self, String> {
         let rules = config.rules()?;
         let catalog = config.catalog()?;
         Ok(Self {
             rules,
-            hazards: Hazards::builtin()?.vouched_by(&catalog),
+            hazards: Hazards::builtin().vouched_by(&catalog),
             catalog,
             outside: Lint::named(OUTSIDE)
                 .ok_or_else(|| String::from("no `outside-set` lint"))?,

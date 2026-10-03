@@ -16,6 +16,7 @@ use crate::charset::{CharSet, SetCatalog, builtin};
 use crate::lint::Lint;
 use crate::lint::sequence::Sequences;
 use crate::scan::Hit;
+use std::sync::LazyLock;
 
 /// The hazard classes in the order they are TRIED, each with the lint it
 /// is reported under. The first class holding a character names its lint.
@@ -42,6 +43,10 @@ const STRAY_BOM: &str = "stray-bom";
 /// opaque name outside the fix node.
 const FAMILY: &str = "text";
 
+/// The compiled-in hazards, parsed on first use.
+static BUILTIN: LazyLock<Hazards> =
+    LazyLock::new(|| Hazards::compiled().unwrap_or_else(|_| Hazards::none()));
+
 /// Every hazard class, resolved once per run, paired with its lint.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Hazards {
@@ -59,11 +64,36 @@ impl Hazards {
     /// hazard is the one finding no configuration may switch off (V36),
     /// and a catalog is configuration.
     ///
-    /// # Errors
+    /// INFALLIBLE because the data is compiled in, and parsed ONCE per
+    /// process. A defect in it -- a file that fails to parse, a class it
+    /// does not declare, a lint the registry lacks -- is this crate's, and
+    /// the test `the_compiled_data_parses` keeps it from shipping.
     ///
-    /// Only a defect in this crate: the data file failing to parse, a
-    /// class it does not declare, or a lint the registry does not hold.
-    pub fn builtin() -> Result<Self, String> {
+    /// ```
+    /// use characterminator::{Hazards, scan_str};
+    ///
+    /// let hazards = Hazards::builtin();
+    /// let hits = scan_str("a\u{202E}b", |c| !hazards.contains(c));
+    /// let lint = hits.first().and_then(|hit| hazards.lint_for(*hit));
+    /// assert_eq!(lint.map(|l| l.name), Some("bidi-control"));
+    /// ```
+    #[must_use]
+    pub fn builtin() -> Self {
+        BUILTIN.clone()
+    }
+
+    /// No class at all: the fallback a passing `the_compiled_data_parses`
+    /// proves is never taken.
+    fn none() -> Self {
+        Self {
+            classes: Vec::new(),
+            excusing: Vec::new(),
+            sequences: Sequences::default(),
+        }
+    }
+
+    /// The compiled-in data, parsed: what [`Hazards::builtin`] keeps.
+    fn compiled() -> Result<Self, String> {
         let classes = classes()?;
         let excusing = excusing(&classes)?;
         let sequences = Sequences::deferred();
@@ -216,13 +246,17 @@ mod tests {
     use crate::scan::{Hit, Position};
 
     fn hazards() -> Hazards {
-        let built = Hazards::builtin();
-        assert!(built.is_ok(), "{built:?}");
-        built.unwrap_or(Hazards {
-            classes: Vec::new(),
-            excusing: Vec::new(),
-            sequences: super::Sequences::default(),
-        })
+        Hazards::builtin()
+    }
+
+    /// `Hazards::builtin` is infallible only because this holds: the
+    /// compiled-in data parses, so its empty fallback is never taken.
+    #[test]
+    fn the_compiled_data_parses() {
+        let compiled = Hazards::compiled();
+        assert!(compiled.is_ok(), "{compiled:?}");
+        assert_eq!(compiled.ok(), Some(Hazards::builtin()));
+        assert_ne!(Hazards::builtin(), Hazards::none());
     }
 
     fn at(byte: usize, character: char) -> Hit {

@@ -31,7 +31,7 @@ fn lint() -> Lint {
 }
 
 fn hazards() -> Hazards {
-    Hazards::builtin().unwrap_or_else(|why| unreachable!("{why}"))
+    Hazards::builtin()
 }
 
 /// What `check` finds in `bytes` when the file is granted `set`.

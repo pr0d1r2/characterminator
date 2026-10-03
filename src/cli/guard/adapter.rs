@@ -34,10 +34,9 @@ use std::path::{Path, PathBuf};
 ///
 /// # Errors
 ///
-/// Input that is not a hook payload, or compiled-in hazard data that does
-/// not load -- the second a defect in this crate.
+/// Input that is not a hook payload.
 pub(crate) fn run(stdin: &str, root: &Path) -> Result<String, String> {
-    let hazards = Hazards::builtin()?;
+    let hazards = Hazards::builtin();
     Ok(match hook::call(stdin)? {
         Call::Read { cwd, path } => {
             let cwd = cwd.map_or_else(|| root.to_path_buf(), PathBuf::from);
