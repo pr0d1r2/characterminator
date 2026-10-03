@@ -25,18 +25,18 @@ env {
 local fast = new Mapping<String, Step> {
   ["fmt"] {
     glob = List("**/*.rs")
-    check = "cargo fmt --check"
-    fix = "cargo fmt"
+    check = "cargo fmt --all --check"
+    fix = "cargo fmt --all"
   }
   ["clippy"] {
     glob = List("**/*.rs")
     depends = List("fmt")
-    check = "cargo clippy --all-targets -- -D warnings"
+    check = "cargo clippy --workspace --all-targets -- -D warnings"
   }
   ["test"] {
     glob = List("**/*.rs")
     depends = List("clippy")
-    check = "cargo test"
+    check = "cargo test --workspace"
   }
   // THE DOGFOOD (V13). The tool gates its own tree, against the `.ctrm` and
   // `.ctrm-sets` beside this file -- so every grant this repo relies on is
@@ -70,10 +70,10 @@ local fast = new Mapping<String, Step> {
   // unchecked under a green gate. `find` also never hands the loop an
   // unmatched pattern as a literal file name.
   ["mth"] {
-    glob = List("SPEC.md", "src/**/SPEC.md")
+    glob = List("SPEC.md", "src/**/SPEC.md", "dev/SPEC.md")
     check = """
       command -v mth >/dev/null 2>&1 || { echo 'hk: mth is not on PATH and nothing else checks SPEC.md structure. Enter the dev shell (`nix develop`, or `direnv reload`), which provides it from a pinned flake input.' >&2; exit 1; }
-      for f in SPEC.md $(find src -name SPEC.md | sort); do
+      for f in SPEC.md $(find src dev -name SPEC.md | sort); do
         mth fmt --check "$f" || { printf 'hk: %s is not formatted -- one line per statement, no line over the cap. Run `mth fmt %s`; splitting an over-long statement is the fix, raising the cap is a reviewed decision.\n' "$f" "$f" >&2; exit 1; }
       done
       """
@@ -88,11 +88,11 @@ local fast = new Mapping<String, Step> {
   // with nothing recorded has no file. Deleting one is a visible diff, the
   // same review a deleted line in the root file gets.
   ["mth-check"] {
-    glob = List("SPEC.md", "src/**/SPEC.md", ".spec-records", "src/**/.spec-records")
+    glob = List("SPEC.md", "src/**/SPEC.md", "dev/SPEC.md", ".spec-records", "src/**/.spec-records", "dev/.spec-records")
     depends = List("mth")
     check = """
       mth check --records .spec-records SPEC.md || { echo "hk: SPEC.md failed its structural rules, or a decision .spec-records requires has gone missing. Each line above names the rule, the line, why it matters, and a ranked fix." >&2; exit 1; }
-      for f in $(find src -name SPEC.md | sort); do
+      for f in $(find src dev -name SPEC.md | sort); do
         records="$(dirname "$f")/.spec-records"
         if [ -f "$records" ]; then set -- --records "$records"; else set --; fi
         mth check "$@" "$f" || { echo "hk: $f failed its structural rules, or a decision its .spec-records requires has gone missing. Each line above names the rule, the line, why it matters, and a ranked fix." >&2; exit 1; }
@@ -108,7 +108,7 @@ local fast = new Mapping<String, Step> {
   // rule. `itok check` reads `.context-limits` itself and pins `--bpe`, so
   // the threshold lives in one file rather than being restated in this one.
   ["context-limits"] {
-    glob = List("SPEC.md", "src/**/SPEC.md", ".context-limits")
+    glob = List("SPEC.md", "src/**/SPEC.md", "dev/SPEC.md", ".context-limits")
     depends = List("mth-check")
     check = """
       command -v itok >/dev/null 2>&1 || { echo 'hk: itok is not on PATH, so the token ceilings were NOT checked -- re-enter the dev shell (`nix develop`, or `direnv reload`). Examined nothing; this is not a pass.' >&2; exit 1; }
@@ -124,7 +124,7 @@ local fast = new Mapping<String, Step> {
   // files, and under `fail_fast` its terser complaint about a broken file
   // would otherwise be the only line a contributor sees.
   ["sherd-check"] {
-    glob = List("SPEC.md", "src/**/SPEC.md", "**/*.rs")
+    glob = List("SPEC.md", "src/**/SPEC.md", "dev/SPEC.md", "**/*.rs")
     depends = List("mth-check")
     check = """
       command -v sherd >/dev/null 2>&1 || { echo 'hk: sherd is not on PATH, so the federation was NOT checked -- re-enter the dev shell. Examined nothing; this is not a pass.' >&2; exit 1; }
@@ -139,7 +139,7 @@ local fast = new Mapping<String, Step> {
   // It fails HARD when sherd is absent, for the reason every step here
   // does: a skip would read exactly like a pass.
   ["sherd-budget"] {
-    glob = List("SPEC.md", "src/**/SPEC.md", ".context-limits")
+    glob = List("SPEC.md", "src/**/SPEC.md", "dev/SPEC.md", ".context-limits")
     depends = List("sherd-check")
     check = """
       command -v sherd >/dev/null 2>&1 || { echo 'hk: sherd is not on PATH, so the chain budgets were NOT checked -- re-enter the dev shell. Examined nothing; this is not a pass.' >&2; exit 1; }
@@ -169,7 +169,7 @@ local fast = new Mapping<String, Step> {
   // to change means the committed tree was stale, so this reports rather
   // than rewrites: `sherd sync` is the fix, run deliberately.
   ["sherd-sync"] {
-    glob = List("SPEC.md", "src/**/SPEC.md")
+    glob = List("SPEC.md", "src/**/SPEC.md", "dev/SPEC.md")
     depends = List("sherd-check")
     check = """
       command -v sherd >/dev/null 2>&1 || { echo 'hk: sherd is not on PATH, so NAV was NOT checked -- re-enter the dev shell. Examined nothing; this is not a pass.' >&2; exit 1; }
@@ -236,29 +236,24 @@ local fast = new Mapping<String, Step> {
       ' flake.nix || { echo 'hk: flake.nix shellHook must check the crate-name marker, then refuse a tracked hooks dir, BEFORE it installs either hook (V40, B1). One of the guards is missing or sits below an install.' >&2; exit 1; }
       """
   }
-  // THE BADGE READS THE CLAIM (V46). The coverage figure in README.md is
-  // copied from `.coverage`, never typed, so a badge cannot say one number
-  // while the file the gate keeps honest says another.
+  // GENERATED DOCS STAY GENERATED (`dev:V131`-`dev:V137`). The README badge
+  // block and the notices closure are written by `characterminator-dev`, the
+  // unpublished workspace member, from the files that own each number --
+  // Cargo.toml, `.coverage` (V46: the badge is copied from the claim, never
+  // typed) and `cargo tree`. A hand edit to either block, or an owner that
+  // moved without a regenerate, fails here. It replaces the shell
+  // `coverage-badge` step, which covered one badge of fourteen.
   //
-  // It lives in the FAST set because it only compares two files already on
-  // disk: a hand edit to either is caught at pre-commit, long before the
-  // instrumented build in pre-push would notice.
-  //
-  // Colour is fixed at brightgreen: the floor in the `coverage` step already
-  // refuses anything low enough to deserve another.
-  ["coverage-badge"] {
-    glob = List("README.md", ".coverage")
-    check = """
-      claim=$(awk '/^lines /{printf "%.1f", $2}' .coverage)
-      want="[![coverage $claim%](https://img.shields.io/badge/coverage-$claim%25-brightgreen)](.coverage)"
-      grep -qxF "$want" README.md || { echo "hk: .coverage claims $claim% but README.md has no badge saying so. Run 'hk run fix' -- the badge is copied from .coverage, never typed." >&2; exit 1; }
-      """
-    fix = """
-      claim=$(awk '/^lines /{printf "%.1f", $2}' .coverage)
-      mkdir -p target
-      awk -v c="$claim" 'index($0, "[![coverage ") == 1 {print "[![coverage " c "%](https://img.shields.io/badge/coverage-" c "%25-brightgreen)](.coverage)"; next} {print}' README.md > target/README.new
-      mv target/README.new README.md
-      """
+  // SCOPED: hk hands the changed files in and the tool checks only the
+  // blocks one of them is an input to, so a commit that touches neither
+  // spawns no cargo. The glob is the union of every block's inputs, and a
+  // test in `dev/src/select_test.rs` fails if it misses one. Chained after
+  // `test` for the target-directory lock.
+  ["dev-generated"] {
+    glob = List("README.md", "docs/THIRD-PARTY-NOTICES.md", "Cargo.toml", "Cargo.lock", ".coverage", "dev/src/**")
+    depends = List("test")
+    check = "cargo run -q -p characterminator-dev -- --check {{files}}"
+    fix = "cargo run -q -p characterminator-dev -- --fix {{files}}"
   }
 }
 
@@ -302,10 +297,15 @@ local all = (fast) {
       mv target/coverage.new .coverage
       """
   }
-  // Measured first, so in fix mode the badge is rewritten from the figure
-  // this run just wrote rather than from the one it replaced.
-  ["coverage-badge"] {
+  // THE UNSCOPED LAYER (`dev:V136`). A selection too narrow passes a stale
+  // block, so pre-push and CI check every block whatever changed. After
+  // `coverage`, so in fix mode the badge is rewritten from the figure this
+  // run just wrote rather than from the one it replaced.
+  ["dev-generated-full"] {
+    glob = List("**/*")
     depends = List("coverage")
+    check = "cargo run -q -p characterminator-dev -- --check"
+    fix = "cargo run -q -p characterminator-dev -- --fix"
   }
 }
 

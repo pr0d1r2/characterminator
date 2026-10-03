@@ -41,8 +41,8 @@ V137: exits 0 clean · 1 stale, owner or marker error · 2 usage. a tool that ca
 ## §T TASKS
 
 id|status|task|cites
-T69|.|workspace + `dev/` crate; `readme` renders the `badges` block from owners; hk `dev-generated`/`-full` replace `coverage-badge`|V131,V133,V134,V135,V136,V137
-T70|.|`notices` renders the `closure` block (count, table, licence tally) in `docs/THIRD-PARTY-NOTICES.md`; README closure badge from the same set|V131,V132,V134
+T69|x|workspace + `dev/` crate; `readme` renders the `badges` block from owners; hk `dev-generated`/`-full` replace `coverage-badge`|V131,V133,V134,V135,V136,V137
+T70|x|`notices` renders the `closure` block (count, table, licence tally) in `docs/THIRD-PARTY-NOTICES.md`; README closure badge from the same set|V131,V132,V134
 T71|.|coverage over the workspace: `cargo llvm-cov --workspace`, `.coverage` key over `src dev` ∴ dev code sits under the floor|`.:V46`
 
 ## §B BUGS

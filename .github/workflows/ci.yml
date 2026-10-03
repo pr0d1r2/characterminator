@@ -74,6 +74,11 @@ jobs:
           skipPush:
             ${{ github.ref != 'refs/heads/main' || github.event_name ==
             'pull_request' }}
+      # EVERY target's crates, before the offline gate. `characterminator-dev`
+      # reads the closure with `cargo tree --target all --offline`
+      # (`dev:V132`), and a build downloads only the crates its own host
+      # compiles, so `windows-link` would be missing on every runner here.
+      - run: nix develop --command cargo fetch --locked
       # `--check` never rewrites: CI reports drift, a human fixes it.
       # `--no-fail-fast` so one red step does not hide the others.
       - run: nix develop --command hk check --all --check --no-fail-fast
