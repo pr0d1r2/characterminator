@@ -311,7 +311,7 @@ src/render           4200
 src/rules            3650
 src/scan             2580
 src/tokens           2970
-src/judge            3740
+src/judge            3300
 
 # The judge node (src/judge), extracted from src/cli for the 0.1.0 API
 # work: ~12% over its measured spec.
@@ -324,3 +324,8 @@ src/judge            3740
 # to archive: its two finished rows are already stubs. ~12% over the
 # measured 1248 and the 3338 chain.
 src/judge/SPEC.md    1400
+
+# The `usage` sub-node (help text, verb detection, did-you-mean), new
+# 2026-10-03: ~12% over its measured 569-token spec and 4094-token chain.
+src/cli/usage/SPEC.md 640
+src/cli/usage        4590
