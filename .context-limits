@@ -75,7 +75,7 @@ src/charset/SPEC.md  4250
 # 2810 -> 3400: R8, R9 and R11 move here from the root (the words map and
 # the builtin map are this node's), about 530 tokens the root sheds. ~12%
 # over the measured 3037.
-src/fix/SPEC.md      3400
+src/fix/SPEC.md      4010
 # 1160 -> 1460: V56 and B5, the node's first bug row, land with the fix
 # they describe -- a level-only line used to win the set grant. Archiving
 # T49 ran first and bought 15 tokens. 1460 is ~12% over the measured 1305.
