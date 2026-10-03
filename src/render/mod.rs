@@ -42,6 +42,7 @@ mod line;
 mod name;
 mod order;
 mod sarif;
+mod total;
 mod value;
 
 pub(crate) use escape::string as json_string;

@@ -23,6 +23,7 @@ use crate::render::escape::string;
 use crate::render::line::{Line, Spelled};
 use crate::render::name::{Codepoint, codepoint, level_name, method_name};
 use crate::render::order;
+use crate::render::total::{self, Total};
 use crate::render::value::{
     Fields, array, field, list, number, object, optional,
 };
@@ -161,7 +162,19 @@ pub(super) fn stats(
     object(&[
         field("verb", &string("stats")),
         field("files", &array(&rows)),
+        field("total", &total::of(files).map_or_else(null, total_row)),
         field("skipped", &unread(skipped)),
+    ])
+}
+
+/// Every counted file summed (V96), `null` when none was counted.
+fn total_row(sum: Total) -> String {
+    object(&[
+        field("files", &number(sum.files)),
+        field("outside", &number(sum.outside)),
+        field("bytes", &number(sum.bytes)),
+        field("tokens_now", &count(sum.now)),
+        field("tokens_after", &count(sum.after)),
     ])
 }
 

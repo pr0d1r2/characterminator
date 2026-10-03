@@ -199,11 +199,12 @@ fn a_stats_row_carries_each_count_beside_its_method() {
         now: estimate(40),
         after: bpe(38),
     };
-    let expected = concat!(
-        r#"{"verb":"stats","files":[{"path":"a.rs","outside":3,"#,
-        r#""bytes":120,"tokens_now":{"tokens":40,"#,
-        r#""method":"estimate"},"tokens_after":{"tokens":38,"#,
-        r#""method":"bpe"}}],"skipped":[]}"#
+    let figures = concat!(
+        r#""bytes":120,"tokens_now":{"tokens":40,"method":"estimate"},"#,
+        r#""tokens_after":{"tokens":38,"method":"bpe"}"#,
+    );
+    let expected = format!(
+        r#"{{"verb":"stats","files":[{{"path":"a.rs","outside":3,{figures}}}],"total":{{"files":1,"outside":3,{figures}}},"skipped":[]}}"#
     );
     assert_eq!(stats(&[row], &[]), expected);
 }
@@ -212,7 +213,7 @@ fn a_stats_row_carries_each_count_beside_its_method() {
 #[test]
 fn a_stats_document_names_the_files_it_skipped() {
     let expected = concat!(
-        r#"{"verb":"stats","files":[],"skipped":["#,
+        r#"{"verb":"stats","files":[],"total":null,"skipped":["#,
         r#"{"path":"a.txt","reason":"not-utf8","byte":17},"#,
         r#"{"path":"b.bin","reason":"binary"}]}"#
     );

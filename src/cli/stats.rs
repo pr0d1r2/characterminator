@@ -160,8 +160,8 @@ mod tests {
             return;
         };
         let said = ran(&root, false);
-        assert!(said.starts_with("notes.md outside 1 bytes"), "{said}");
-        assert!(said.contains("tokens"), "{said}");
+        assert!(said.starts_with("notes.md outside=1 bytes=8"), "{said}");
+        assert!(said.contains(" tokens=~"), "{said}");
         assert!(said.contains("->"), "{said}");
     }
 
@@ -211,8 +211,9 @@ mod tests {
             return;
         };
         let said = ran(&root, false);
-        assert!(said.contains("outside 0"), "{said}");
-        let halves: Vec<&str> = said.split(" -> ").collect();
+        let row = said.lines().next().unwrap_or_default();
+        assert!(row.contains("outside=0"), "{said}");
+        let halves: Vec<&str> = row.split("->").collect();
         assert_eq!(halves.len(), 2, "{said}");
         assert!(
             halves.last().is_some_and(|after| {

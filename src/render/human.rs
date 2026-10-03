@@ -20,6 +20,7 @@ use crate::render::Violation;
 use crate::render::line::{Line, Spelled};
 use crate::render::name::{Codepoint, codepoint, level_name};
 use crate::render::order;
+use crate::render::total::{self, Total};
 use crate::render::{Change, Explanation, FileStats, InForce, Skipped};
 use crate::rules::{LevelChoice, Origin, Rule};
 use crate::scan::Unreadable;
@@ -183,30 +184,52 @@ pub(super) fn stats(
     files: &[FileStats<'_>],
     skipped: &[Skipped<'_>],
 ) -> String {
-    let rows: Vec<String> = order::stats(files).into_iter().map(row).collect();
+    let mut rows: Vec<String> =
+        order::stats(files).into_iter().map(row).collect();
+    let summed = total::of(files).filter(|sum| sum.files > 1);
+    rows.extend(summed.map(total_row));
     let mut out = rows.join("\n");
     unread_lines(&mut out, skipped);
     out
 }
 
+/// `path outside=N bytes=B tokens=<now>-><after>`: every figure is glued
+/// to its label, so no number can be read as the next label's (V96).
 fn row(item: &FileStats<'_>) -> String {
+    let tokens = counts(item.now, item.after);
+    let (outside, bytes) = (item.outside, item.bytes);
     format!(
-        "{} outside {} bytes {} tokens {} -> {}",
-        shown(item.path),
-        item.outside,
-        item.bytes,
-        count(item.now),
-        count(item.after)
+        "{} outside={outside} bytes={bytes} tokens={tokens}",
+        shown(item.path)
     )
 }
 
+/// The last line: every counted file summed, in the row's own grammar.
+fn total_row(sum: Total) -> String {
+    let tokens = counts(sum.now, sum.after);
+    let (files, outside, bytes) = (sum.files, sum.outside, sum.bytes);
+    format!(
+        "TOTAL files={files} outside={outside} bytes={bytes} tokens={tokens}"
+    )
+}
+
+/// `~6->~5`, or `40->38 (o200k)`: one label for the pair, since a run
+/// counts every file the same way.
+fn counts(now: Count, after: Count) -> String {
+    let pair = format!("{}->{}", count(now), count(after));
+    if now.method == Method::Bpe || after.method == Method::Bpe {
+        return format!("{pair} (o200k)");
+    }
+    pair
+}
+
 /// The figure says how it was measured (`src/tokens:V10`): a tilde is the
-/// cheap proxy, a real count names the tokenizer. Neither can be mistaken
-/// for the other at a glance, which is the whole point.
+/// cheap proxy; a bare number is the real count, and [`counts`] names the
+/// tokenizer after the pair. Neither can be mistaken for the other.
 fn count(value: Count) -> String {
     match value.method {
         Method::Estimate => format!("~{}", value.tokens),
-        Method::Bpe => format!("{} (o200k)", value.tokens),
+        Method::Bpe => value.tokens.to_string(),
     }
 }
 
@@ -316,7 +339,7 @@ fn words(items: &[String]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{check, count, explain, fix, sets, stats};
+    use super::{check, count, counts, explain, fix, sets, stats};
     use crate::charset::{CharRange, CharSet};
     use crate::fix::Rewrite;
     use crate::lint::{Finding, Group, Level, Lint};
@@ -483,20 +506,43 @@ mod tests {
     }
 
     #[test]
-    fn a_real_count_names_its_tokenizer_instead() {
-        assert_eq!(count(bpe(40)), "40 (o200k)");
+    fn a_real_count_names_its_tokenizer_after_the_pair() {
+        assert_eq!(counts(bpe(40), bpe(38)), "40->38 (o200k)");
     }
 
+    /// V96: `outside 3 bytes 26 tokens ~6 -> ~5` read as though 3 were
+    /// the bytes; each figure is now glued to its label, and a TOTAL
+    /// line sums every counted file.
     #[test]
-    fn a_stats_row_carries_both_figures_with_their_methods() {
+    fn a_stats_row_glues_every_figure_to_its_label() {
         let row = FileStats {
             path: "a.rs",
             outside: 3,
             bytes: 120,
             now: estimate(40),
+            after: estimate(38),
+        };
+        let mut other = row;
+        other.path = "b.rs";
+        let expected = concat!(
+            "a.rs outside=3 bytes=120 tokens=~40->~38\n",
+            "b.rs outside=3 bytes=120 tokens=~40->~38\n",
+            "TOTAL files=2 outside=6 bytes=240 tokens=~80->~76"
+        );
+        assert_eq!(stats(&[other, row], &[]), expected);
+    }
+
+    /// One file is its own total, so a second line would only repeat it.
+    #[test]
+    fn a_single_file_has_no_total_line() {
+        let row = FileStats {
+            path: "a.rs",
+            outside: 3,
+            bytes: 120,
+            now: bpe(40),
             after: bpe(38),
         };
-        let expected = "a.rs outside 3 bytes 120 tokens ~40 -> 38 (o200k)";
+        let expected = "a.rs outside=3 bytes=120 tokens=40->38 (o200k)";
         assert_eq!(stats(&[row], &[]), expected);
     }
 

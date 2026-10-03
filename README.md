@@ -475,12 +475,14 @@ counted.
 
 ```text
 $ ctrm stats --bpe notes.md
-notes.md outside 3 bytes 26 tokens 6 (o200k) -> 6 (o200k)
+notes.md outside=3 bytes=26 tokens=6->6 (o200k)
 ```
 
-The figure says how it was measured. `~1458` is the cheap proxy and wears a
-tilde; `1951 (o200k)` named the tokenizer that produced it. Neither can be
-mistaken for the other at a glance, which is the whole point.
+The figure says how it was measured. `~1458->~1450` is the cheap proxy and
+wears a tilde; `1951->1950 (o200k)` names the tokenizer that produced it.
+Neither can be mistaken for the other at a glance, which is the whole point.
+Over more than one file a last `TOTAL files=N ...` line sums them, and
+`--format json` always carries a `total` object.
 
 **Rewriting typography saves bytes and often saves no tokens at all.**
 Measured here on a document with 60 substituted characters: 1044 bytes ->
@@ -538,7 +540,7 @@ SPEC.md ascii
 src/**/SPEC.md ascii
 
 $ ctrm stats --bpe SPEC.md          # with `use words` in .ctrm-map
-SPEC.md outside 146 bytes 8700 tokens 3013 (o200k) -> 2923 (o200k)
+SPEC.md outside=146 bytes=8700 tokens=3013->2923 (o200k)
 ```
 
 Across all ten: 15,062 -> 14,576 tokens (-486, -3.2%), against -26 for the
