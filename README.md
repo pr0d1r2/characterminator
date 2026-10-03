@@ -655,6 +655,29 @@ above are printed as found.
 Memory follows the same honesty rule: [docs/MEMORY.md](docs/MEMORY.md)
 says how much RAM a run takes, measured, and what makes it grow.
 
+## As a library
+
+The crate is also a library, for a tool that wants the judgement without
+the CLI: `scan_str` and `scan_bytes` find characters outside a set, `fix`
+rewrites through a map, and `Hazards::lints_in` finds every hazard in a
+text with the same emoji-sequence and byte-order-mark exemptions `check`
+applies.
+
+```rust
+use characterminator::{Map, SetCatalog, fix, scan_str};
+
+let ascii = SetCatalog::builtin().resolve("ascii", "text")?;
+let hits = scan_str("a\u{2014}b", |c| ascii.contains(c));
+assert_eq!(hits.len(), 1);
+let fixed = fix("a\u{2014}b", &Map::builtin(), |c| ascii.contains(c))?;
+assert_eq!(fixed.output, "a--b");
+```
+
+This is the crate's own doc-tested example, and every public function has
+one; the API reference is on [docs.rs](https://docs.rs/characterminator).
+At 0.1 the library surface may still move before 0.2
+([the version ladder](CHANGELOG.md#version-ladder)).
+
 ## It gates itself
 
 `ctrm check` runs over this repository's own tracked files on every commit,
