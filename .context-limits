@@ -221,3 +221,7 @@ src/rules            3650
 src/scan             2700
 src/tokens           2830
 src/judge            2990
+
+# The judge node (src/judge), extracted from src/cli for the 0.1.0 API
+# work: ~12% over its measured spec.
+src/judge/SPEC.md    1040
