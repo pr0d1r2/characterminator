@@ -22,6 +22,7 @@ use crate::judge::{Checker, Unruled, hazards_in, shown_path, unruled};
 use crate::lint::{Finding, Group, Hazards};
 use crate::render::codepoint;
 use crate::scan::scan_str;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 /// Answer one hook payload: the decision document to print, or the empty
@@ -94,18 +95,82 @@ fn spelled(text: &str) -> String {
 /// harness will SHOW it (V66): see [`hazards_only`].
 fn read(cwd: &Path, path: &str, hazards: &Hazards) -> Verdict {
     let full = cwd.join(path);
-    let Ok(bytes) = std::fs::read(&full) else {
+    let Some((bytes, whole)) = loaded(&full, CAP) else {
         return Verdict::Pass;
     };
     let shown = shown_path(cwd, &full);
+    let verdict = judged(cwd, &shown, &bytes, hazards);
+    if whole {
+        verdict
+    } else {
+        partial(&shown, verdict, bytes.len())
+    }
+}
+
+/// The most of one file a pre-read judges (V102): 16 MiB. A hook runs
+/// once per `Read`, and reading a multi-GB file whole would put GBs in
+/// the hook's memory and seconds on every read of it.
+const CAP: u64 = 16 * 1024 * 1024;
+
+/// The file's first `cap` bytes, and whether that is all of it. A file
+/// longer than that is cut back to its last newline inside the cap: a
+/// line break is never inside a UTF-8 character, an emoji sequence, or a
+/// bidi pair, so the cut cannot MAKE a hazard (a joiner whose partner
+/// was cut off) or a decode error that would deny for size alone.
+fn loaded(full: &Path, cap: u64) -> Option<(Vec<u8>, bool)> {
+    let file = std::fs::File::open(full).ok()?;
+    let mut bytes = Vec::new();
+    file.take(cap.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .ok()?;
+    let whole = u64::try_from(bytes.len()).is_ok_and(|n| n <= cap);
+    if !whole {
+        bytes.truncate(cut(&bytes, cap));
+    }
+    Some((bytes, whole))
+}
+
+/// Where a capped prefix ends: after its last newline, else after its
+/// last whole UTF-8 character.
+fn cut(bytes: &[u8], cap: u64) -> usize {
+    let cap = usize::try_from(cap).map_or(bytes.len(), |c| c.min(bytes.len()));
+    let head = bytes.get(..cap).unwrap_or(bytes);
+    match head.iter().rposition(|b| *b == b'\n') {
+        Some(at) => at.saturating_add(1),
+        None => match std::str::from_utf8(head) {
+            Err(e) if e.error_len().is_none() => e.valid_up_to(),
+            _ => head.len(),
+        },
+    }
+}
+
+/// A prefix judged in place of the whole file (V102). A hazard in it
+/// still denies; otherwise the read passes WITH a note saying how much
+/// was judged, never in silence: a pass on a prefix that said nothing
+/// would read as a pass on the file.
+fn partial(shown: &str, verdict: Verdict, judged: usize) -> Verdict {
+    let rest = format!(
+        "ctrm: {shown} is over the guard's 16 MiB cap, so only its first \
+         {judged} bytes were judged; the rest was NOT. `ctrm check \
+         {shown}` judges it whole."
+    );
+    match verdict {
+        Verdict::Block(why) => Verdict::Block(why),
+        Verdict::Pass => Verdict::Note(rest),
+        Verdict::Note(note) => Verdict::Note(format!("{note} {rest}")),
+    }
+}
+
+/// `bytes`, judged against `.ctrm` from `cwd`, or for hazards alone.
+fn judged(cwd: &Path, shown: &str, bytes: &[u8], hazards: &Hazards) -> Verdict {
     let config = crate::cli::config::discovered(cwd);
     let checker = Checker::configured(&config);
-    let why = match checker.and_then(|c| c.findings(&shown, &bytes)) {
-        Ok(Some(found)) => return judged_file(&shown, &found),
+    let why = match checker.and_then(|c| c.findings(shown, bytes)) {
+        Ok(Some(found)) => return judged_file(shown, &found),
         Ok(None) => None,
         Err(why) => Some(why),
     };
-    hazards_only(&shown, unruled(&bytes, hazards), why.as_deref())
+    hazards_only(shown, unruled(bytes, hazards), why.as_deref())
 }
 
 fn judged_file(shown: &str, found: &[Finding]) -> Verdict {

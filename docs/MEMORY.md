@@ -65,6 +65,20 @@ Piping into `head` does not reduce memory for the same reason: the report
 exists in full before the first line is written. `ctrm check | head` still
 exits with the right verdict (`src/cli:V47`).
 
+## The guard reads at most 16 MiB
+
+`ctrm guard` runs once per `Read` an agent makes, inside the harness, so a
+multi-GB file read whole would put GBs in a hook. It judges at most the
+first 16 MiB, cut back to the last line break inside that, and says so: a
+hazard in the prefix still denies the read; otherwise the read goes ahead
+with a note that the rest was not judged. It never denies for size alone
+and never passes a capped file in silence (`src/cli/guard:V102`). `ctrm
+check` has no cap and judges the whole file.
+
+The cap bounds the file's bytes, and with them the findings, so it also
+bounds the pathological case above: a guard read costs at most what
+`check` costs on a 16 MiB file.
+
 ## Keeping it small
 
 - **Grant the sets a file actually needs.** Memory follows findings, and

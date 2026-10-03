@@ -20,6 +20,7 @@ V53: `guard` exit ⊥ verdict: 0 = decided (decision JSON | silence = pass). ada
 V66: pre-read of a file ⊥ text (`src/scan:V8`): harness decodes it LOSSILY ∴ guard judges the lossy decode for hazard ONLY ∖ `control-character` (C0 = every binary) → hazard = deny, else pass + note. `check` stays ⊥ lossy: guard judges what the model is SHOWN.
 V67: stdin ⊥ parsed (⊥ JSON, nested past the depth bound) → raw scan, every `\u` escape decoded (pairs too), hazard ONLY → `block` decision, exit 0 ∵ an attacker shapes MCP output & V53's exit 1 lets it through. clean → V53's named error, exit 1.
 V93: `guard` IGNORES argv: ∀ word after `guard` (unknown flag, `--format`, `-C`, flag twin, path) ⊥ parsed, ⊥ refused ∵ refusal = exit 2 & V53 forbids 2 ∴ a stray word in a hook command ⊥ bricks the session. config = dotfiles discovered at payload `cwd` ONLY (absent → process dir). test: `tests/guard_argv.rs`.
+V102: pre-read judges ≤ 16 MiB: over → PREFIX, cut after last newline (else last whole char) ∴ cut ⊥ makes a hazard. hazard → deny, else pass + note "rest ⊥ judged"; ⊥ deny for size, ⊥ silent. 16 MiB ∵ hook RAM ~ file size, far over what a `Read` shows. ⊥ configurable ∵ argv ignored (V93). LIMIT: `Read` `offset` past it = unjudged.
 
 ## §T TASKS
 

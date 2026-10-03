@@ -338,6 +338,9 @@ What it does with each call:
   stray character would be switched off within the hour, and a switched-off
   hook guards nothing. A `PreToolUse` for any other tool passes unjudged:
   only a `Read` names a file whose characters are known before the call.
+  A file over 16 MiB is judged by its first 16 MiB: a hazard there still
+  denies, and otherwise the read goes ahead with a note that the rest was
+  not judged ([memory](docs/MEMORY.md)).
 - **After a web fetch, a web search, a shell command or an MCP tool**, every
   string in the tool's output is scanned, however deeply nested. A hazard
   sends a `block` decision whose reason tells the model the content is
