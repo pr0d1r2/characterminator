@@ -19,75 +19,183 @@
 //! Pure and total: no filesystem, no pattern is invalid. An unmatched
 //! `[` is a literal `[`, because a parser that can REJECT a pattern
 //! needs a second grammar saying which patterns are legal.
+//!
+//! HOW it matches (V87): one loop, used twice -- chars within a segment
+//! under `*`, segments within a path under `**` -- that remembers only the
+//! LAST star and, on a mismatch, lets that star swallow one more unit.
+//! Nothing recurses and nothing is allocated, so a pattern like
+//! `*a*a*a*a*a*a*b` costs O(pattern x path) instead of exponential time.
 
 /// Whether `path` matches `pattern`, under V2's gitignore semantics.
 #[must_use]
 pub fn matches(pattern: &str, path: &str) -> bool {
-    let normal = normalize(pattern);
-    let pat: Vec<&str> = normal.split('/').collect();
-    let seg: Vec<&str> = path.split('/').collect();
-    segments(&pat, &seg)
+    starred(Glob::of(pattern), Segments(Some(path)))
 }
 
-/// Gitignore's SURFACE rules, applied once so the walk below sees only
-/// the three wildcards.
+/// A pattern read as segments, with gitignore's SURFACE rules applied as
+/// two virtual `**` segments rather than by building a new string, so the
+/// walk below sees only the three wildcards and allocates nothing.
 ///
 /// A pattern with no `/` matches at ANY depth, which is why `*.md` is the
-/// spelling people expect to work. A leading `/` anchors to the repo root.
-/// A trailing `/` names a directory, so everything under it matches.
-fn normalize(pattern: &str) -> String {
-    let anchored = pattern.starts_with('/');
-    let trimmed = pattern.trim_start_matches('/');
-    let directory = trimmed.ends_with('/');
-    let core = trimmed.trim_end_matches('/');
-    let mut out = String::new();
-    if !anchored && !core.contains('/') {
-        out.push_str("**/");
-    }
-    out.push_str(core);
-    if directory {
-        out.push_str("/**");
-    }
-    out
+/// spelling people expect to work: it reads as `**/*.md`. A leading `/`
+/// anchors to the repo root. A trailing `/` names a directory, so
+/// everything under it matches: `locales/` reads as `**/locales/**`.
+#[derive(Clone, Copy)]
+struct Glob<'a> {
+    lead: bool,
+    core: Segments<'a>,
+    tail: bool,
 }
 
-/// Segment-wise match. `**` is the only pattern that consumes more, or
-/// fewer, than one segment.
-fn segments(pat: &[&str], path: &[&str]) -> bool {
-    match pat.split_first() {
-        None => path.is_empty(),
-        Some((&"**", rest)) => any_suffix(rest, path),
-        Some((p, rest)) => path
-            .split_first()
-            .is_some_and(|(s, srest)| within(p, s) && segments(rest, srest)),
-    }
-}
-
-/// `**` matches zero or more segments, so every remaining suffix is a
-/// candidate. The zero case is why `src/**/*.rs` also matches `src/a.rs`.
-fn any_suffix(rest: &[&str], path: &[&str]) -> bool {
-    (0..=path.len()).any(|i| segments(rest, path.get(i..).unwrap_or_default()))
-}
-
-/// Within ONE segment, where `/` can no longer appear.
-fn within(pattern: &str, seg: &str) -> bool {
-    let p: Vec<char> = pattern.chars().collect();
-    let s: Vec<char> = seg.chars().collect();
-    wild(&p, &s)
-}
-
-fn wild(p: &[char], s: &[char]) -> bool {
-    match p.split_first() {
-        None => s.is_empty(),
-        Some((&'*', rest)) => {
-            (0..=s.len()).any(|i| wild(rest, s.get(i..).unwrap_or_default()))
+impl<'a> Glob<'a> {
+    fn of(pattern: &'a str) -> Self {
+        let anchored = pattern.starts_with('/');
+        let trimmed = pattern.trim_start_matches('/');
+        let core = trimmed.trim_end_matches('/');
+        Self {
+            lead: !anchored && !core.contains('/'),
+            core: Segments(Some(core)),
+            tail: trimmed.ends_with('/'),
         }
-        Some((&'?', rest)) => {
-            s.split_first().is_some_and(|(_, t)| wild(rest, t))
+    }
+}
+
+/// What the loop walks: a cursor that hands out one unit and the rest.
+trait Units: Copy {
+    type Unit;
+    fn split(self) -> Option<(Self::Unit, Self)>;
+}
+
+/// A pattern: units, which of them is the star, and when a non-star unit
+/// accepts one unit of the text.
+trait Wildcard: Units {
+    type Text: Units;
+    fn is_star(unit: &Self::Unit) -> bool;
+    fn accepts(unit: &Self::Unit, text: &<Self::Text as Units>::Unit) -> bool;
+}
+
+/// The chars of ONE segment, where `/` can no longer appear.
+#[derive(Clone, Copy)]
+struct Chars<'a>(&'a str);
+
+/// The segments of a path; `None` once the last one is taken. An empty
+/// path is one empty segment, as `"".split('/')` reads it.
+#[derive(Clone, Copy)]
+struct Segments<'a>(Option<&'a str>);
+
+impl Units for Chars<'_> {
+    type Unit = char;
+    fn split(self) -> Option<(char, Self)> {
+        let mut chars = self.0.chars();
+        let first = chars.next()?;
+        Some((first, Self(chars.as_str())))
+    }
+}
+
+impl<'a> Units for Segments<'a> {
+    type Unit = &'a str;
+    fn split(self) -> Option<(&'a str, Self)> {
+        let rest = self.0?;
+        Some(match rest.split_once('/') {
+            Some((head, tail)) => (head, Self(Some(tail))),
+            None => (rest, Self(None)),
+        })
+    }
+}
+
+impl<'a> Units for Glob<'a> {
+    type Unit = &'a str;
+    fn split(self) -> Option<(&'a str, Self)> {
+        if self.lead {
+            let rest = Self {
+                lead: false,
+                ..self
+            };
+            return Some(("**", rest));
         }
-        Some((c, rest)) => s
-            .split_first()
-            .is_some_and(|(f, t)| f == c && wild(rest, t)),
+        if let Some((unit, core)) = self.core.split() {
+            return Some((unit, Self { core, ..self }));
+        }
+        let rest = Self {
+            tail: false,
+            ..self
+        };
+        self.tail.then_some(("**", rest))
+    }
+}
+
+/// `?` is exactly one char and `*` any run of them, within a segment.
+impl Wildcard for Chars<'_> {
+    type Text = Self;
+    fn is_star(unit: &char) -> bool {
+        *unit == '*'
+    }
+    fn accepts(unit: &char, text: &char) -> bool {
+        *unit == '?' || unit == text
+    }
+}
+
+/// `**` is any run of segments, including none, which is why
+/// `src/**/*.rs` also matches `src/a.rs`. Any other segment is matched
+/// within one segment of the path, so `*` never crosses a `/`.
+impl<'a> Wildcard for Glob<'a> {
+    type Text = Segments<'a>;
+    fn is_star(unit: &&str) -> bool {
+        *unit == "**"
+    }
+    fn accepts(unit: &&str, text: &&str) -> bool {
+        starred(Chars(unit), Chars(text))
+    }
+}
+
+/// One move of the loop.
+enum Step<P, T> {
+    /// A star: remember where the pattern resumes after it.
+    Star(P),
+    /// A unit accepted: both cursors advance.
+    Took(P, T),
+    /// Both exhausted together: a match.
+    Done,
+    /// A mismatch: the last star, if any, must swallow more.
+    Stuck,
+}
+
+fn step<P: Wildcard>(pattern: P, text: P::Text) -> Step<P, P::Text> {
+    match (pattern.split(), text.split()) {
+        (Some((unit, after)), _) if P::is_star(&unit) => Step::Star(after),
+        (None, None) => Step::Done,
+        (Some((unit, after)), Some((got, rest))) if P::accepts(&unit, &got) => {
+            Step::Took(after, rest)
+        }
+        _ => Step::Stuck,
+    }
+}
+
+/// The last star swallows one more unit of the text, or, with the text
+/// exhausted or no star seen, the match fails.
+fn retry<P: Units, T: Units>(star: Option<(P, T)>) -> Option<(P, T)> {
+    let (after, mark) = star?;
+    let (_, rest) = mark.split()?;
+    Some((after, rest))
+}
+
+/// Whether `text` matches `pattern`, remembering only the last star.
+///
+/// Remembering one is enough: a later star can absorb anything an earlier
+/// one would have, so backtracking past it never finds a match it missed.
+fn starred<P: Wildcard>(pattern: P, text: P::Text) -> bool {
+    let mut at = (pattern, text);
+    let mut star = None;
+    loop {
+        match step(at.0, at.1) {
+            Step::Star(after) => (star, at.0) = (Some((after, at.1)), after),
+            Step::Took(after, rest) => at = (after, rest),
+            Step::Done => return true,
+            Step::Stuck => match retry(star) {
+                Some(resume) => (star, at) = (Some(resume), resume),
+                None => return false,
+            },
+        }
     }
 }
 
@@ -167,3 +275,7 @@ mod tests {
         assert!(!matches("", "a"));
     }
 }
+
+#[cfg(test)]
+#[path = "glob_test.rs"]
+mod differential;

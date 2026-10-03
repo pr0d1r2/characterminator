@@ -37,6 +37,7 @@ V56: a rule naming ⊥ set (`docs/** !warn`) moves levels ONLY, ⊥ competes for
 
 V45: DISCOVERED dotfile = `.ctrm`, `.ctrm-sets`, `.ctrm-map` @ the RUN ROOT only (`-C <dir>` | cwd). ⊥ per-dir & ⊥ ancestor walk ∵ a law that ? sit in any ancestor is one ⊥ reader resolves by looking. `--*-file <f>` resolves against the run root too; `-C` repeated → last wins (V19).
 V75: rule line ! name ≥ 1 of set | `@<family>` | `!<level>`. pattern only (`a.md`) → parse error at its origin, exit 2 ∵ a line that grants & levels ⊥ reads like a rule that worked.
+V87: glob match (V2) = iterative, last-star backtrack: `*` over chars, `**` over segments ∴ O(pattern × path), ⊥ recursion, ⊥ alloc; surface rules = virtual `**` segments, ⊥ rebuilt string. runner: `glob_test.rs` diffs vs old recursive matcher on generated cases.
 
 ## §T TASKS
 
