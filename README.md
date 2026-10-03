@@ -221,6 +221,12 @@ Commit `.ctrm` and the rewritten files, then keep it that way with the
 [GitHub Action](#in-github-actions). `ctrm explain <path>` says which line
 decides a file; [Configuring it](#configuring-it) has the full grammar.
 
+## Documentation
+
+Beyond this README: [the FAQ](docs/FAQ.md), [how ctrm compares](docs/COMPARISON.md)
+with other tools, [the json contract](docs/JSON.md), and the rest in
+[docs/](docs/README.md).
+
 ## The verbs
 
 | | |
