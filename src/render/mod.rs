@@ -168,6 +168,34 @@ pub fn check(
     }
 }
 
+/// Violations that share one path and one set, held ONCE for all of them
+/// rather than once per finding (R17): a file with two million findings
+/// is two million findings, not two million copies of its name.
+///
+/// [`check_batches`] reports a list of these exactly as [`check`] reports
+/// the [`Violation`]s they expand to, in that order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Batch<'a> {
+    pub path: &'a str,
+    pub set: &'a str,
+    pub findings: &'a [Finding],
+}
+
+/// [`check`], over batches: the same report, byte for byte, as over the
+/// violations they expand to.
+pub fn check_batches(
+    format: Format,
+    batches: &[Batch<'_>],
+    skipped: &[Skipped<'_>],
+) -> String {
+    let lines = order::batches(batches);
+    match format {
+        Format::Human => human::check_lines(lines, skipped),
+        Format::Json => json::check_lines(lines, skipped),
+        Format::Sarif => sarif::check_lines(lines, skipped),
+    }
+}
+
 /// `fix` and `fix --check`: the rewrites, then the characters no map entry
 /// covers (`src/fix:V4`), in `check`'s own row shape, then the files that
 /// could not be read.
@@ -307,5 +335,81 @@ mod spelled_once {
             .collect();
         let odd = "\"b%E2%80%AE.md\"";
         assert_eq!(uris, ["\"a.md\"", odd, odd, "\"c.md\""]);
+    }
+}
+
+/// R17: a batch is reported exactly as the violations it expands to,
+/// whatever order the batches come in, and when one path's batches
+/// interleave, which takes the fallback.
+#[cfg(test)]
+mod batched {
+    use super::{Batch, Format, Violation, check, check_batches};
+    use crate::lint::{Finding, Group, Level, Lint};
+    use crate::scan::{Hit, Position};
+
+    fn finding(byte: usize) -> Finding {
+        let (line, column, character) = (1, byte, '\u{2014}');
+        let position = Position { line, column, byte };
+        let hit = Hit {
+            position,
+            character,
+        };
+        let lint = Lint::new("outside-set", Group::Charset);
+        let level = Level::Deny;
+        Finding { hit, lint, level }
+    }
+
+    fn batch<'a>(
+        path: &'a str,
+        set: &'a str,
+        findings: &'a [Finding],
+    ) -> Batch<'a> {
+        Batch {
+            path,
+            set,
+            findings,
+        }
+    }
+
+    fn expanded<'a>(batches: &[Batch<'a>]) -> Vec<Violation<'a>> {
+        let one = |b: &Batch<'a>| {
+            let (path, set) = (b.path, b.set);
+            b.findings.iter().map(move |f| Violation {
+                path,
+                finding: f.clone(),
+                set,
+            })
+        };
+        batches.iter().flat_map(one).collect()
+    }
+
+    fn same_report(batches: &[Batch<'_>]) {
+        let flat = expanded(batches);
+        for format in [Format::Human, Format::Json, Format::Sarif] {
+            let said = check_batches(format, batches, &[]);
+            assert_eq!(said, check(format, &flat, &[]), "{format:?}");
+        }
+    }
+
+    #[test]
+    fn batches_in_any_path_order_report_as_their_violations() {
+        let (a, b) = ([finding(1), finding(4)], [finding(2), finding(9)]);
+        let hazard = [finding(3)];
+        same_report(&[
+            batch("b.md", "ascii", &b),
+            batch("a.md", "ascii", a.get(..1).unwrap_or_default()),
+            batch("a.md", "hazard", &hazard),
+            batch("a.md", "ascii", a.get(1..).unwrap_or_default()),
+        ]);
+    }
+
+    /// One path in two batches whose offsets interleave: the fallback.
+    #[test]
+    fn interleaved_batches_of_one_path_report_as_their_violations() {
+        let (one, two) = ([finding(1), finding(7)], [finding(3), finding(5)]);
+        same_report(&[
+            batch("a.md", "ascii", &one),
+            batch("a.md", "any", &two),
+        ]);
     }
 }

@@ -12,17 +12,18 @@ use super::checker::{Checker, Looked, inspect};
 use super::config::Config;
 use crate::charset::CharSet;
 use crate::lint::{Finding, Group, exit_code};
-use crate::render::{self, Format, Skipped, Violation};
+use crate::render::{self, Batch, Format, Skipped};
 use crate::scan::Unreadable;
 use crate::tokens::{self, lexical};
 use std::path::Path;
 
-/// A violation with the strings it is reported against, owned so the
-/// borrowed `render` rows can point at them.
+/// One file's findings with the strings they are reported against, owned
+/// so the borrowed `render` batches can point at them. The path and set
+/// are held ONCE per file, not copied into every finding (R17).
 struct Row {
     path: String,
     set: String,
-    finding: Finding,
+    findings: Vec<Finding>,
 }
 
 /// A file that was skipped, owned for the same reason.
@@ -81,17 +82,19 @@ struct Found {
 }
 
 impl Found {
+    /// A clean file adds no row: only a finding needs a path to print.
     fn absorb(&mut self, path: String, set: &CharSet, looked: Looked) {
         match looked {
             Looked::Unread(reason) => self.skips.push(Skip { path, reason }),
-            Looked::Findings(findings) => {
-                for finding in findings {
-                    self.rows.push(Row {
-                        path: path.clone(),
-                        set: judged_against(&finding, set),
-                        finding,
-                    });
-                }
+            Looked::Findings(found) if found.is_empty() => {}
+            Looked::Findings(mut findings) => {
+                findings.shrink_to_fit();
+                let set = set.name.clone();
+                self.rows.push(Row {
+                    path,
+                    set,
+                    findings,
+                });
             }
         }
     }
@@ -103,12 +106,26 @@ impl Found {
 /// (V34), and `notes.md:1:1 U+202E any` would read as though the override
 /// fell outside `any`, which is nonsense. Which hazard it was is the
 /// lint's name, carried in the json.
-fn judged_against(finding: &Finding, set: &CharSet) -> String {
+fn judged_against<'s>(finding: &Finding, set: &'s str) -> &'s str {
     if finding.lint.group == Group::Hazard {
-        String::from(Group::Hazard.name())
+        Group::Hazard.name()
     } else {
-        set.name.clone()
+        set
     }
+}
+
+/// One file's findings as the batches `render` reads: each run of
+/// findings that names one set, in the file's own byte order.
+fn batches(source: &Row) -> impl Iterator<Item = Batch<'_>> {
+    let named = |f: &Finding| judged_against(f, &source.set);
+    source
+        .findings
+        .chunk_by(move |a, b| named(a) == named(b))
+        .map(move |findings| Batch {
+            path: &source.path,
+            set: findings.first().map_or(&source.set, named),
+            findings,
+        })
 }
 
 /// Run `check` over a repository.
@@ -122,14 +139,21 @@ pub fn run(
 ) -> Result<Report, String> {
     let checker = Checker::configured(config)?;
     let found = gather(&checker, &config.root, paths)?;
-    let violations: Vec<Violation<'_>> = found.rows.iter().map(row).collect();
+    let batches: Vec<Batch<'_>> = found.rows.iter().flat_map(batches).collect();
     let skipped: Vec<Skipped<'_>> = found.skips.iter().map(skip).collect();
-    let findings: Vec<Finding> =
-        found.rows.iter().map(|r| r.finding.clone()).collect();
     Ok(Report {
-        text: render::check(format, &violations, &skipped),
-        code: exit_code(&findings).max(unreadable_code(&found.skips)),
+        text: render::check_batches(format, &batches, &skipped),
+        code: found_code(&found.rows).max(unreadable_code(&found.skips)),
     })
+}
+
+/// The findings' exit code, read in place: a run of millions need not
+/// copy every finding just to ask whether one of them fails (R17).
+fn found_code(rows: &[Row]) -> u8 {
+    rows.iter()
+        .map(|row| exit_code(&row.findings))
+        .max()
+        .unwrap_or(0)
 }
 
 /// Invalid UTF-8 is an ERROR, exit 1 (`src/scan:V8`): the file claims to
@@ -141,14 +165,6 @@ fn unreadable_code(skips: &[Skip]) -> u8 {
     let broken =
         |skip: &Skip| matches!(skip.reason, Unreadable::NotUtf8 { .. });
     u8::from(skips.iter().any(broken))
-}
-
-fn row(source: &Row) -> Violation<'_> {
-    Violation {
-        path: &source.path,
-        finding: source.finding.clone(),
-        set: &source.set,
-    }
 }
 
 fn skip(source: &Skip) -> Skipped<'_> {

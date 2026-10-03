@@ -10,7 +10,7 @@
 //! reordering it: a renderer has no business mutating its input.
 
 use crate::render::line::Line;
-use crate::render::{Change, FileStats, Skipped, Violation};
+use crate::render::{Batch, Change, FileStats, Skipped, Violation};
 
 /// Violations in report order.
 pub fn violations<'s, 'v>(
@@ -24,6 +24,73 @@ pub fn violations<'s, 'v>(
 /// Violations in report order, as the writers read them.
 pub fn lines<'s>(items: &'s [Violation<'_>]) -> Vec<Line<'s>> {
     violations(items).into_iter().map(Line::from).collect()
+}
+
+/// Batched violations in report order, WITHOUT a row per finding when
+/// that order is already there (R17).
+///
+/// The one order is a stable sort of every violation by path, then byte
+/// offset. Batches sorted stably by path and then expanded give exactly
+/// that whenever the expansion is already ordered by both keys: equal
+/// keys then sit in the order they were handed over in, which is what a
+/// stable sort keeps. When it is not -- one path in two batches whose
+/// offsets interleave, or a batch out of byte order -- every violation is
+/// laid out and sorted the old way, so the answer never depends on which
+/// path was taken.
+pub fn batches<'a>(items: &'a [Batch<'a>]) -> Lines<'a> {
+    let total = items.iter().map(|b| b.findings.len()).sum();
+    let mut sorted: Vec<&Batch<'_>> = items.iter().collect();
+    sorted.sort_by_key(|item| item.path);
+    let flat = || sorted.iter().copied().flat_map(expand);
+    let inner: Box<dyn Iterator<Item = Line<'a>> + 'a> =
+        if flat().is_sorted_by_key(|line| key(&line)) {
+            Box::new(sorted.into_iter().flat_map(expand))
+        } else {
+            Box::new(laid_out(items).into_iter())
+        };
+    Lines { inner, left: total }
+}
+
+/// Every violation, sorted the way [`violations`] sorts: the fallback.
+fn laid_out<'a>(items: &'a [Batch<'a>]) -> Vec<Line<'a>> {
+    let mut all: Vec<Line<'a>> = items.iter().flat_map(expand).collect();
+    all.sort_by_key(key);
+    all
+}
+
+/// Where a line falls in the one order.
+fn key<'a>(line: &Line<'a>) -> (&'a str, usize) {
+    (line.path, line.finding.hit.position.byte)
+}
+
+/// One batch, as the violations it stands for.
+fn expand<'a>(batch: &'a Batch<'a>) -> impl Iterator<Item = Line<'a>> + 'a {
+    batch.findings.iter().map(|finding| Line {
+        path: batch.path,
+        set: batch.set,
+        finding,
+    })
+}
+
+/// [`batches`]' answer: the lines, and how many are left, so a writer can
+/// size its buffer once.
+pub struct Lines<'a> {
+    inner: Box<dyn Iterator<Item = Line<'a>> + 'a>,
+    left: usize,
+}
+
+impl<'a> Iterator for Lines<'a> {
+    type Item = Line<'a>;
+
+    fn next(&mut self) -> Option<Line<'a>> {
+        let line = self.inner.next()?;
+        self.left = self.left.saturating_sub(1);
+        Some(line)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.left, Some(self.left))
+    }
 }
 
 /// Rewrites in report order.
