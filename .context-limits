@@ -155,7 +155,7 @@ src/lint/SPEC.md     2740
 src/cli/SPEC.md      2540
 # Set 2026-10-02 with the split, ~12% over each measured spec: the hook
 # adapter (four invariants, four bug rows) and the explain verbs (V32).
-src/cli/guard/SPEC.md   1100
+src/cli/guard/SPEC.md 1350
 src/cli/explain/SPEC.md  365
 src/scan/SPEC.md     470
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
