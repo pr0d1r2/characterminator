@@ -115,7 +115,16 @@ src/rules/SPEC.md    1920
 # 2110 -> 2440: B15 (VS16 in emoji sequences) and its V63 clause, the
 # node's first bug row since 2A. Nothing left to archive. 2440 is ~12% over
 # the measured 2186.
-src/lint/SPEC.md     2740
+# 2740 -> 775 on 2026-10-03: LOWERED after the split into `hazard` and
+# `pedantic` sub-nodes took V34, V37, V49, V55, V57, V58, V63 and their
+# task and bug rows with them. ~12% over the measured 690, so the parent
+# cannot quietly regrow into the room its children took.
+src/lint/SPEC.md     775
+# Set 2026-10-03 with the split, ~12% over each measured spec: the hazard
+# group (four invariants, two bug rows) and the pedantic group (three
+# invariants, the open T58, one bug row).
+src/lint/hazard/SPEC.md   1550
+src/lint/pedantic/SPEC.md 1115
 # RAISED 740 -> 860, reviewed. The node gained a task row for the `fix`
 # verbs, which had NO row at all: the root spec's interface section named
 # `ctrm fix`, `src/fix` built the engine under T10, and nothing in any §T
@@ -219,6 +228,12 @@ src/render/SPEC.md   1680
 # over the measured 3982. src/charset/locale is root + hub + charset +
 # locale, measured 4902; its own row, 5490, keeps it from inheriting the
 # parent's 4460 by longest prefix, which it is over.
+#
+# src/lint 4670 -> 2990 on 2026-10-03 after the `hazard` and `pedantic`
+# split, ~12% over the measured 2667. The sub-nodes get rows of their
+# own, ~12% over their measured chains (hazard 3769, pedantic 3472),
+# for the reason the cli sub-nodes have theirs: by longest prefix they
+# would inherit the parent's 2990, which both chains are over.
 src                2490
 src/charset          4460
 src/charset/locale   5490
@@ -226,7 +241,9 @@ src/cli              3940
 src/cli/explain      4200
 src/cli/guard        4770
 src/fix              4510
-src/lint             4670
+src/lint             2990
+src/lint/hazard      4220
+src/lint/pedantic    3890
 src/render           3460
 src/rules            3650
 src/scan             2700
