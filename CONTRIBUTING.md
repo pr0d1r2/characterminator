@@ -4,6 +4,8 @@ Thank you for looking. This page is the short version; [AGENTS.md](AGENTS.md)
 holds the full rules, for humans and agents alike, and `SPEC.md` holds what
 must stay true.
 
+Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## The quick path: no nix
 
 A Rust toolchain at 1.95 or later is all the code needs.

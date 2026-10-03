@@ -633,6 +633,7 @@ list every open task, and the issue tracker is the place to ask about one.
 Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md)
 has the quick path (`cargo test` is enough to start; CI runs the full gate),
 the dev shell, the spec workflow and the policy on LLM-assisted changes.
+Taking part means following the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Security
 
