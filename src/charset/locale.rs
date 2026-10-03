@@ -12,17 +12,31 @@
 
 use super::builtin::{ASCII, ascii_definition};
 use super::{ParseError, SetCatalog, SetDefinition, SetMember, parse_line};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
+use std::sync::LazyLock;
 
 /// The generated locale data, compiled in (V22) but not parsed up front.
 pub const LOCALES: &str = include_str!("locales.ctrm-sets");
 
+/// Each line of [`LOCALES`] by its first token, built once per process on
+/// first use (V88), so a lookup no longer walks 180 KB of text. A run
+/// naming no locale never builds it. The FIRST line per name is kept,
+/// which is the line a forward scan would have found.
+static INDEX: LazyLock<HashMap<&'static str, &'static str>> =
+    LazyLock::new(|| {
+        let mut index = HashMap::new();
+        for line in LOCALES.lines() {
+            if let Some((head, _)) = line.split_once(' ') {
+                index.entry(head).or_insert(line);
+            }
+        }
+        index
+    });
+
 /// The one line of [`LOCALES`] declaring `name`, found without parsing
 /// any other. A comment's first token is `#`, which no name is.
 fn line_of(name: &str) -> Option<&'static str> {
-    LOCALES
-        .lines()
-        .find(|line| line.split_once(' ').is_some_and(|(head, _)| head == name))
+    INDEX.get(name).copied()
 }
 
 /// The locale line declaring `name`, parsed, with every name it composes

@@ -1,7 +1,7 @@
 //! The tests of `locale.rs`, in a file of their own so the module
 //! reads as code (sherd V50). Still its child: `super` is `locale`.
 
-use super::{LOCALES, adopt, adopt_all};
+use super::{LOCALES, adopt, adopt_all, line_of};
 use crate::charset::builtin::{SETS, ascii, catalog};
 use crate::charset::{CharSet, SetCatalog, parse_line};
 
@@ -204,4 +204,35 @@ fn every_generator_fetch_makes_its_dir_and_reports_failure() {
 fn the_locale_file_is_ascii_and_out_of_the_eager_text() {
     assert!(LOCALES.is_ascii());
     assert!(!SETS.contains(LOCALES));
+}
+
+/// The forward scan `line_of` used to be: the reference the index must
+/// agree with (V88).
+fn scanned(name: &str) -> Option<&'static str> {
+    LOCALES
+        .lines()
+        .find(|line| line.split_once(' ').is_some_and(|(head, _)| head == name))
+}
+
+/// V88: the index finds, for every first token in the file and for the
+/// names it must miss, exactly the line the scan found.
+#[test]
+fn the_index_finds_the_line_the_scan_found() {
+    let heads = LOCALES.lines().filter_map(|l| l.split_once(' '));
+    let names: Vec<&str> = heads.map(|(head, _)| head).collect();
+    assert!(names.len() > 1_500, "every locale line is a probe");
+    let misses = ["", "#", "nonesuch", "PL", "pt-br", "ascii", "pl "];
+    for name in names.into_iter().chain(misses) {
+        assert_eq!(line_of(name), scanned(name), "{name:?}");
+    }
+}
+
+/// Lazy still: adopting through the index brings the same sets as
+/// before, alias parents inlined, for a name reached twice over.
+#[test]
+fn adopting_twice_through_the_index_is_stable() {
+    let once = resolved(&adopted(&["pt-BR"]), "pt-BR");
+    let twice = resolved(&adopted(&["pt-BR", "pt", "pt-BR"]), "pt-BR");
+    assert_eq!(once, twice);
+    assert_eq!(once.ranges, locale("pt").ranges);
 }
