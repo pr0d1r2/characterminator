@@ -495,6 +495,12 @@ list goes stale and that one does not.
   (`.github/workflows/ci.yml`) runs the gate on three platforms and the
   action on one, and has not yet run on GitHub.
 
+## Security
+
+A way past the hazard lints, the guard or the action is a vulnerability.
+Report it privately, through GitHub's private vulnerability reporting; see
+[SECURITY.md](SECURITY.md) for the scope and what to expect.
+
 ## License
 
 MIT -- see [LICENSE](LICENSE). Third-party notices, including the measured
