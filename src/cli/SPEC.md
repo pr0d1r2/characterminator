@@ -32,9 +32,9 @@ sib|src/render|human & json output, stable json contract
 - cmd: `ctrm explain [<path>] [--as args|lines|prompt]` → effective set + winning rule + its config line; `--as` renders effective config as flags, data-file lines, or agent prompt (`src/cli/explain:V32`).
 - cmd: `ctrm sets` → builtin sets & members.
 - cmd: `ctrm guard` → hook adapter: harness hook JSON stdin → decision JSON stdout; fuse on hazard (`src/cli/guard:V35`).
-- flag: `--format human|json` ∀ verbs; `sarif` `check` only (`src/render:V50`) · `-C <dir>`.
+- flag: `--format human|json` ∀ verb ∖ `guard` (argv ignored, `src/cli/guard:V93`); `sarif` `check` only (`src/render:V50`) · `-C <dir>`.
 - flag (file twins, repeatable, `src/rules:V18`): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (`src/rules:V29`) · `--strict` (`src/lint:V36`) · `--pedantic` (`src/lint:V37`) · `--no-color` (∀ verb, no-op: output ⊥ ever coloured; accepted ∵ unknown flags exit 2).
-- flag: unknown | another verb's (`check --bpe`) → exit 2 ∵ a typo'd flag silently ignored reads as one that worked. `--` ends flags.
+- flag: unknown | another verb's (`check --bpe`) → exit 2 (∖ `guard`, `src/cli/guard:V93`) ∵ a typo'd flag silently ignored reads as one that worked. `--` ends flags.
 
 ## §V INVARIANTS
 
