@@ -691,6 +691,12 @@ list every open task, and the issue tracker is the place to ask about one.
 - **Windows is untested.** CI (`.github/workflows/ci.yml`) runs the gate on
   Linux (x86 and arm) and macOS, and the action on Linux.
 
+## Compared with other tools
+
+anti-trojan-source, editorconfig-checker's `charset` and a `git grep`
+one-liner, what each is built for, and when not to use `ctrm`:
+[docs/COMPARISON.md](docs/COMPARISON.md).
+
 ## Contributing
 
 Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md)
