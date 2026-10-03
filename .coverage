@@ -14,11 +14,12 @@
 # into a README. The FLOOR is separate and lives in `hk.pkl`: a hard minimum
 # that failing is a test-coverage problem, not a bookkeeping one.
 #
-# key is a git SHA over everything under `src/`, which is every file that can
-# move the number -- the Rust sources, and the two data files compiled into
-# them with `include_str!`:
+# key is a git SHA over everything under `src/` and `dev/`, which is every
+# file that can move the number -- the Rust sources of both workspace crates
+# (`dev:T71`: the dev tooling sits under the same floor), and the data files
+# compiled into them with `include_str!`:
 #
-#   git ls-files -s -- src | git hash-object --stdin
+#   git ls-files -s -- src dev | git hash-object --stdin
 #
 # README.md is deliberately NOT in the key. It is regenerated FROM this file,
 # so including it would make every badge update invalidate the cache that
@@ -28,5 +29,5 @@
 # so a second decimal is a digit no single machine can reproduce; truncating
 # keeps two machines that measure 93.98 and 93.94 on the same side of the
 # claim, where rounding would not.
-key 54bce3182b31f682850fb5eedbfb7b1af40978ea
-lines 97.5
+key 81f15ad6b02c1593b00cbe0da9009352ce9a248a
+lines 97.6

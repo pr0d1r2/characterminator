@@ -264,7 +264,7 @@ local fast = new Mapping<String, Step> {
 /// are where a slower truth belongs.
 local all = (fast) {
   ["coverage"] {
-    glob = List("src/**", ".coverage")
+    glob = List("src/**", "dev/**", ".coverage")
     depends = List("test")
     check = """
       command -v cargo-llvm-cov >/dev/null 2>&1 || { echo 'hk: cargo-llvm-cov is not on PATH, so coverage was NOT measured -- re-enter the dev shell. Examined nothing; this is not a pass.' >&2; exit 1; }
@@ -275,7 +275,7 @@ local all = (fast) {
         exit 1
       fi
       mkdir -p target
-      cargo llvm-cov --summary-only --fail-under-lines 93 > target/coverage.txt || { cat target/coverage.txt >&2; echo 'hk: below the coverage FLOOR. Cover the gap; lowering the floor is a reviewed decision and belongs in its own commit.' >&2; exit 1; }
+      cargo llvm-cov --workspace --summary-only --fail-under-lines 93 > target/coverage.txt || { cat target/coverage.txt >&2; echo 'hk: below the coverage FLOOR. Cover the gap; lowering the floor is a reviewed decision and belongs in its own commit.' >&2; exit 1; }
       cat target/coverage.txt
       measured=$(awk '/^TOTAL/{gsub("%","",$10); printf "%.1f", int($10*10)/10}' target/coverage.txt)
       claim=$(awk '/^lines /{printf "%.1f", $2}' .coverage)
@@ -290,9 +290,9 @@ local all = (fast) {
       """
     fix = """
       mkdir -p target
-      cargo llvm-cov --summary-only --fail-under-lines 93 > target/coverage.txt || { cat target/coverage.txt >&2; exit 1; }
+      cargo llvm-cov --workspace --summary-only --fail-under-lines 93 > target/coverage.txt || { cat target/coverage.txt >&2; exit 1; }
       measured=$(awk '/^TOTAL/{gsub("%","",$10); printf "%.1f", int($10*10)/10}' target/coverage.txt)
-      key=$(git ls-files -s -- src | git hash-object --stdin)
+      key=$(git ls-files -s -- src dev | git hash-object --stdin)
       awk -v k="$key" -v m="$measured" '/^key /{print "key " k; next} /^lines /{print "lines " m; next} {print}' .coverage > target/coverage.new
       mv target/coverage.new .coverage
       """
