@@ -59,7 +59,7 @@ src/SPEC.md           420
 # 2240 -> 2760: V61 and T60 specify option 1A (every CLDR locale, lazy
 # parse) for the next build. `mth archive` folded T23 and T46 first.
 # 2760 is ~12% over the measured 2465.
-src/charset/SPEC.md  3130
+src/charset/SPEC.md  3590
 # RAISED 1240 -> 1600, reviewed. The node gains V51, the opt-in `words`
 # map: the one rewrite in the crate that measurably saves tokens (`.:R11`),
 # and a rule with three parts nothing else states -- how it is switched on,
