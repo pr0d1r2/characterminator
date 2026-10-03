@@ -42,14 +42,14 @@ fn a_denied_binary_read_points_at_cat_v_not_fix() {
     assert!(!got.contains("run `ctrm fix"), "{got}");
 }
 
-/// No hazard but the NUL and the bytes a binary is made of: the read
-/// goes ahead, with a note that no rule could apply.
+/// V112: no blocking hazard in an image -- only the NUL, the bytes a
+/// binary is made of, and a soft hyphen its lossy decode turned up by
+/// chance: the read goes ahead in SILENCE. An agent reads images and
+/// PDFs all session, and a note on each is noise nobody reads.
 #[test]
-fn a_binary_file_without_a_smuggling_hazard_passes_with_a_note() {
-    let got =
-        read_of_bytes("ctrm-guard-binary", "", b"\x89PNG\r\n\x1a\n\0\0\xff");
-    assert!(got.contains("is not text"), "{got}");
-    assert!(!got.contains("permissionDecision"), "{got}");
+fn a_binary_file_without_a_smuggling_hazard_passes_in_silence() {
+    let png = b"\x89PNG\r\n\x1a\n\0\0\xff\xc2\xad";
+    assert_eq!(read_of_bytes("ctrm-guard-binary", "", png), "");
 }
 
 /// A SPARSE file: `head` at byte 0, `tail` at `at`, nothing (NUL, no
@@ -83,6 +83,15 @@ fn a_file_over_the_cap_is_judged_by_its_prefix_and_says_so() {
     assert!(!got.contains("permissionDecision"), "{got}");
     assert!(got.contains("16 MiB cap"), "{got}");
     assert!(got.contains("the rest was NOT"), "{got}");
+}
+
+/// V112: a binary over the cap passes in silence too; the "rest was not
+/// judged" note is for text.
+#[test]
+fn a_binary_over_the_cap_passes_in_silence() {
+    let past = super::super::CAP.saturating_add(10);
+    let got = read_of_sparse("ctrm-guard-cap-binary", "\u{0}PNG", past, "x");
+    assert_eq!(got, "");
 }
 
 /// A hazard INSIDE the prefix still denies: the cap bounds memory, it

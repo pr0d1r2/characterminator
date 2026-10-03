@@ -118,8 +118,8 @@ fn read(cwd: &Path, path: &str, hazards: &Hazards) -> Verdict {
         return Verdict::Pass;
     };
     let shown = shown_path(cwd, &full);
-    let verdict = judged(cwd, &shown, &bytes, hazards);
-    if whole {
+    let (verdict, text) = judged(cwd, &shown, &bytes, hazards);
+    if whole || !text {
         verdict
     } else {
         partial(&shown, verdict, bytes.len())
@@ -180,12 +180,18 @@ fn partial(shown: &str, verdict: Verdict, judged: usize) -> Verdict {
     }
 }
 
-/// `bytes`, judged against `.ctrm` from `cwd`, or for hazards alone.
-fn judged(cwd: &Path, shown: &str, bytes: &[u8], hazards: &Hazards) -> Verdict {
+/// `bytes`, judged against `.ctrm` from `cwd`, or for hazards alone, and
+/// whether they are text.
+fn judged(
+    cwd: &Path,
+    shown: &str,
+    bytes: &[u8],
+    hazards: &Hazards,
+) -> (Verdict, bool) {
     let config = crate::cli::config::discovered(cwd);
     let checker = Checker::configured(&config);
     let why = match checker.and_then(|c| c.findings(shown, bytes)) {
-        Ok(Some(found)) => return judged_file(shown, &found),
+        Ok(Some(found)) => return (judged_file(shown, &found), true),
         Ok(None) => None,
         Err(why) => Some(why),
     };
@@ -206,31 +212,46 @@ fn judged_file(shown: &str, found: &[Finding]) -> Verdict {
     }
 }
 
-/// A file judged for hazards alone (`src/judge` `unruled`): denied on the
-/// first, else a note saying why no rule applied. A file `check` skips as
-/// not text is still READ, lossily, so it is judged as read (V66); a
-/// broken `.ctrm` must not open the door to a Trojan Source file.
-fn hazards_only(shown: &str, unruled: Unruled, why: Option<&str>) -> Verdict {
-    type Denial = fn(&str, &Finding, usize) -> String;
-    let (found, note, deny): (_, _, Denial) = match unruled {
-        Unruled::NotText(found) => (found, not_text(shown), denied_binary),
-        Unruled::Text(found) => (found, unconfigured(shown, why), denied),
-    };
-    let (blocking, noted): (Vec<&Finding>, Vec<&Finding>) =
-        found.iter().partition(|f| blocks(f));
-    match blocking.first() {
-        Some(first) => Verdict::Block(deny(shown, first, blocking.len())),
-        None => notes([Some(note), file_note(shown, &noted)]),
+/// A file judged for hazards alone (`src/judge` `unruled`), and whether
+/// it is text. A file `check` skips as not text is still READ, lossily,
+/// so it is judged as read (V66); a broken `.ctrm` must not open the
+/// door to a Trojan Source file.
+fn hazards_only(
+    shown: &str,
+    unruled: Unruled,
+    why: Option<&str>,
+) -> (Verdict, bool) {
+    match unruled {
+        Unruled::NotText(found) => (not_text(shown, &found), false),
+        Unruled::Text(found) => (unconfigured_file(shown, &found, why), true),
     }
 }
 
-/// The note on a file that is not text and holds no blocking hazard.
-fn not_text(shown: &str) -> String {
-    format!(
-        "ctrm: {shown} is not text (invalid UTF-8 or a NUL byte), so no \
-         rule applies; it was judged for hazards only, and holds no bidi \
-         override or tag character."
-    )
+/// A file that is not text: denied on a blocking hazard, else a SILENT
+/// pass (V112). An agent reads images and PDFs all session, and the lossy
+/// decode of a binary holds invisible characters by chance.
+fn not_text(shown: &str, found: &[Finding]) -> Verdict {
+    let blocking: Vec<&Finding> = found.iter().filter(|f| blocks(f)).collect();
+    blocking.first().map_or(Verdict::Pass, |first| {
+        Verdict::Block(denied_binary(shown, first, blocking.len()))
+    })
+}
+
+/// Text whose rules could not be applied: denied on a blocking hazard,
+/// else a note saying why no rule applied, and naming any other hazard.
+fn unconfigured_file(
+    shown: &str,
+    found: &[Finding],
+    why: Option<&str>,
+) -> Verdict {
+    let (blocking, noted): (Vec<&Finding>, Vec<&Finding>) =
+        found.iter().partition(|f| blocks(f));
+    match blocking.first() {
+        Some(first) => Verdict::Block(denied(shown, first, blocking.len())),
+        None => {
+            notes([Some(unconfigured(shown, why)), file_note(shown, &noted)])
+        }
+    }
 }
 
 /// The note on a file whose rules could not be applied, and holds no
