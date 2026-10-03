@@ -38,6 +38,19 @@ impl Report {
 pub struct Fixed {
     pub output: String,
     pub report: Report,
+    /// Every pass that changed its input, to map `output` back by.
+    trail: Trail,
+}
+
+impl Fixed {
+    /// Where each hit IN `output` sits in `original`, the text this was
+    /// fixed from: byte, line and column. A hit inside a replacement is
+    /// placed at the start of the span it replaced (V65). This is how a
+    /// caller that judges what is LEFT reports it in the file on disk.
+    #[must_use]
+    pub fn origins(&self, original: &str, hits: &[Hit]) -> Vec<Hit> {
+        self.trail.origins(original, hits)
+    }
 }
 
 /// Rewrite every disallowed span of `text` that the map covers.
@@ -75,7 +88,7 @@ pub fn fix(
 struct History<'t> {
     original: &'t str,
     report: Report,
-    layers: Vec<Layer>,
+    trail: Trail,
 }
 
 impl<'t> History<'t> {
@@ -86,7 +99,7 @@ impl<'t> History<'t> {
                 rewrites: Vec::new(),
                 unmapped: Vec::new(),
             },
-            layers: Vec::new(),
+            trail: Trail { layers: Vec::new() },
         }
     }
 
@@ -94,33 +107,45 @@ impl<'t> History<'t> {
     /// its spans become the layer later positions are mapped through.
     fn record(&mut self, pass: Pass) {
         let hits: Vec<Hit> = pass.spans.iter().map(|span| span.hit).collect();
-        let found = self.origins(&hits);
+        let found = self.trail.origins(self.original, &hits);
         let rewrites = pass.spans.iter().zip(found);
         let rows = rewrites.map(|(span, hit)| span.rewrite_at(hit));
         self.report.rewrites.extend(rows.collect::<Vec<_>>());
-        self.layers.push(Layer::of(&pass.spans));
+        if !pass.spans.is_empty() {
+            self.trail.layers.push(Layer::of(&pass.spans));
+        }
     }
 
     /// The pass whose output is the fixed point. Its unmapped characters
     /// are the ones left, located where they sit in the original.
     fn settled(mut self, pass: Pass) -> Fixed {
-        self.report.unmapped = self.origins(&pass.unmapped);
+        let unmapped = self.trail.origins(self.original, &pass.unmapped);
+        self.report.unmapped = unmapped;
         let output = pass.output.clone();
         self.record(pass);
         self.report.rewrites.sort_by_key(|r| r.hit.position.byte);
         Fixed {
             output,
             report: self.report,
+            trail: self.trail,
         }
     }
+}
 
-    /// Where each hit read by the NEXT pass sits in the original: back
-    /// through every recorded layer, newest first, then re-located in the
-    /// original so line and column agree with the byte.
+/// The layers of the passes that changed their input, oldest first.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct Trail {
+    layers: Vec<Layer>,
+}
+
+impl Trail {
+    /// Where each hit read AFTER these layers sits in `original`: back
+    /// through every layer, newest first, then re-located in the original
+    /// so line and column agree with the byte.
     ///
     /// ONE forward walk of the original for all of them, in byte order:
     /// a walk per hit made a large file with a second pass quadratic.
-    fn origins(&self, hits: &[Hit]) -> Vec<Hit> {
+    fn origins(&self, original: &str, hits: &[Hit]) -> Vec<Hit> {
         let mut out = hits.to_vec();
         if self.layers.is_empty() {
             return out;
@@ -131,11 +156,11 @@ impl<'t> History<'t> {
             .map(|(at, hit)| (self.back(hit.position.byte), at))
             .collect();
         order.sort_unstable();
-        relocate(self.original, &order, &mut out);
+        relocate(original, &order, &mut out);
         out
     }
 
-    /// A byte of the newest pass's output, as a byte of the original.
+    /// A byte of the newest layer's output, as a byte of the original.
     fn back(&self, byte: usize) -> usize {
         self.layers
             .iter()

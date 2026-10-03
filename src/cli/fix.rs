@@ -9,17 +9,14 @@
 //! the map is data (`src/fix:V26`) plus whatever `.ctrm-map` declares
 //! over it (`src/rules:V45`).
 
-use super::checker::Checker;
+use super::checker::{Checker, Looked, inspect};
 use super::config::Config;
 use crate::fix::{self as engine, Map};
-use crate::lint::{Finding, Level, Lint};
+use crate::lint::{Finding, Group, exit_code};
 use crate::render::{self, Change, Format, Skipped, Violation};
 use crate::scan::{Hit, Unreadable, decode};
 use crate::tokens;
 use std::path::{Path, PathBuf};
-
-/// The lint an unmapped character is named under: `check`'s, verbatim.
-const OUTSIDE: &str = "outside-set";
 
 /// What a run of `fix` produced.
 pub struct Report {
@@ -45,10 +42,11 @@ struct Skip {
 struct Found {
     rows: Vec<Row>,
     skips: Vec<Skip>,
-    /// Characters that are outside their set and that no map entry
-    /// covers. V4: kept as they are, REPORTED, and the run exits 1 -- a
-    /// silent drop is the one thing `fix` may never do, and an exit 1
-    /// that names nothing drops the reason instead (B23).
+    /// What `check` finds in the text `fix` leaves: characters outside
+    /// their set that no map entry covers, hazards, and any lint the
+    /// rules ask for, at their levels (V80). V4: kept as they are,
+    /// REPORTED -- a silent drop is the one thing `fix` may never do, and
+    /// an exit 1 that names nothing drops the reason instead (B23).
     unmapped: Vec<Kept>,
     /// What a bare `fix` will write, held until EVERY file has been judged
     /// (V72): a refusal or a read error on the tenth file must not leave
@@ -108,8 +106,6 @@ fn written(pending: &[(PathBuf, String)]) -> Result<(), String> {
 struct Pass {
     checker: Checker,
     map: Map,
-    /// The lint an unmapped character is reported under, as in `check`.
-    outside: Lint,
     write: bool,
 }
 
@@ -118,8 +114,6 @@ impl Pass {
         Ok(Self {
             checker: Checker::configured(config)?,
             map: config.map()?,
-            outside: Lint::named(OUTSIDE)
-                .ok_or_else(|| format!("no `{OUTSIDE}` lint"))?,
             write,
         })
     }
@@ -137,28 +131,50 @@ impl Pass {
         };
         let fixed = engine::fix(&text, &self.map, &|point| set.contains(point))
             .map_err(|bad| format!("{shown}: {bad}"))?;
+        let kept = self.left(&shown, &text, &fixed)?;
+        found.unmapped.extend(kept);
         if self.write && fixed.output != text {
             found.pending.push((full.to_owned(), fixed.output));
         }
-        let kept = self.kept(&shown, &set.name, &fixed.report.unmapped);
-        found.unmapped.extend(kept);
         absorb(found, shown, fixed.report);
         Ok(())
     }
 
-    /// Every unmapped character, as the `outside-set` row `check` gives
-    /// it, at the default `deny`: `fix` judges sets, not levels.
-    fn kept(&self, path: &str, set: &str, hits: &[Hit]) -> Vec<Kept> {
-        let row = |hit: &Hit| Kept {
-            path: path.to_owned(),
-            set: set.to_owned(),
-            finding: Finding {
-                hit: *hit,
-                lint: self.outside,
-                level: Level::Deny,
-            },
+    /// What is LEFT once the rewrite is done, judged exactly as `check`
+    /// judges it -- set, levels, `--strict` and hazards -- by `check`'s
+    /// own [`Checker`], then placed where it sits in the file on disk
+    /// (V80, B42). So `fix --check` and `check` cannot disagree about a
+    /// character `fix` leaves alone.
+    fn left(
+        &self,
+        path: &str,
+        text: &str,
+        fixed: &engine::Fixed,
+    ) -> Result<Vec<Kept>, String> {
+        let (set, levels) = self.checker.law(path)?;
+        let judge = self.checker.judge(&set);
+        let findings = match inspect(fixed.output.as_bytes(), &judge, &levels) {
+            Looked::Findings(found) => found,
+            Looked::Unread(_) => Vec::new(),
         };
-        hits.iter().map(row).collect()
+        let hits: Vec<Hit> = findings.iter().map(|f| f.hit).collect();
+        let placed = fixed.origins(text, &hits);
+        let row = |(finding, hit): (Finding, Hit)| Kept {
+            path: path.to_owned(),
+            set: judged_against(&finding, &set.name),
+            finding: Finding { hit, ..finding },
+        };
+        Ok(findings.into_iter().zip(placed).map(row).collect())
+    }
+}
+
+/// The set a row names, as `check` names it: a hazard names `hazard`,
+/// since the file's set did not decide it (`src/lint:V34`).
+fn judged_against(finding: &Finding, set: &str) -> String {
+    if finding.lint.group == Group::Hazard {
+        String::from(Group::Hazard.name())
+    } else {
+        set.to_owned()
     }
 }
 
@@ -200,9 +216,11 @@ fn absorb(found: &mut Found, path: String, report: engine::Report) {
 /// The report, and the code that goes with it.
 ///
 /// `--check` GATES (V7): exit 1 on drift (the root spec's interface
-/// section) or on a character no map entry covers (`src/fix:V4`). A bare
-/// `fix` does not gate on what it just repaired: exit 1 only when an
-/// unmapped character is LEFT, because then the tree is still not clean.
+/// section) or on whatever `check` would fail in what is left (V80). A
+/// bare `fix` does not gate on what it just repaired: exit 1 only when
+/// `check` would still fail what is LEFT, because then the tree is still
+/// not clean. A finding at `warn` is reported and fails neither, as in
+/// `check`, unless `--strict`.
 /// A run that cleaned everything exits 0. The `ctrm-fix` pre-commit hook
 /// still refuses the commit: pre-commit fails any hook that modified files.
 ///
@@ -214,7 +232,9 @@ fn report_of(found: &Found, format: Format, write: bool) -> Report {
     let skipped: Vec<Skipped<'_>> = found.skips.iter().map(skip).collect();
     let kept: Vec<Violation<'_>> = found.unmapped.iter().map(kept).collect();
     let drifted = !write && !found.rows.is_empty();
-    let failed = drifted || !kept.is_empty() || unjudged(&found.skips);
+    let left: Vec<Finding> =
+        found.unmapped.iter().map(|k| k.finding.clone()).collect();
+    let failed = drifted || exit_code(&left) != 0 || unjudged(&found.skips);
     Report {
         text: render::fix(format, &changes, &kept, &skipped),
         code: u8::from(failed),
@@ -359,6 +379,48 @@ mod tests {
         assert_eq!(read(&root), blob, "{text}");
         assert_eq!(text, "notes.md: skipped, binary");
         assert_eq!(code, 0, "{text}");
+    }
+
+    /// B42: what `fix` leaves is judged as `check` judges it (V80). Each
+    /// `.ctrm` here made the two verbs disagree: `fix` judged the set at
+    /// a fixed `deny` and never asked about hazards.
+    fn left_behind(name: &str, ctrm: &str, text: &str) -> (String, u8) {
+        let files = [(".ctrm", ctrm), ("notes.md", text)];
+        let Some(root) = fixture(name, &files) else {
+            return (String::new(), 9);
+        };
+        ran(&root, false)
+    }
+
+    #[test]
+    fn an_allowed_or_warned_lint_does_not_fail_fix_check() {
+        let text = "a \u{2261} b\n";
+        let allow = "*.md ascii !outside-set=allow\n";
+        let (out, code) = left_behind("ctrm-fix-allow-fixture", allow, text);
+        assert_eq!((out.as_str(), code), ("", 0));
+        let warn = "*.md ascii !outside-set=warn\n";
+        let (out, code) = left_behind("ctrm-fix-warn-fixture", warn, text);
+        assert_eq!(code, 0, "{out}");
+        assert!(out.contains("U+2261"), "{out}");
+    }
+
+    #[test]
+    fn a_hazard_the_set_grants_still_fails_fix_check() {
+        let text = "a\u{202E}b\n";
+        let any = "* any\n";
+        let (out, code) = left_behind("ctrm-fix-hazard-any", any, text);
+        assert_eq!(code, 1, "{out}");
+        assert_eq!(out, "notes.md:1:2 U+202E hazard");
+        let ascii = "* ascii\n";
+        let (out, code) = left_behind("ctrm-fix-hazard-ascii", ascii, text);
+        assert_eq!(code, 1, "{out}");
+        assert_eq!(out, "notes.md:1:2 U+202E hazard");
+        // Judged in the REWRITTEN text, placed in the original: the em
+        // dash before it became `--`, one column wider, and the row still
+        // names column 3, where the override sits in the file on disk.
+        let shifted = "a\u{2014}\u{202E}b\n";
+        let (out, _) = left_behind("ctrm-fix-hazard-shift", ascii, shifted);
+        assert!(out.ends_with("\nnotes.md:1:3 U+202E hazard"), "{out}");
     }
 
     /// B41: a file that is not UTF-8 fails both forms, as it fails
