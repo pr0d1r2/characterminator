@@ -389,7 +389,7 @@ fn each_hazard_class_holds_its_own_members() {
 #[test]
 fn the_library_catalog_holds_presets_and_locales() {
     let mut built = catalog().unwrap_or_default();
-    assert!(super::super::locale::adopt_all(&mut built).is_ok());
+    assert!(super::super::adopt_all(&mut built).is_ok());
     let library = super::SetCatalog::builtin();
     assert_eq!(library, built);
     assert!(library.resolve("caveman", "text").is_ok());
@@ -407,4 +407,21 @@ fn every_vendored_emoji_sequence_decodes() {
     assert_eq!(kinds, [1614, 3, 12, 207, 259]);
     let heart = all.iter().find(|s| s.text == "\u{2764}\u{FE0F}");
     assert_eq!(heart.map(|s| s.kind), Some(Presentation));
+}
+
+/// V77, B36: each generator's `fetch` makes its directory before it
+/// writes there, and a failed download says why instead of exiting
+/// with curl's bare code.
+const GENERATORS: [&str; 2] = [
+    include_str!("locale/cldr-letters.sh"),
+    include_str!("emoji-sequences.sh"),
+];
+
+#[test]
+fn every_generator_fetch_makes_its_dir_and_reports_failure() {
+    for script in GENERATORS {
+        let body = script.split_once("\nfetch() {\n").map(|(_, b)| b);
+        assert!(body.is_some_and(|b| b.starts_with("  mkdir -p \"$1\"\n")));
+        assert!(script.contains("curl -sSfL") && !script.contains("curl -sfL"));
+    }
 }

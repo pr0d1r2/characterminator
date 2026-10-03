@@ -1,8 +1,8 @@
 # THE LOCALE LETTER PRESETS (V30, V61), GENERATED from CLDR and compiled
-# in beside `sets.ctrm-sets` (V22) but parsed LAZILY: a run reads the
-# line of a name only when its rules use that name and nothing else
-# declares it. Do not edit a member by hand: regenerate with
-# `src/charset/cldr-letters.sh`, which says how.
+# in like `sets.ctrm-sets` (`src/charset:V22`) but parsed LAZILY: a
+# run reads the line of a name only when its rules use that name and
+# nothing else declares it. Do not edit a member by hand: regenerate with
+# `src/charset/locale/cldr-letters.sh`, which says how.
 #
 # SOURCE: cldr-json tag 48.2.3, every locale `availableLocales.json`
 # lists as full, `cldr-misc-full/main/<code>/characters.json`, from

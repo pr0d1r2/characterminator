@@ -2,20 +2,23 @@
 //!
 //! `locales.ctrm-sets` covers every locale in `cldr-misc-full` and is over
 //! ten times the size of every other preset together. The builtin text
-//! ([`super::builtin::SETS`]) is parsed whole by every run, so the locale
-//! file is kept OUT of it and read on demand instead: a name the catalog
-//! misses is looked up here by its first token, and only that line is
-//! parsed. A run naming no locale parses none.
+//! ([`crate::charset::builtin::SETS`]) is parsed whole by every run, so
+//! the locale file is kept OUT of it and read on demand instead: a name
+//! the catalog misses is looked up here by its first token, and only that
+//! line is parsed. A run naming no locale parses none.
 //!
 //! Only a MISS is looked up, so a set a user declares under a locale's
 //! name still wins (`src/rules:V19`), exactly as it would over a preset.
 
-use super::builtin::{ASCII, ascii_definition};
-use super::{ParseError, SetCatalog, SetDefinition, SetMember, parse_line};
+use crate::charset::builtin::{ASCII, ascii_definition};
+use crate::charset::{
+    ParseError, SetCatalog, SetDefinition, SetMember, parse_line,
+};
 use std::collections::{BTreeSet, HashMap};
 use std::sync::LazyLock;
 
-/// The generated locale data, compiled in (V22) but not parsed up front.
+/// The generated locale data, compiled in (`src/charset:V22`) but not
+/// parsed up front.
 pub(crate) const LOCALES: &str = include_str!("locales.ctrm-sets");
 
 /// Each line of [`LOCALES`] by its first token, built once per process on
@@ -139,5 +142,5 @@ pub(crate) fn adopt_all(catalog: &mut SetCatalog) -> Result<(), ParseError> {
 }
 
 #[cfg(test)]
-#[path = "locale_test.rs"]
+#[path = "lookup_test.rs"]
 mod tests;

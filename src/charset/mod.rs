@@ -1,18 +1,20 @@
 //! What a character set IS: membership, unions, presets.
 //!
 //! See `src/charset/SPEC.md`. This file composes and declares the public
-//! vocabulary; the behaviour lives in the submodules. The preset DATA is
-//! still to come with T22, T23 and T32.
+//! vocabulary; the behaviour lives in the submodules. The CLDR locale
+//! letters are the `locale` sub-node (`src/charset/locale/SPEC.md`),
+//! private here: siblings reach them through the re-export below.
 
 pub(crate) mod builtin;
 pub(crate) mod compose;
-pub(crate) mod locale;
+mod locale;
 pub(crate) mod parse;
 pub(crate) mod range;
 pub(crate) mod set;
 
 pub(crate) use builtin::ASCII;
 pub use compose::{ComposeError, SetCatalog};
+pub(crate) use locale::{adopt, adopt_all};
 pub(crate) use parse::{
     ParseError, SetDefinition, SetMember, code_points, parse_line,
 };

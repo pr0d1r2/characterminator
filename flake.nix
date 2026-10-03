@@ -149,8 +149,9 @@
             pkgs.clippy
             pkgs.rustfmt
             pkgs.git
-            # `src/charset/cldr-letters.sh` reads CLDR's JSON with it; pinned
-            # here so a regeneration is byte-identical on every machine.
+            # `src/charset/locale/cldr-letters.sh` reads CLDR's JSON with
+            # it; pinned here so a regeneration is byte-identical on every
+            # machine.
             pkgs.jq
             # The `fetch` step of both generators in `src/charset` downloads
             # their pinned inputs with it (`src/charset:V77`), so the step

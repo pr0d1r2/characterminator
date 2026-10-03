@@ -133,7 +133,7 @@ is compiled in, so it travels inside every copy of the binary.
 |---|---|---|
 | [`src/charset/emoji-sequences.txt`](../src/charset/emoji-sequences.txt), and [`src/fix/emoji-seq.ctrm-map`](../src/fix/emoji-seq.ctrm-map) built from it | Unicode emoji `emoji-sequences.txt` (presentation, keycap, flag and tag sequences) and `emoji-zwj-sequences.txt` (ZWJ sequences): the five kinds `presentation`, `keycap`, `flag`, `tag` and `zwj` | emoji 18.0 |
 | [`src/charset/hazard.ctrm-sets`](../src/charset/hazard.ctrm-sets) | `DerivedCoreProperties.txt` (`Default_Ignorable_Code_Point`), `PropList.txt` (`Bidi_Control`), `extracted/DerivedGeneralCategory.txt` (`Cc`) | 18.0.0 |
-| [`src/charset/locales.ctrm-sets`](../src/charset/locales.ctrm-sets) | CLDR `cldr-json` tag 48.2.3, every locale's `cldr-misc-full/main/<code>/characters.json` (exemplar characters), `cldr-core` `availableLocales.json`, `defaultContent.json`, `parentLocales.json` and `likelySubtags.json` (the locale list and parent chain), with `UnicodeData.txt` for uppercase forms | CLDR 48, UCD 18.0.0 |
+| [`src/charset/locale/locales.ctrm-sets`](../src/charset/locale/locales.ctrm-sets) | CLDR `cldr-json` tag 48.2.3, every locale's `cldr-misc-full/main/<code>/characters.json` (exemplar characters), `cldr-core` `availableLocales.json`, `defaultContent.json`, `parentLocales.json` and `likelySubtags.json` (the locale list and parent chain), with `UnicodeData.txt` for uppercase forms | CLDR 48, UCD 18.0.0 |
 
 The emoji sequence file is the presentation, keycap, flag, tag and ZWJ
 sequences of those two files, one per line in `U+XXXX` notation, written
@@ -145,9 +145,9 @@ The hazard file is the code point ranges of those properties, rewritten
 into this tool's own `U+XXXX` set grammar; its header names the upstream
 files, their dates and SHA-256 digests, and the command that produced each
 line. The locale file is generated the same way, by
-`src/charset/cldr-letters.sh`, and its header carries the tag, each core
-input's SHA-256, and one SHA-256 over the digests of all 766 locale
-files. No upstream file is copied into the repository whole.
+`src/charset/locale/cldr-letters.sh`, and its header carries the tag,
+each core input's SHA-256, and one SHA-256 over the digests of all 766
+locale files. No upstream file is copied into the repository whole.
 CLDR is distributed under the same Unicode License v3 as the UCD, so the
 text below covers both.
 

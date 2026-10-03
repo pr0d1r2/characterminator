@@ -92,7 +92,7 @@ cr U+000D
 # characters, so it answers "this file is in that script" rather than "this
 # file needs these characters", and the second question is the one a token
 # budget is asking. For a language, prefer the letter preset named by its
-# locale code, which is generated from CLDR (V30).
+# locale code, which is generated from CLDR (`src/charset/locale:V30`).
 #
 # Latin-1 Supplement; Latin Extended-A; Cyrillic; Greek and Coptic; Arabic.
 latin1 U+0080-U+00FF

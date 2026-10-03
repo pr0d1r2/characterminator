@@ -147,7 +147,7 @@ impl Checker {
     }
 
     /// The checker `sets` lists from: every locale set in, not only the
-    /// ones the rules name (`src/charset:V61`).
+    /// ones the rules name (`src/charset/locale:V61`).
     ///
     /// # Errors
     ///

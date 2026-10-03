@@ -1,8 +1,8 @@
 //! V86: `contains` searches, and answers exactly as the linear walk it
 //! replaced. Kept apart from `set.rs` so the module reads as code.
 
+use crate::charset::adopt_all;
 use crate::charset::builtin::catalog;
-use crate::charset::locale::adopt_all;
 use crate::charset::range::normalize;
 use crate::charset::{CharRange, CharSet};
 

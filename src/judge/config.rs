@@ -7,7 +7,7 @@
 //! all (V74) is this node's, so every verb and the guard read the same
 //! answer from the same bytes.
 
-use crate::charset::{self, SetCatalog, SetDefinition, builtin, locale};
+use crate::charset::{self, SetCatalog, SetDefinition, builtin};
 use crate::fix::{self as engine, Map};
 use crate::rules::{self, Place, Rule, Sources};
 use std::path::PathBuf;
@@ -68,12 +68,12 @@ impl Config {
     /// A sets line that does not parse, named at its origin.
     ///
     /// The CLDR locale sets come in only for the names the rules use
-    /// (`src/charset:V61`), and only while the builtin sets are on.
+    /// (`src/charset/locale:V61`), and only while the builtin sets are on.
     pub(crate) fn catalog(&self) -> Result<SetCatalog, String> {
         let mut catalog = self.declared()?;
         if self.sets.has_builtin() {
             let wanted = self.rules()?.into_iter().flat_map(|rule| rule.sets);
-            locale::adopt(&mut catalog, wanted)
+            charset::adopt(&mut catalog, wanted)
                 .map_err(|bad| bad.to_string())?;
         }
         Ok(catalog)
@@ -87,7 +87,7 @@ impl Config {
     pub(crate) fn listing(&self) -> Result<SetCatalog, String> {
         let mut catalog = self.declared()?;
         if self.sets.has_builtin() {
-            locale::adopt_all(&mut catalog).map_err(|bad| bad.to_string())?;
+            charset::adopt_all(&mut catalog).map_err(|bad| bad.to_string())?;
         }
         Ok(catalog)
     }

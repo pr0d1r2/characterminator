@@ -211,7 +211,7 @@ mod tests {
         assert!(listed.contains("house U+2261"), "{listed}");
     }
 
-    /// `src/charset:V61`: the listing carries every locale, while the
+    /// `src/charset/locale:V61`: the listing carries every locale, while the
     /// catalog a check reads holds only the locales its rules name.
     #[test]
     fn sets_lists_every_locale_but_a_check_reads_only_the_named() {

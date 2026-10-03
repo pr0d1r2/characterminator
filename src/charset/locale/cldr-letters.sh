@@ -3,10 +3,11 @@
 # pinned cldr-json release. Two steps, so the network is never part of the
 # step that has to be reproducible:
 #
-#   sh src/charset/cldr-letters.sh fetch <dir>
-#   sh src/charset/cldr-letters.sh generate <dir> > src/charset/locales.ctrm-sets
+#   sh src/charset/locale/cldr-letters.sh fetch <dir>
+#   sh src/charset/locale/cldr-letters.sh generate <dir> \
+#     > src/charset/locale/locales.ctrm-sets
 #
-# `generate` reads only <dir> and `hazard.ctrm-sets` beside this script, so
+# `generate` reads only <dir> and `hazard.ctrm-sets` one dir up, so
 # the same inputs give the same bytes. Needs `jq`, `curl` and `xargs` for
 # `fetch`, and `sha256sum`; the dev shell has them all. `fetch` creates
 # <dir> if it is not there.
@@ -55,10 +56,10 @@ digests() {
 header() {
   cat <<EOF2
 # THE LOCALE LETTER PRESETS (V30, V61), GENERATED from CLDR and compiled
-# in beside \`sets.ctrm-sets\` (V22) but parsed LAZILY: a run reads the
-# line of a name only when its rules use that name and nothing else
-# declares it. Do not edit a member by hand: regenerate with
-# \`src/charset/cldr-letters.sh\`, which says how.
+# in like \`sets.ctrm-sets\` (\`src/charset:V22\`) but parsed LAZILY: a
+# run reads the line of a name only when its rules use that name and
+# nothing else declares it. Do not edit a member by hand: regenerate with
+# \`src/charset/locale/cldr-letters.sh\`, which says how.
 #
 # SOURCE: cldr-json tag $TAG, every locale \`availableLocales.json\`
 # lists as full, \`cldr-misc-full/main/<code>/characters.json\`, from
@@ -169,7 +170,7 @@ generate() {
   header "$dir"
   set -- $(locales "$dir" | sed "s|.*|$dir/main/&/characters.json|")
   jq -nr --rawfile ucd "$dir/UnicodeData.txt" \
-    --rawfile hz "$here/hazard.ctrm-sets" \
+    --rawfile hz "$here/../hazard.ctrm-sets" \
     --slurpfile pl "$dir/parentLocales.json" \
     --slurpfile dc "$dir/defaultContent.json" \
     --slurpfile ls "$dir/likelySubtags.json" "$FILTER" "$@"
