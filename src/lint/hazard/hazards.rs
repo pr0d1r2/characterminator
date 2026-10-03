@@ -10,12 +10,13 @@
 //! A joiner inside an RGI ZWJ sequence, and a tag inside an RGI tag
 //! sequence, are no hazard (V63). That cut is POSITIONAL, so it needs the
 //! text: a caller asks [`Hazards::exempt`] once per text and hands the
-//! offsets to [`Hazards::lint_at`]. The list lives in `sequence`.
+//! offsets to [`Hazards::lint_at`]; a library caller asks
+//! [`Hazards::lints_in`], which does both. The list lives in `sequence`.
 
 use super::sequence::Sequences;
 use crate::charset::{CharSet, SetCatalog, builtin};
 use crate::lint::Lint;
-use crate::scan::Hit;
+use crate::scan::{Hit, scan_str};
 use std::sync::LazyLock;
 
 /// The hazard classes in the order they are TRIED, each with the lint it
@@ -84,12 +85,11 @@ impl Hazards {
     /// the test `the_compiled_data_parses` keeps it from shipping.
     ///
     /// ```
-    /// use characterminator::{Hazards, scan_str};
+    /// use characterminator::Hazards;
     ///
-    /// let hazards = Hazards::builtin();
-    /// let hits = scan_str("a\u{202E}b", |c| !hazards.contains(c));
-    /// let lint = hits.first().and_then(|hit| hazards.lint_for(*hit));
-    /// assert_eq!(lint.map(|l| l.name), Some("bidi-control"));
+    /// let found = Hazards::builtin().lints_in("a\u{202E}b");
+    /// let names: Vec<&str> = found.iter().map(|(_, l)| l.name).collect();
+    /// assert_eq!(names, ["bidi-control"]);
     /// ```
     #[must_use]
     pub fn builtin() -> Self {
@@ -159,17 +159,55 @@ impl Hazards {
     /// Whether a character is in ANY class, wherever it sits.
     ///
     /// A scan asks this before it knows a position, so a byte order mark
-    /// answers yes here and is let off by [`Hazards::lint_for`].
+    /// answers yes here and is let off by [`Hazards::lints_in`].
     pub fn contains(&self, character: char) -> bool {
         self.classes.iter().any(|(_, set)| set.contains(character))
     }
 
+    /// Every hazard in `text`, each with the lint it fires, in text order:
+    /// what `check` reports for a file no rule grants anything (V113).
+    ///
+    /// CONTEXT-AWARE, as `check` is: a BOM at byte 0 is an encoding
+    /// signature (V34), and a joiner, tag or VS16 inside an RGI emoji
+    /// sequence is no hazard (V63). The script joiner excuse (V57) is
+    /// not applied: it belongs to a file's rule, and a text has none.
+    ///
+    /// ```
+    /// use characterminator::Hazards;
+    ///
+    /// let hazards = Hazards::builtin();
+    /// // A family emoji: its joiners are part of the sequence.
+    /// let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+    /// assert!(hazards.lints_in(family).is_empty());
+    /// // A signature at byte 0 is no hazard; a joiner on its own is.
+    /// let found = hazards.lints_in("\u{FEFF}a\u{200D}b");
+    /// let at: Vec<(usize, &str)> =
+    ///     found.iter().map(|(h, l)| (h.position.byte, l.name)).collect();
+    /// assert_eq!(at, [(4, "invisible")]);
+    /// ```
+    #[must_use]
+    pub fn lints_in(&self, text: &str) -> Vec<(Hit, Lint)> {
+        let hits = scan_str(text, |c| !self.contains(c));
+        if hits.is_empty() {
+            return Vec::new();
+        }
+        let exempt = self.exempt(text);
+        hits.into_iter()
+            .filter_map(|hit| Some((hit, self.lint_at(hit, &exempt)?)))
+            .collect()
+    }
+
     /// The hazard lint one hit fires, or `None` when it is no hazard.
+    ///
+    /// CONTEXT-FREE: one character and its byte offset, nothing around
+    /// it, so it cannot see an emoji sequence (V63). Crate-private for
+    /// that reason (V113, B66); a library caller asks
+    /// [`Hazards::lints_in`].
     ///
     /// A BOM at byte 0 is `None`, and stops there: it is not passed on
     /// to `invisible`, which holds it too, because the exemption is for
     /// the CHARACTER at that place rather than for one class's name.
-    pub fn lint_for(&self, hit: Hit) -> Option<Lint> {
+    pub(crate) fn lint_for(&self, hit: Hit) -> Option<Lint> {
         let lint = self.class_of(hit.character)?;
         let signature = lint.name == STRAY_BOM && hit.position.byte == 0;
         (!signature).then_some(lint)
