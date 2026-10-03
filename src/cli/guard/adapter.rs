@@ -18,11 +18,10 @@
 //! leaves every hazard judged; only the note about it changes.
 
 use super::hook::{self, Call, Event, Verdict};
-use crate::cli::check::shown_path;
-use crate::judge::Checker;
-use crate::lint::{Finding, Group, Hazards, Lint};
+use crate::judge::{Checker, Unruled, hazards_in, shown_path, unruled};
+use crate::lint::{Finding, Group, Hazards};
 use crate::render::codepoint;
-use crate::scan::{Hit, scan_bytes, scan_str};
+use crate::scan::scan_str;
 use std::path::{Path, PathBuf};
 
 /// Answer one hook payload: the decision document to print, or the empty
@@ -90,8 +89,9 @@ fn spelled(text: &str) -> String {
 /// A file about to be read, judged against `.ctrm` from `cwd`.
 ///
 /// A file that cannot be read passes: the harness reports a missing file
-/// itself, and there are no characters to judge. One that is not text is
-/// judged as the harness will SHOW it (V66): see [`not_text`].
+/// itself, and there are no characters to judge. One that is not text, or
+/// whose rules could not be applied, is judged for hazards alone, as the
+/// harness will SHOW it (V66): see [`hazards_only`].
 fn read(cwd: &Path, path: &str, hazards: &Hazards) -> Verdict {
     let full = cwd.join(path);
     let Ok(bytes) = std::fs::read(&full) else {
@@ -100,45 +100,13 @@ fn read(cwd: &Path, path: &str, hazards: &Hazards) -> Verdict {
     let shown = shown_path(cwd, &full);
     let config = crate::cli::config::discovered(cwd);
     let checker = Checker::configured(&config);
-    let judged = checker.and_then(|c| c.findings(&shown, &bytes));
-    match judged {
-        Ok(Some(found)) => judged_file(&shown, &found),
-        Ok(None) => not_text(&shown, &bytes, hazards),
-        Err(why) => unconfigured(&shown, &bytes, hazards, &why),
-    }
+    let why = match checker.and_then(|c| c.findings(&shown, &bytes)) {
+        Ok(Some(found)) => return judged_file(&shown, &found),
+        Ok(None) => None,
+        Err(why) => Some(why),
+    };
+    hazards_only(&shown, unruled(&bytes, hazards), why.as_deref())
 }
-
-/// A file `check` skips as not text -- invalid UTF-8, or a NUL -- is
-/// still READ: the harness decodes it lossily and the model sees every
-/// character that survives, a bidi override after a stray `\xff` included
-/// (V66). So the same lossy decode is judged, for hazards only, since no
-/// set means anything to bytes that are not text.
-///
-/// Less `control-character`: a NUL is what makes a file binary, and C0
-/// bytes are what every binary is made of, so judging them would deny the
-/// read of every image -- a hook people switch off (V35). What smuggles
-/// text past a reader -- bidi, tags, invisibles, a stray BOM -- still
-/// denies.
-fn not_text(shown: &str, bytes: &[u8], hazards: &Hazards) -> Verdict {
-    let text = String::from_utf8_lossy(bytes);
-    let hits = scan_str(&text, |c| !hazards.contains(c));
-    let exempt = hazards.exempt(&text);
-    let found: Vec<Finding> =
-        hazards_in(hits, |hit| hazards.lint_at(hit, &exempt))
-            .into_iter()
-            .filter(|f| f.lint.name != CONTROL)
-            .collect();
-    match found.first() {
-        Some(first) => Verdict::Block(denied(shown, first, found.len())),
-        None => Verdict::Note(format!(
-            "ctrm: {shown} is not text (invalid UTF-8 or a NUL byte), so no \
-             rule applies; it was judged for hazards only, and holds none."
-        )),
-    }
-}
-
-/// The hazard lint a binary is made of, so [`not_text`] does not judge it.
-const CONTROL: &str = "control-character";
 
 fn judged_file(shown: &str, found: &[Finding]) -> Verdict {
     let (hazards, rest): (Vec<&Finding>, Vec<&Finding>) =
@@ -149,45 +117,37 @@ fn judged_file(shown: &str, found: &[Finding]) -> Verdict {
     }
 }
 
-/// The rules could not be applied, so the file is judged for hazards
-/// alone: they need no rules, and a broken `.ctrm` must not open the door
-/// to a Trojan Source file.
-fn unconfigured(
-    shown: &str,
-    bytes: &[u8],
-    hazards: &Hazards,
-    why: &str,
-) -> Verdict {
-    let Ok(hits) = scan_bytes(bytes, |c| !hazards.contains(c)) else {
-        return not_text(shown, bytes, hazards);
+/// A file judged for hazards alone (`src/judge` `unruled`): denied on the
+/// first, else a note saying why no rule applied. A file `check` skips as
+/// not text is still READ, lossily, so it is judged as read (V66); a
+/// broken `.ctrm` must not open the door to a Trojan Source file.
+fn hazards_only(shown: &str, unruled: Unruled, why: Option<&str>) -> Verdict {
+    let (found, note) = match unruled {
+        Unruled::NotText(found) => (found, not_text(shown)),
+        Unruled::Text(found) => (found, unconfigured(shown, why)),
     };
-    let text = std::str::from_utf8(bytes).unwrap_or_default();
-    let exempt = hazards.exempt(text);
-    let found = hazards_in(hits, |hit| hazards.lint_at(hit, &exempt));
     match found.first() {
         Some(first) => Verdict::Block(denied(shown, first, found.len())),
-        None => Verdict::Note(format!(
-            "ctrm: the rules could not be applied to {shown} ({why}), so it \
-             was judged for hazards only, and holds none."
-        )),
+        None => Verdict::Note(note),
     }
 }
 
-/// The hazards among `hits`, each as the finding the lint node names.
-/// `lint` is the lint node's answer for one hit: less a joiner or tag
-/// inside an RGI emoji sequence (`src/lint:V63`) always, and less a BOM
-/// at byte 0 only where the text has a file start (V53).
-fn hazards_in(
-    hits: Vec<Hit>,
-    lint: impl Fn(Hit) -> Option<Lint>,
-) -> Vec<Finding> {
-    hits.into_iter()
-        .filter_map(|hit| {
-            let lint = lint(hit)?;
-            let level = lint.default_level();
-            Some(Finding { hit, lint, level })
-        })
-        .collect()
+/// The note on a file that is not text and holds no hazard.
+fn not_text(shown: &str) -> String {
+    format!(
+        "ctrm: {shown} is not text (invalid UTF-8 or a NUL byte), so no \
+         rule applies; it was judged for hazards only, and holds none."
+    )
+}
+
+/// The note on a file whose rules could not be applied, and holds no
+/// hazard.
+fn unconfigured(shown: &str, why: Option<&str>) -> String {
+    let why = why.unwrap_or_default();
+    format!(
+        "ctrm: the rules could not be applied to {shown} ({why}), so it \
+         was judged for hazards only, and holds none."
+    )
 }
 
 /// Why a read was denied: path, line, column, code point and lint, the

@@ -21,6 +21,9 @@ pub(crate) fn looks_binary(bytes: &[u8]) -> bool {
     bytes.contains(&0)
 }
 
+/// What [`scan_bytes`] hands back: the decoded text, and the hits in it.
+pub type Scanned<'a> = (&'a str, Vec<Hit>);
+
 /// Scan raw bytes, refusing by name when they are not text.
 ///
 /// ORDER MATTERS: the binary test runs FIRST. A binary file is a skip and
@@ -33,11 +36,14 @@ pub(crate) fn looks_binary(bytes: &[u8]) -> bool {
 /// replacement characters and then this node would report positions for
 /// characters that are not in the file.
 ///
+/// The decoded text comes back WITH the hits, so a caller that asks the
+/// text another question -- a line, an exemption -- decodes it once.
+///
 /// ```
 /// use characterminator::{Unreadable, scan_bytes};
 ///
-/// let hits = scan_bytes("a\u{2014}b".as_bytes(), |c| c.is_ascii());
-/// assert_eq!(hits.map(|h| h.len()), Ok(1));
+/// let scanned = scan_bytes("a\u{2014}b".as_bytes(), |c| c.is_ascii());
+/// assert_eq!(scanned.map(|(text, hits)| (text.len(), hits.len())), Ok((5, 1)));
 /// let binary = scan_bytes(b"a\0b", |c| c.is_ascii());
 /// assert_eq!(binary, Err(Unreadable::Binary));
 /// ```
@@ -49,8 +55,8 @@ pub(crate) fn looks_binary(bytes: &[u8]) -> bool {
 pub fn scan_bytes(
     bytes: &[u8],
     allowed: impl Fn(char) -> bool,
-) -> Result<Vec<Hit>, Unreadable> {
-    decode(bytes).map(|text| scan_str(text, allowed))
+) -> Result<Scanned<'_>, Unreadable> {
+    decode(bytes).map(|text| (text, scan_str(text, allowed)))
 }
 
 /// The text in raw bytes, or the NAMED reason there is none: the refusal
@@ -71,9 +77,24 @@ pub(crate) fn decode(bytes: &[u8]) -> Result<&str, Unreadable> {
     })
 }
 
+/// [`decode`], keeping the bytes: a file read once becomes its text with
+/// no copy, refused for the same reasons in the same order.
+///
+/// # Errors
+///
+/// As [`decode`].
+pub(crate) fn decode_owned(bytes: Vec<u8>) -> Result<String, Unreadable> {
+    if looks_binary(&bytes) {
+        return Err(Unreadable::Binary);
+    }
+    String::from_utf8(bytes).map_err(|error| Unreadable::NotUtf8 {
+        byte: error.utf8_error().valid_up_to(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{decode, looks_binary, scan_bytes};
+    use super::{decode, decode_owned, looks_binary, scan_bytes};
     use crate::scan::{Hit, Position, Unreadable};
 
     fn ascii_only(character: char) -> bool {
@@ -105,20 +126,26 @@ mod tests {
     #[test]
     fn readable_bytes_are_scanned_as_text() {
         // Zero width space, three bytes, at the end of a two-char line.
-        let outcome = scan_bytes("ab\u{200b}".as_bytes(), ascii_only);
-        let position = Position {
-            line: 1,
-            column: 3,
-            byte: 2,
+        let text = "ab\u{200b}";
+        let outcome = scan_bytes(text.as_bytes(), ascii_only);
+        let (line, column, byte) = (1, 3, 2);
+        let position = Position { line, column, byte };
+        let character = '\u{200b}';
+        let hit = Hit {
+            position,
+            character,
         };
+        assert_eq!(outcome, Ok((text, vec![hit])));
+    }
 
-        assert_eq!(
-            outcome,
-            Ok(vec![Hit {
-                position,
-                character: '\u{200b}'
-            }])
-        );
+    /// The owned decode refuses exactly as the borrowed one does.
+    #[test]
+    fn the_owned_decode_agrees_with_the_borrowed_one() {
+        for bytes in [&b"ab\xffcd"[..], b"ab\x00cd", b"\x00\xff", b"ok\n"] {
+            let owned = decode_owned(bytes.to_vec());
+            let borrowed = decode(bytes).map(str::to_owned);
+            assert_eq!(owned, borrowed);
+        }
     }
 
     #[test]

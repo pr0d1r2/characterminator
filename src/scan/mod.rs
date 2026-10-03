@@ -9,8 +9,8 @@
 mod bytes;
 mod text;
 
-pub(crate) use bytes::decode;
-pub use bytes::scan_bytes;
+pub use bytes::{Scanned, scan_bytes};
+pub(crate) use bytes::{decode, decode_owned};
 pub(crate) use text::located;
 pub use text::scan_str;
 

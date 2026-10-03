@@ -307,15 +307,19 @@ pub(crate) fn inspect(
 ) -> Looked {
     match decode(bytes) {
         Err(reason) => Looked::Unread(reason),
-        Ok(text) => Looked::Findings(findings_in(text, judge, levels)),
+        Ok(text) => Looked::Findings(judged(text, judge, levels)),
     }
 }
 
-/// The character findings, then the line- and text-shaped ones, with ONE
-/// claim per character across all three (`src/lint:V55`): the walks each
-/// know only their own lints, so the lint node's claim order settles a
-/// byte two of them point at.
-fn findings_in(text: &str, judge: &Judge<'_>, levels: &Levels) -> Vec<Finding> {
+/// The findings in one text: the character ones, then the line- and
+/// text-shaped ones, with ONE claim per character across all three
+/// (`src/lint:V55`): the walks each know only their own lints, so the lint
+/// node's claim order settles a byte two of them point at.
+pub(crate) fn judged(
+    text: &str,
+    judge: &Judge<'_>,
+    levels: &Levels,
+) -> Vec<Finding> {
     let judge = &judge.over(text);
     let deep = asked(&CHAR_LINTS, levels);
     let hits = scan_str(text, |c| judge.passes(c, deep));

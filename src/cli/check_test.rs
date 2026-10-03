@@ -1,13 +1,13 @@
 //! The tests of `check.rs`, in a file of their own so the module
 //! reads as code (sherd V50). Still its child: `super` is `check`.
 //!
-//! What the VERB owns: the path a file is shown and matched as (V71),
+//! What the VERB owns: a path matched as it is shown (`src/judge:V71`),
 //! the exit code a skip earns, and the shape a finding is reported in.
 //! What a finding IS -- the judging -- is tested in `src/judge`; the
 //! judging through a real tree is the `judged` child below.
 
 use super::super::config::discovered;
-use super::{run, shown_path};
+use super::run;
 use crate::lint::Group;
 use crate::render::Format;
 use std::path::{Path, PathBuf};
@@ -15,28 +15,7 @@ use std::path::{Path, PathBuf};
 #[path = "check_judged_test.rs"]
 mod judged;
 
-#[test]
-fn a_path_is_shown_relative_to_the_root() {
-    let root = Path::new("/repo");
-    assert_eq!(shown_path(root, Path::new("/repo/src/a.rs")), "src/a.rs");
-    assert_eq!(
-        shown_path(root, Path::new("/elsewhere/a.rs")),
-        "/elsewhere/a.rs"
-    );
-}
-
-/// V71: `.` and `..` fold away before a path is matched or shown.
-#[test]
-fn a_path_is_shown_in_lexical_normal_form() {
-    let root = Path::new("/repo/./x/..");
-    let shown = |full: &str| shown_path(root, Path::new(full));
-    assert_eq!(shown("/repo/sub/../sub/c.md"), "sub/c.md");
-    assert_eq!(shown("/repo/./a.md"), "a.md");
-    assert_eq!(shown("/repo/../repo/a.md"), "a.md");
-    assert_eq!(shown("/elsewhere/../b/a.rs"), "/b/a.rs");
-}
-
-/// V71 through the verb: an anchored rule reaches a file named the
+/// `src/judge:V71` through the verb: an anchored rule reaches a file named the
 /// long way round, so it is judged by that rule and not by `ascii`.
 #[test]
 fn an_anchored_rule_reaches_a_path_spelled_with_dot_dot() {

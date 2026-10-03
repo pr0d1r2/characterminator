@@ -11,11 +11,10 @@
 //! rewriting is `src/fix`'s. This node asks both and prints the pair.
 
 use crate::fix::{self as engine, Map};
-use crate::judge::{Checker, Config};
+use crate::judge::{Checker, Config, File, files};
 use crate::render::{self, FileStats, Format, Skipped};
-use crate::scan::{Unreadable, decode};
+use crate::scan::Unreadable;
 use crate::tokens::{self, Count, Method};
-use std::path::{Path, PathBuf};
 
 /// One file's row, owned so the borrowed render rows can point at it.
 struct Row {
@@ -45,18 +44,12 @@ pub(super) fn run(
     format: Format,
     bpe: bool,
 ) -> Result<String, String> {
-    let root = &config.root;
-    let checker = Checker::configured(config)?;
-    let map = config.map()?;
-    let method = if bpe { Method::Bpe } else { Method::Estimate };
-    let files = tokens::select(root, paths)
-        .map_err(|bad| format!("{}: {}", bad.path.display(), bad.reason))?;
     let pass = Pass {
-        checker,
-        map,
-        method,
+        checker: Checker::configured(config)?,
+        map: config.map()?,
+        method: if bpe { Method::Bpe } else { Method::Estimate },
     };
-    let (rows, skips) = pass.walk(root, &files)?;
+    let (rows, skips) = pass.walk(files(&config.root, paths)?)?;
     let listed: Vec<FileStats<'_>> = rows.iter().map(stat).collect();
     let skipped: Vec<Skipped<'_>> = skips.iter().map(skip).collect();
     Ok(render::stats(format, &listed, &skipped))
@@ -84,34 +77,26 @@ struct Pass {
 }
 
 impl Pass {
-    /// Every file in the set, in the order it was given.
-    fn walk(&self, root: &Path, files: &[PathBuf]) -> Result<Walked, String> {
-        let (mut rows, mut skips) = (Vec::new(), Vec::new());
-        for full in files {
-            let shown = super::check::shown_path(root, full);
-            match self.measure(full, &shown)? {
-                Ok(row) => rows.push(row),
-                Err(reason) => skips.push((shown, reason)),
-            }
-        }
-        Ok((rows, skips))
-    }
-
-    /// One file's numbers, or why it is not text.
+    /// Every file in the set, in the order it was given: its numbers, or
+    /// why it is not text.
     ///
     /// A file that is not text is left OUT of the counts -- a token figure
     /// for a PNG is a number nothing wrote -- and NAMED as skipped, the
     /// way `check` names it (`src/scan:V8`): a total quietly short of a
     /// file reads as a total over everything (B26).
-    fn measure(
+    fn walk(
         &self,
-        full: &Path,
-        shown: &str,
-    ) -> Result<Result<Row, Unreadable>, String> {
-        match text_of(full)? {
-            Ok(text) => self.counted(shown, &text).map(Ok),
-            Err(reason) => Ok(Err(reason)),
+        files: impl Iterator<Item = Result<File, String>>,
+    ) -> Result<Walked, String> {
+        let (mut rows, mut skips) = (Vec::new(), Vec::new());
+        for file in files {
+            let File { shown, text, .. } = file?;
+            match text {
+                Ok(text) => rows.push(self.counted(&shown, &text)?),
+                Err(reason) => skips.push((shown, reason)),
+            }
         }
+        Ok((rows, skips))
     }
 
     /// One text's numbers: outside its set, and the cost before and after.
@@ -129,15 +114,6 @@ impl Pass {
             after: tokens::of_text(&fixed.output, self.method),
         })
     }
-}
-
-/// A file's text, or why `check` would skip it: binary first, then not
-/// UTF-8, by the one decode every verb shares (`src/scan:V8`). A
-/// NUL-laden blob that happens to decode is still not text (B21).
-fn text_of(full: &Path) -> Result<Result<String, Unreadable>, String> {
-    let bytes =
-        std::fs::read(full).map_err(|e| format!("{}: {e}", full.display()))?;
-    Ok(decode(&bytes).map(str::to_owned))
 }
 
 fn stat(row: &Row) -> FileStats<'_> {

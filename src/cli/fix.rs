@@ -10,12 +10,11 @@
 //! over it (`src/rules:V45`).
 
 use crate::fix::{self as engine, Map};
-use crate::judge::{Checker, Config, Looked, inspect};
+use crate::judge::{Checker, Config, File, Looked, files, inspect};
 use crate::lint::{Finding, Group, exit_code};
 use crate::render::{self, Change, Format, Skipped, Violation};
-use crate::scan::{Hit, Unreadable, decode};
-use crate::tokens;
-use std::path::{Path, PathBuf};
+use crate::scan::{Hit, Unreadable};
+use std::path::PathBuf;
 
 /// What a run of `fix` produced.
 pub(super) struct Report {
@@ -77,14 +76,10 @@ pub(super) fn run(
     format: Format,
     write: bool,
 ) -> Result<Report, String> {
-    let root = &config.root;
     let pass = Pass::new(config, write)?;
-    let files = tokens::select(root, paths)
-        .map_err(|bad| format!("{}: {}", bad.path.display(), bad.reason))?;
     let mut found = Found::default();
-    for full in &files {
-        let shown = super::check::shown_path(root, full);
-        pass.visit(full, shown, &mut found)?;
+    for file in files(&config.root, paths)? {
+        pass.visit(file?, &mut found)?;
     }
     written(&found.pending)?;
     Ok(report_of(&found, format, pass.write))
@@ -118,14 +113,10 @@ impl Pass {
     }
 
     /// One file: judge it, rewrite it, queue the write when asked.
-    fn visit(
-        &self,
-        full: &Path,
-        shown: String,
-        found: &mut Found,
-    ) -> Result<(), String> {
+    fn visit(&self, file: File, found: &mut Found) -> Result<(), String> {
+        let File { full, shown, text } = file;
         let (set, _) = self.checker.effective(&shown)?;
-        let Some(text) = text_of(full, &shown, found)? else {
+        let Some(text) = text_of(text, &shown, found) else {
             return Ok(());
         };
         let fixed = engine::fix(&text, &self.map, |point| set.contains(point))
@@ -133,7 +124,7 @@ impl Pass {
         let kept = self.left(&shown, &text, &fixed)?;
         found.unmapped.extend(kept);
         if self.write && fixed.output != text {
-            found.pending.push((full.to_owned(), fixed.output));
+            found.pending.push((full, fixed.output));
         }
         absorb(found, shown, fixed.report);
         Ok(())
@@ -185,20 +176,18 @@ fn judged_against(finding: &Finding, set: &str) -> String {
 /// nobody knows was not rewritten, and a blob `check` skips but `fix`
 /// rewrites is a file corrupted by the verb meant to clean it (B21).
 fn text_of(
-    full: &Path,
+    text: Result<String, Unreadable>,
     shown: &str,
     found: &mut Found,
-) -> Result<Option<String>, String> {
-    let bytes =
-        std::fs::read(full).map_err(|e| format!("{}: {e}", full.display()))?;
-    match decode(&bytes) {
-        Ok(text) => Ok(Some(text.to_owned())),
+) -> Option<String> {
+    match text {
+        Ok(text) => Some(text),
         Err(reason) => {
             found.skips.push(Skip {
                 path: shown.to_owned(),
                 reason,
             });
-            Ok(None)
+            None
         }
     }
 }

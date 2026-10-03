@@ -181,7 +181,7 @@ const OUTSIDE: &str = "resolves outside the run root, where nothing is \
 /// `path` with every `.` dropped and every `..` folded into the name
 /// before it. A `..` with no name before it is kept: it leaves the tree.
 ///
-/// Lexical, not canonical (`src/cli:V71`): a symlink is not resolved, so
+/// Lexical, not canonical (`src/judge:V71`): a symlink is not resolved, so
 /// a path stays the one typed. The crate's one folding, so the fileset
 /// and the path a report shows cannot disagree about a spelling (V83).
 #[must_use]

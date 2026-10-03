@@ -41,7 +41,7 @@ pub use fix::{
     Error as FixError, Fixed, Map, Report as FixReport, Rewrite, fix,
 };
 pub use lint::{Group, Hazards, Level, Lint};
-pub use scan::{Hit, Position, Unreadable, scan_bytes, scan_str};
+pub use scan::{Hit, Position, Scanned, Unreadable, scan_bytes, scan_str};
 
 /// The binary's entry point. Not part of the library promise: `main.rs`
 /// is a shim over it (`src:V38`), and it lives here so the dispatch is

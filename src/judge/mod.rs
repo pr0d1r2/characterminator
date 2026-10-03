@@ -7,6 +7,10 @@
 
 mod checker;
 mod config;
+mod unruled;
+mod walk;
 
-pub(crate) use checker::{Checker, Looked, inspect};
+pub(crate) use checker::{Checker, Looked, inspect, judged};
 pub(crate) use config::Config;
+pub(crate) use unruled::{Unruled, hazards_in, unruled};
+pub(crate) use walk::{File, files, shown_path};

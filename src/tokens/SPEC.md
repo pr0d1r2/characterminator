@@ -41,7 +41,7 @@ V69: run root (`-C`) ⊥ a directory → error naming it, exit 2. bare run w/ ro
 
 V70: tracked path ⊥ on disk (deleted, deletion unstaged) ⊥ in V9 fileset nor V43 expansion ∵ ⊥ bytes to judge; reading it aborted the WHOLE run.
 
-V83: named paths folded LEXICALLY (`lexical`, owned here; `src/cli:V71` form) before dedup & before V43 prefix test ∴ `sub/../a.md a.md` = 1 file, `d/e/../e` expands as `d/e`.
+V83: named paths folded LEXICALLY (`lexical`, owned here; `src/judge:V71` form) before dedup & before V43 prefix test ∴ `sub/../a.md a.md` = 1 file, `d/e/../e` expands as `d/e`.
 
 V84: named LINK to a dir followed, as a named file link (V9): both sides resolved, expands to target's tracked files under target's paths ∴ `d dl` = 1 set. target outside root → error saying so, exit 2.
 

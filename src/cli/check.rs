@@ -9,11 +9,10 @@
 //! tree, gathers those answers, and reports them.
 
 use crate::charset::CharSet;
-use crate::judge::{Checker, Config, Looked, inspect};
+use crate::judge::{Checker, Config, File, Looked, files, judged};
 use crate::lint::{Finding, Group, exit_code};
 use crate::render::{self, Batch, Format, Skipped};
 use crate::scan::Unreadable;
-use crate::tokens::{self, lexical};
 use std::path::Path;
 
 /// One file's findings with the strings they are reported against, owned so the
@@ -37,40 +36,24 @@ pub(super) struct Report {
     pub code: u8,
 }
 
-/// The path as a reader typed it: relative to the root, so it matches the
-/// patterns in `.ctrm` and reads like the file they meant.
-///
-/// Both sides are folded LEXICALLY first (V71): `sub/../sub/c.md` names
-/// `sub/c.md`, and a rule anchored at `sub/c.md` has to see that spelling
-/// or it silently judges the file by another rule. Lexical, not
-/// canonical: a symlink is not resolved, so the path stays the one typed.
-pub(super) fn shown_path(root: &Path, full: &Path) -> String {
-    let (root, full) = (lexical(root), lexical(full));
-    full.strip_prefix(&root)
-        .unwrap_or(&full)
-        .to_string_lossy()
-        .into_owned()
-}
-
 fn gather(
     checker: &Checker,
     root: &Path,
     paths: &[String],
 ) -> Result<Found, String> {
-    let files = tokens::select(root, paths)
-        .map_err(|e| format!("{}: {}", e.path.display(), e.reason))?;
     let mut found = Found::default();
-    for full in &files {
-        let shown = shown_path(root, full);
+    for file in files(root, paths)? {
+        let File { shown, text, .. } = file?;
         let (set, levels) = checker.shared_law(&shown)?;
-        let looked = inspect(&read(full)?, &checker.judge(&set), &levels);
+        let looked = match text {
+            Ok(text) => {
+                Looked::Findings(judged(&text, &checker.judge(&set), &levels))
+            }
+            Err(reason) => Looked::Unread(reason),
+        };
         found.absorb(shown, &set, looked);
     }
     Ok(found)
-}
-
-fn read(full: &Path) -> Result<Vec<u8>, String> {
-    std::fs::read(full).map_err(|e| format!("{}: {e}", full.display()))
 }
 
 /// What the walk accumulated.

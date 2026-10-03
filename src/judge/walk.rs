@@ -1,0 +1,90 @@
+//! The one walk every file verb takes: select, read, decode.
+//!
+//! `check`, `fix` and `stats` each selected the fileset, read each file,
+//! decoded it and named a failure the same way, three times over. Here it
+//! is once, so a file one verb skips is a file every verb skips, for the
+//! same reason (`src/scan:V8`, B21), shown under the same path (V71).
+
+use crate::scan::{Unreadable, decode_owned};
+use crate::tokens::{self, lexical};
+use std::path::{Path, PathBuf};
+
+/// One file of a run, read and decoded once.
+pub(crate) struct File {
+    /// Where it is on disk, for a verb that writes it back.
+    pub(crate) full: PathBuf,
+    /// The path as a reader typed it: what rules match and reports name.
+    pub(crate) shown: String,
+    /// Its text, or why it has none.
+    pub(crate) text: Result<String, Unreadable>,
+}
+
+/// Every file `paths` names under `root` -- the git-tracked fileset when
+/// it names none (`src/tokens:V9`) -- in order, each read when reached.
+///
+/// # Errors
+///
+/// A path the fileset refuses, up front; then, per file, one that cannot
+/// be read, named with its path.
+pub(crate) fn files(
+    root: &Path,
+    paths: &[String],
+) -> Result<impl Iterator<Item = Result<File, String>>, String> {
+    let selected = tokens::select(root, paths)
+        .map_err(|bad| format!("{}: {}", bad.path.display(), bad.reason))?;
+    let root = root.to_owned();
+    Ok(selected.into_iter().map(move |full| read(&root, full)))
+}
+
+/// One file, read and decoded.
+fn read(root: &Path, full: PathBuf) -> Result<File, String> {
+    let bytes =
+        std::fs::read(&full).map_err(|e| format!("{}: {e}", full.display()))?;
+    Ok(File {
+        shown: shown_path(root, &full),
+        text: decode_owned(bytes),
+        full,
+    })
+}
+
+/// The path as a reader typed it: relative to the root, so it matches the
+/// patterns in `.ctrm` and reads like the file they meant.
+///
+/// Both sides are folded LEXICALLY first (V71): `sub/../sub/c.md` names
+/// `sub/c.md`, and a rule anchored at `sub/c.md` has to see that spelling
+/// or it silently judges the file by another rule. Lexical, not
+/// canonical: a symlink is not resolved, so the path stays the one typed.
+pub(crate) fn shown_path(root: &Path, full: &Path) -> String {
+    let (root, full) = (lexical(root), lexical(full));
+    full.strip_prefix(&root)
+        .unwrap_or(&full)
+        .to_string_lossy()
+        .into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::shown_path;
+    use std::path::Path;
+
+    #[test]
+    fn a_path_is_shown_relative_to_the_root() {
+        let root = Path::new("/repo");
+        assert_eq!(shown_path(root, Path::new("/repo/src/a.rs")), "src/a.rs");
+        assert_eq!(
+            shown_path(root, Path::new("/elsewhere/a.rs")),
+            "/elsewhere/a.rs"
+        );
+    }
+
+    /// V71: `.` and `..` fold away before a path is matched or shown.
+    #[test]
+    fn a_path_is_shown_in_lexical_normal_form() {
+        let root = Path::new("/repo/./x/..");
+        let shown = |full: &str| shown_path(root, Path::new(full));
+        assert_eq!(shown("/repo/sub/../sub/c.md"), "sub/c.md");
+        assert_eq!(shown("/repo/./a.md"), "a.md");
+        assert_eq!(shown("/repo/../repo/a.md"), "a.md");
+        assert_eq!(shown("/elsewhere/../b/a.rs"), "/b/a.rs");
+    }
+}
