@@ -16,14 +16,29 @@ impl CharSet {
 
     /// Whether the set grants `point`.
     ///
-    /// A linear walk rather than a binary search over the sorted ranges:
-    /// `ranges` is a public field, so a caller can hand-build a set in any
-    /// order, and a search that silently assumes an ordering the type does
-    /// not enforce would answer wrongly for the first such set. A preset is
-    /// a handful of ranges by V23, so there is no cost worth the risk.
+    /// A binary search over the canonical ranges, because a locale preset
+    /// is not a handful of ranges: `zh` holds 1,716, and a linear walk made
+    /// a 10 MB Chinese file cost fifteen times what `* any` costs (V86).
+    ///
+    /// `ranges` stays a public field: `render` and `lint` read it, and
+    /// tests in other nodes build sets literally, so making it private
+    /// would ripple into all of them. The ordering is instead a guarantee
+    /// of [`Self::new`] and [`Self::union`], which every set built from
+    /// config passes through; a hand-built set must already be canonical.
+    ///
+    /// ASCII first, by a walk over the leading ranges only: every grant
+    /// starts with `ascii`, so those are a few at most, and most text a
+    /// check reads is ASCII (R1).
     #[must_use]
     pub fn contains(&self, point: char) -> bool {
-        self.ranges.iter().any(|range| range.contains(point))
+        if point.is_ascii() {
+            let mut leading =
+                self.ranges.iter().take_while(|r| r.start <= point);
+            return leading.any(|range| range.contains(point));
+        }
+        let after = self.ranges.partition_point(|range| range.start <= point);
+        let candidate = after.checked_sub(1).and_then(|i| self.ranges.get(i));
+        candidate.is_some_and(|range| range.contains(point))
     }
 
     /// Whether the set grants nothing at all.
@@ -102,3 +117,7 @@ mod tests {
         assert!(!set.contains('\u{0041}'));
     }
 }
+
+#[cfg(test)]
+#[path = "set_test.rs"]
+mod search_tests;
