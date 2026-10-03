@@ -168,6 +168,7 @@ Pin both actions to a commit SHA in real use.
 | `ctrm explain [<path>]` | the set in force, and the config line that decided it |
 | `ctrm explain [<path>] --as args\|lines\|prompt` | the whole configuration as flags, as data files, or as an agent prompt |
 | `ctrm sets [<name>...] [--locales] [--containing <c>]` | the curated presets and what each is for, then your own; locales on request |
+| `ctrm init [--print]` | draft a `.ctrm` from the tracked files: per file type, the fewest presets that cover it, each line commented. Never overwrites one; `--print` writes the draft to stdout |
 | `ctrm guard` | agent hook: hook JSON in, decision JSON out. See [guarding an agent](#guarding-an-agent) |
 
 Every verb but `guard` takes `--format json`, which is a stable contract:
@@ -197,7 +198,11 @@ entry, `#` for a comment.
 
 **`.ctrm`** -- which set applies where. Last matching line wins, the way
 `.gitignore` does, so a per-file line placed after a per-type line overrides
-it.
+it. `ctrm init` writes a first draft from what the tracked files hold: per
+file type, the fewest presets that cover it (a CLDR locale for letters no
+preset holds, `any` only when nothing else does), every line commented with
+the code points it is there for. What `fix` would rewrite is left to `fix`,
+and a hazard is listed to fix by hand, never granted.
 
 ```text
 * ascii

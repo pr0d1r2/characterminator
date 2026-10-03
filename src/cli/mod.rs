@@ -10,6 +10,7 @@ mod dispatch;
 mod explain;
 mod fix;
 mod guard;
+mod init;
 mod out;
 mod remedy;
 mod stats;

@@ -38,6 +38,7 @@ const SWITCHES: &[&str] = &[
     "--strict",
     "--pedantic",
     "--locales",
+    "--print",
     // Accepted on every verb and changes nothing: ctrm never prints colour,
     // so there is none to turn off. It is in the table because unknown
     // flags are REFUSED, and a wrapper that passes `--no-color` to every
@@ -62,6 +63,7 @@ const OWNED: &[(&str, &str)] = &[
     ("--max", "check"),
     ("--locales", "sets"),
     ("--containing", "sets"),
+    ("--print", "init"),
 ];
 
 /// Ends the flags: every word after it is a path, so a file whose name

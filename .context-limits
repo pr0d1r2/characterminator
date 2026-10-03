@@ -207,6 +207,8 @@ src/cli/SPEC.md      3100
 # stub). ~12% over the measured 1703.
 src/cli/guard/SPEC.md 1910
 src/cli/explain/SPEC.md  910
+# The `init` sub-node, new 2026-10-03: ~12% over its measured 514.
+src/cli/init/SPEC.md     580
 src/scan/SPEC.md     470
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
 # every other node already had, recording work that had invariants but no
@@ -296,6 +298,9 @@ src/charset/locale   5180
 src/cli              3960
 src/cli/explain      4830
 src/cli/guard        5370
+# src/cli/init, the `init` sub-node (V128), set 2026-10-03 ~12% over its
+# measured 3965 chain, for the reason the other cli sub-nodes have rows.
+src/cli/init         4440
 src/fix              3490
 src/fix/emoji        4660
 src/fix/words        3840

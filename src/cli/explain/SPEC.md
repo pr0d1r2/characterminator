@@ -12,6 +12,7 @@ up|src|the tool: charset presets, rule resolution, scan, fix, lint levels, token
 up|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 self|src/cli/explain|`explain` & `sets` answers, `explain --as` forms: args, lines, agent prompt
 sib|src/cli/guard|`guard` hook adapter: harness payload in, hook decision out, JSON reader
+sib|src/cli/init|`init` verb: survey tracked files by type, greedy preset cover, draft `.ctrm`
 
 ## §V INVARIANTS
 

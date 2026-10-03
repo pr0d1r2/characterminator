@@ -9,6 +9,7 @@ Arg dispatch, verbs, exit codes. parent of the `guard` hook adapter & the `expla
 dir|owns|⊥owns|tokens
 guard|`guard` hook adapter: harness payload in, hook decision out, JSON reader|dispatch, hazard detection|-
 explain|`explain` & `sets` answers, `explain --as` forms: args, lines, agent prompt|dispatch, rule resolution|-
+init|`init` verb: survey tracked files by type, greedy preset cover, draft `.ctrm`|dispatch, set contents|-
 
 ## §N NAV
 
@@ -32,6 +33,7 @@ sib|src/render|human & json output, stable json contract
 - cmd: `ctrm stats [--bpe] [paths]` → per file: chars outside set, bytes, tokens now vs after `fix`, via `itok`. report-only.
 - cmd: `ctrm explain [<path>] [--as args|lines|prompt]` → effective set + winning rule + its config line; `--as` renders effective config as flags, data-file lines, or agent prompt (`src/cli/explain:V32`).
 - cmd: `ctrm sets [<name>...] [--locales] [--containing <c>]` → curated presets w/ descriptions, then declared; locales counted unless asked (`src/cli/explain:V127`), w/ members, at the family the rules give (`src/rules:V29`).
+- cmd: `ctrm init [--print]` → draft `.ctrm` from the tracked files; exists → exit 2 (`src/cli/init:V128`).
 - cmd: `ctrm --version` | `-V` → `characterminator <version>`, exit 0 (test `tests/surface.rs`). `--help` | `-h`: V101.
 - cmd: `ctrm guard` → hook adapter: harness hook JSON stdin → decision JSON stdout; fuse on hazard (`src/cli/guard:V35`).
 - flag: `--format human|json` ∀ verb ∖ `guard` (argv ignored, `src/cli/guard:V93`); `sarif` `check` only (`src/render:V50`); `explain --as` refuses any `--format`, exit 2 (`src/cli/explain:V32`) · `-C <dir>`.

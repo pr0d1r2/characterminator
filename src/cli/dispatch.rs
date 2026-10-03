@@ -10,7 +10,7 @@
 //! a flag's value from being taken for a path in one verb and not another.
 
 use super::args::{self, Args};
-use super::{check, config, explain, fix, guard, out, stats};
+use super::{check, config, explain, fix, guard, init, out, stats};
 use crate::judge::Config;
 use crate::render::{self, Format, Shape};
 use std::io::Read;
@@ -66,9 +66,9 @@ pub fn run(args: &[String]) -> ExitCode {
         // (`src/cli/guard:V53`), even when its command line carries a flag
         // the parser would refuse.
         Some("guard") => guarded().code(),
-        Some(verb @ ("check" | "explain" | "sets" | "fix" | "stats")) => {
-            invoked(verb, args).code()
-        }
+        Some(
+            verb @ ("check" | "explain" | "sets" | "fix" | "stats" | "init"),
+        ) => invoked(verb, args).code(),
         _ => usage().code(),
     }
 }
@@ -136,6 +136,7 @@ fn dispatched(verb: &str, run: &Run<'_>) -> Outcome {
         "check" => checked(run),
         "explain" => explained(run),
         "sets" => listed(run),
+        "init" => said(run, init::run(run.config, run.args.has("--print"))),
         "fix" => fixed(run),
         _ => counted(run),
     }
@@ -164,6 +165,7 @@ fn format_of(args: &Args) -> Result<Format, String> {
 fn arity(verb: &str, paths: &[String]) -> Result<(), String> {
     let most = match verb {
         "explain" => 1,
+        "init" => 0,
         _ => return Ok(()),
     };
     match paths.get(most) {
@@ -415,6 +417,7 @@ pub(super) const USAGE: &str =
     [--containing <c>]           only the sets holding c (or U+XXXX)
   ctrm fix [--check] [<path>...] rewrite them, or report the drift
   ctrm stats [--bpe] [<path>...] what they cost now, and after a fix
+  ctrm init [--print]            draft a .ctrm from the tracked files
   ctrm guard                     agent hook: hook JSON in, decision out
   ctrm --help | -h               this text; also after any verb but guard
 
