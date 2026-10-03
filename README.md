@@ -26,6 +26,9 @@ rewrote 3, nothing left
   its place in the file as written.
 
 <!-- BEGIN badges -->
+[![ci](https://github.com/pr0d1r2/characterminator/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pr0d1r2/characterminator/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/characterminator.svg)](https://crates.io/crates/characterminator)
+[![docs.rs](https://img.shields.io/docsrs/characterminator)](https://docs.rs/characterminator)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![edition 2024](https://img.shields.io/badge/edition-2024-000000?logo=rust&logoColor=white)](Cargo.toml)
 [![MSRV 1.95](https://img.shields.io/badge/MSRV-1.95-000000?logo=rust&logoColor=white)](Cargo.toml)
