@@ -277,8 +277,16 @@ src/render           3450
 src/rules            3650
 src/scan             2580
 src/tokens           2970
-src/judge            3050
+src/judge            3740
 
 # The judge node (src/judge), extracted from src/cli for the 0.1.0 API
 # work: ~12% over its measured spec.
-src/judge/SPEC.md    1040
+# 1040 -> 1400, and the src/judge chain 3050 -> 3740, on 2026-10-03 for
+# the DX review: V116 (a config line that cannot take effect is refused:
+# a redeclared `ascii`/`any`/`hazard*`, a map source no set withholds)
+# and V118 (a bare run over an empty tracked set is exit 2, not a clean
+# silence), with their bug rows B68 and B69. The node assembles and
+# validates the config and owns the walk, so both rules are its. Nothing
+# to archive: its two finished rows are already stubs. ~12% over the
+# measured 1248 and the 3338 chain.
+src/judge/SPEC.md    1400
