@@ -2,7 +2,9 @@
 
 This repository -- code, spec, tests and prose -- was written by
 [Claude Code](https://claude.com/claude-code) running Anthropic's **Claude
-Opus 5**. Most commits carry a `Co-Authored-By: Claude Opus 5` trailer. A
+Opus 5** and, from later in the work, **Claude Opus 5.5**. Nearly every
+commit carries a `Co-Authored-By:` trailer naming the model that wrote
+it, `Claude Opus 5` or `Claude Opus 5.5`, so `git log` shows which. A
 human owns every decision, reviews every diff, and is accountable for what
 ships.
 

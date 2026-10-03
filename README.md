@@ -40,7 +40,7 @@ rewrote 3, nothing left
 [![nix flake](https://img.shields.io/badge/nix-flake-5277C3?logo=nixos&logoColor=white)](flake.nix)
 
 [![built with Claude Code](https://img.shields.io/badge/built_with-Claude_Code-D97757)](https://claude.com/claude-code)
-[![built with Opus 5](https://img.shields.io/badge/built_with-Opus_5-D97757)](https://www.anthropic.com/claude)
+[![built with Opus 5 and 5.5](https://img.shields.io/badge/built_with-Opus_5_%26_5.5-D97757)](https://www.anthropic.com/claude)
 [![built with SDD](https://img.shields.io/badge/built_with-spec--driven_development-D97757)](SPEC.md)
 <!-- END badges -->
 
