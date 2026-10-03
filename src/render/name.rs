@@ -7,6 +7,7 @@
 
 use crate::lint::Level;
 use crate::tokens::Method;
+use std::fmt::{self, Display, Formatter};
 
 /// `U+XXXX`: uppercase, at least four digits.
 ///
@@ -14,7 +15,17 @@ use crate::tokens::Method;
 /// is the spelling the root spec's interface section prints and that
 /// `src/scan:V12` requires of a violation.
 pub fn codepoint(character: char) -> String {
-    format!("U+{:04X}", u32::from(character))
+    Codepoint(character).to_string()
+}
+
+/// [`codepoint`], written straight into a report rather than allocated.
+#[derive(Debug, Clone, Copy)]
+pub struct Codepoint(pub char);
+
+impl Display for Codepoint {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "U+{:04X}", u32::from(self.0))
+    }
 }
 
 /// The rustc and clippy words for a level (`src/lint:V36`).

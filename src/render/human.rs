@@ -16,34 +16,63 @@
 use crate::charset::{CharRange, CharSet};
 use crate::lint::Group;
 use crate::render::Violation;
-use crate::render::name::{codepoint, level_name};
+use crate::render::line::{Line, Spelled};
+use crate::render::name::{Codepoint, codepoint, level_name};
 use crate::render::order;
 use crate::render::{Change, Explanation, FileStats, InForce, Skipped};
 use crate::rules::{LevelChoice, Origin, Rule};
 use crate::scan::Unreadable;
 use crate::tokens::{Count, Method};
+use std::borrow::Cow;
+use std::fmt::Write;
+
+/// About what one violation line costs, so a report of millions is
+/// sized once rather than grown by doubling (R17).
+const LINE_BYTES: usize = 40;
 
 /// `check`: every violation, then every file that could not be read.
 pub fn check(items: &[Violation<'_>], skipped: &[Skipped<'_>]) -> String {
-    let mut lines: Vec<String> = order::violations(items)
-        .into_iter()
-        .map(violation)
-        .collect();
-    lines.extend(unread_lines(skipped));
-    lines.join("\n")
+    check_lines(order::lines(items), skipped)
+}
+
+/// [`check`] over violations ALREADY in report order.
+pub fn check_lines<'a>(
+    lines: impl IntoIterator<Item = Line<'a>>,
+    skipped: &[Skipped<'_>],
+) -> String {
+    let mut out = String::new();
+    violations(&mut out, lines);
+    unread_lines(&mut out, skipped);
+    out
+}
+
+/// Every violation line, each after a newline unless it is the first
+/// thing in the report: lines are JOINED, never terminated.
+fn violations<'a>(out: &mut String, lines: impl IntoIterator<Item = Line<'a>>) {
+    let lines = lines.into_iter();
+    out.reserve(lines.size_hint().0.saturating_mul(LINE_BYTES));
+    let mut path = Spelled::new(shown);
+    for item in lines {
+        next_line(out);
+        violation(out, path.of(item.path), item);
+    }
+}
+
+/// The separator before a line, which the first line goes without.
+fn next_line(out: &mut String) {
+    if !out.is_empty() {
+        out.push('\n');
+    }
 }
 
 /// `path:line:col U+XXXX <set>`, the interface section's shape verbatim.
-fn violation(item: &Violation<'_>) -> String {
-    let at = item.finding.hit.position;
-    format!(
-        "{}:{}:{} {} {}",
-        shown(item.path),
-        at.line,
-        at.column,
-        codepoint(item.finding.hit.character),
-        verdict(item)
-    )
+/// Writing into a `String` cannot fail.
+fn violation(out: &mut String, path: &str, item: Line<'_>) {
+    let hit = item.finding.hit;
+    let (at, code) = (hit.position, Codepoint(hit.character));
+    let last = verdict(item);
+    let _infallible =
+        write!(out, "{path}:{}:{} {code} {last}", at.line, at.column);
 }
 
 /// A path as a terminal may safely print it (V11): every character outside
@@ -51,13 +80,23 @@ fn violation(item: &Violation<'_>) -> String {
 /// reason. A tracked file can be named `e<ESC>[2Jx<U+202E>y.md`, and a
 /// report that echoed it raw would clear the screen or reverse the line
 /// it sits on (B31). The json form needs none of this: it escapes.
-fn shown(path: &str) -> String {
-    path.chars()
-        .map(|c| match c {
-            ' '..='~' => String::from(c),
-            _ => format!("<{}>", codepoint(c)),
-        })
-        .collect()
+///
+/// A path that is printable ASCII already -- nearly every one -- is
+/// BORROWED rather than copied (R17).
+fn shown(path: &str) -> Cow<'_, str> {
+    if path.bytes().all(|b| matches!(b, b' '..=b'~')) {
+        return Cow::Borrowed(path);
+    }
+    let mut out = String::with_capacity(path.len());
+    for c in path.chars() {
+        match c {
+            ' '..='~' => out.push(c),
+            _ => {
+                let _infallible = write!(out, "<{}>", Codepoint(c));
+            }
+        }
+    }
+    Cow::Owned(out)
 }
 
 /// The last word of the line: the set the character was judged against,
@@ -69,7 +108,7 @@ fn shown(path: &str) -> String {
 /// and the set in force -- which GRANTS it either way -- would read as
 /// though the space fell outside it. The lint name is the one word that
 /// says what is wrong. The json keeps `set` and `lint` apart, as before.
-fn verdict<'v>(item: &'v Violation<'_>) -> &'v str {
+fn verdict<'v>(item: Line<'v>) -> &'v str {
     if item.finding.lint.group == Group::Pedantic {
         item.finding.lint.name
     } else {
@@ -77,8 +116,11 @@ fn verdict<'v>(item: &'v Violation<'_>) -> &'v str {
     }
 }
 
-fn unread_lines(items: &[Skipped<'_>]) -> Vec<String> {
-    order::skipped(items).into_iter().map(unread).collect()
+fn unread_lines(out: &mut String, items: &[Skipped<'_>]) {
+    for item in order::skipped(items) {
+        next_line(out);
+        out.push_str(&unread(item));
+    }
 }
 
 /// An unread file is NAMED (`src/scan:V8`): one that reported nothing would
@@ -100,31 +142,31 @@ pub fn fix(
     unmapped: &[Violation<'_>],
     skipped: &[Skipped<'_>],
 ) -> String {
-    let mut lines: Vec<String> =
-        order::changes(items).into_iter().map(change).collect();
-    lines.extend(order::violations(unmapped).into_iter().map(violation));
-    lines.extend(unread_lines(skipped));
-    lines.join("\n")
+    let mut out = String::new();
+    let mut path = Spelled::new(shown);
+    for item in order::changes(items) {
+        next_line(&mut out);
+        change(&mut out, path.of(item.path), item);
+    }
+    violations(&mut out, order::lines(unmapped));
+    unread_lines(&mut out, skipped);
+    out
 }
 
-fn change(item: &Change<'_>) -> String {
-    let at = item.rewrite.hit.position;
-    format!(
-        "{}:{}:{} {} -> {:?}",
-        shown(item.path),
-        at.line,
-        at.column,
-        codepoint(item.rewrite.hit.character),
-        item.rewrite.to
-    )
+fn change(out: &mut String, path: &str, item: &Change<'_>) {
+    let hit = item.rewrite.hit;
+    let (at, code) = (hit.position, Codepoint(hit.character));
+    let to = &item.rewrite.to;
+    let _infallible =
+        write!(out, "{path}:{}:{} {code} -> {to:?}", at.line, at.column);
 }
 
 /// `stats`: one row per file, then every file that is not text.
 pub fn stats(files: &[FileStats<'_>], skipped: &[Skipped<'_>]) -> String {
-    let mut rows: Vec<String> =
-        order::stats(files).into_iter().map(row).collect();
-    rows.extend(unread_lines(skipped));
-    rows.join("\n")
+    let rows: Vec<String> = order::stats(files).into_iter().map(row).collect();
+    let mut out = rows.join("\n");
+    unread_lines(&mut out, skipped);
+    out
 }
 
 fn row(item: &FileStats<'_>) -> String {

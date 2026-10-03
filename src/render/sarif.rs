@@ -24,12 +24,15 @@
 //! file reads the same either way.
 
 use crate::lint::{LINTS, Level, Lint};
-use crate::render::escape::string;
-use crate::render::name::codepoint;
+use crate::render::escape::{inner, string};
+use crate::render::line::{Line, Spelled};
+use crate::render::name::Codepoint;
 use crate::render::order;
-use crate::render::value::{array, field, number, object};
+use crate::render::value::{Fields, array, field, list, number, object};
 use crate::render::{Skipped, Violation};
 use crate::scan::{Position, Unreadable};
+use std::borrow::Cow;
+use std::fmt::Write;
 
 /// The published schema for the version below, so a validator can find
 /// it without being told.
@@ -44,22 +47,57 @@ const NAME: &str = "ctrm";
 /// `check`: one run, every violation a result, every unread file a
 /// notification.
 pub fn check(items: &[Violation<'_>], skipped: &[Skipped<'_>]) -> String {
-    object(&[
-        field("$schema", &string(SCHEMA)),
-        field("version", &string(VERSION)),
-        field("runs", &array(&[run(items, skipped)])),
-    ])
+    check_lines(order::lines(items), skipped)
 }
 
-fn run(items: &[Violation<'_>], skipped: &[Skipped<'_>]) -> String {
-    let results: Vec<String> =
-        order::violations(items).into_iter().map(result).collect();
-    object(&[
-        field("tool", &object(&[field("driver", &driver())])),
-        field("columnKind", &string("unicodeCodePoints")),
-        field("results", &array(&results)),
-        field("invocations", &array(&[invocation(skipped)])),
-    ])
+/// [`check`] over violations ALREADY in report order.
+pub fn check_lines<'a>(
+    lines: impl IntoIterator<Item = Line<'a>>,
+    skipped: &[Skipped<'_>],
+) -> String {
+    let mut out = String::new();
+    let mut log = Fields::open(&mut out);
+    log.text("$schema", SCHEMA);
+    log.text("version", VERSION);
+    let runs = log.key("runs");
+    runs.push('[');
+    run(runs, lines, skipped);
+    runs.push(']');
+    log.close();
+    out
+}
+
+/// The one run, written into `out`.
+fn run<'a>(
+    out: &mut String,
+    lines: impl IntoIterator<Item = Line<'a>>,
+    skipped: &[Skipped<'_>],
+) {
+    let mut fields = Fields::open(out);
+    fields.raw("tool", &object(&[field("driver", &driver())]));
+    fields.text("columnKind", "unicodeCodePoints");
+    results(fields.key("results"), lines);
+    fields.raw("invocations", &array(&[invocation(skipped)]));
+    fields.close();
+}
+
+/// About what one result object costs, so a log of millions is sized
+/// once rather than grown by doubling (R17).
+const RESULT_BYTES: usize = 240;
+
+/// Every result, each path made a URI literal once per file.
+fn results<'a>(out: &mut String, lines: impl IntoIterator<Item = Line<'a>>) {
+    let lines = lines.into_iter();
+    out.reserve(lines.size_hint().0.saturating_mul(RESULT_BYTES));
+    let mut path = Spelled::new(uri_literal);
+    list(out, lines, |out, item| {
+        result(out, path.of(item.path), item)
+    });
+}
+
+/// A path as the json literal of its URI, for [`Spelled`].
+fn uri_literal(path: &str) -> Cow<'_, str> {
+    Cow::Owned(string(&uri(path)))
 }
 
 /// The tool, from Cargo's own metadata rather than restated here, so a
@@ -107,22 +145,37 @@ const fn level_word(level: Level) -> &'static str {
     }
 }
 
-fn result(item: &Violation<'_>) -> String {
-    let at = region(item.finding.hit.position);
-    object(&[
-        field("ruleId", &string(item.finding.lint.name)),
-        field("level", &string(level_word(item.finding.level))),
-        field("message", &text(&message(item))),
-        field("locations", &array(&[location(item.path, Some(at))])),
-    ])
+/// One result. `uri` is the json literal of the path's URI, already
+/// escaped; the bytes are those [`location`] writes for a region.
+fn result(out: &mut String, uri: &str, item: Line<'_>) {
+    let mut fields = Fields::open(out);
+    fields.text("ruleId", item.finding.lint.name);
+    fields.text("level", level_word(item.finding.level));
+    message(fields.key("message"), item);
+    locations(fields.key("locations"), uri, item.finding.hit.position);
+    fields.close();
+}
+
+/// The one-element `locations` array [`location`] writes, with a region.
+fn locations(out: &mut String, uri: &str, at: Position) {
+    out.push_str(r#"[{"physicalLocation":{"artifactLocation":{"uri":"#);
+    out.push_str(uri);
+    out.push_str(r#"},"region":"#);
+    region(out, at);
+    out.push_str("}}]");
 }
 
 /// The code point and the set the file was judged against: the two facts
 /// the human line carries besides the position. Phrased so it stays true
 /// for a lint that fires INSIDE the set, as a hazard does under `any`.
-fn message(item: &Violation<'_>) -> String {
-    let found = codepoint(item.finding.hit.character);
-    format!("{found} (set in force: {})", item.set)
+///
+/// Written as the `{"text":...}` object directly; the code point needs no
+/// escaping, so only the set's name is passed through the escaper.
+fn message(out: &mut String, item: Line<'_>) {
+    let found = Codepoint(item.finding.hit.character);
+    let _infallible = write!(out, "{{\"text\":\"{found} (set in force: ");
+    inner(out, item.set);
+    out.push_str(")\"}");
 }
 
 fn text(words: &str) -> String {
@@ -132,12 +185,12 @@ fn text(words: &str) -> String {
 /// One character, exactly. `endColumn` is EXCLUSIVE and defaults to the
 /// end of the line when absent, so it is written: a region that silently
 /// covered the rest of the line would underline text that did nothing.
-fn region(at: Position) -> String {
-    object(&[
-        field("startLine", &number(at.line)),
-        field("startColumn", &number(at.column)),
-        field("endColumn", &number(at.column.saturating_add(1))),
-    ])
+fn region(out: &mut String, at: Position) {
+    let mut fields = Fields::open(out);
+    fields.number("startLine", at.line);
+    fields.number("startColumn", at.column);
+    fields.number("endColumn", at.column.saturating_add(1));
+    fields.close();
 }
 
 fn location(path: &str, region: Option<String>) -> String {

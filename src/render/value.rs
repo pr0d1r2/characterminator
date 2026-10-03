@@ -11,7 +11,7 @@
 //! `src/render/SPEC.md:V11` something a test can actually defend.
 
 use crate::render::escape::string;
-use std::fmt::Display;
+use std::fmt::{Display, Write};
 
 /// `"name":value`, where `value` is ALREADY rendered json.
 ///
@@ -62,6 +62,70 @@ fn wrap(open: char, parts: &[String], close: char) -> String {
     out.push_str(&parts.join(","));
     out.push(close);
     out
+}
+
+/// One object written straight into a report, field by field: the same
+/// bytes [`object`] over [`field`]s writes, without a `String` per field.
+/// The per-finding objects go out this way (R17); the small documents
+/// keep the plain functions above, which read better.
+pub struct Fields<'o> {
+    out: &'o mut String,
+    first: bool,
+}
+
+impl<'o> Fields<'o> {
+    /// `{`, in `out`.
+    pub fn open(out: &'o mut String) -> Self {
+        out.push('{');
+        Self { out, first: true }
+    }
+
+    /// `"name":`, and the buffer to write its value into.
+    pub fn key(&mut self, name: &str) -> &mut String {
+        if !self.first {
+            self.out.push(',');
+        }
+        self.first = false;
+        crate::render::escape::push(self.out, name);
+        self.out.push(':');
+        self.out
+    }
+
+    /// A field whose value is already rendered json.
+    pub fn raw(&mut self, name: &str, value: &str) {
+        self.key(name).push_str(value);
+    }
+
+    /// A string field.
+    pub fn text(&mut self, name: &str, value: &str) {
+        crate::render::escape::push(self.key(name), value);
+    }
+
+    /// A number field, or any value whose `Display` is its json.
+    pub fn number(&mut self, name: &str, value: impl Display) {
+        let _infallible = write!(self.key(name), "{value}");
+    }
+
+    /// `}`.
+    pub fn close(self) {
+        self.out.push('}');
+    }
+}
+
+/// `[...]`, written into `out`: each item by `each`, comma-separated.
+pub fn list<T>(
+    out: &mut String,
+    all: impl IntoIterator<Item = T>,
+    mut each: impl FnMut(&mut String, T),
+) {
+    out.push('[');
+    for (at, item) in all.into_iter().enumerate() {
+        if at > 0 {
+            out.push(',');
+        }
+        each(out, item);
+    }
+    out.push(']');
 }
 
 #[cfg(test)]

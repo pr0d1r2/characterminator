@@ -9,6 +9,7 @@
 //! Every function returns REFERENCES into the caller's slice rather than
 //! reordering it: a renderer has no business mutating its input.
 
+use crate::render::line::Line;
 use crate::render::{Change, FileStats, Skipped, Violation};
 
 /// Violations in report order.
@@ -18,6 +19,11 @@ pub fn violations<'s, 'v>(
     let mut sorted: Vec<&Violation<'_>> = items.iter().collect();
     sorted.sort_by_key(|item| (item.path, item.finding.hit.position.byte));
     sorted
+}
+
+/// Violations in report order, as the writers read them.
+pub fn lines<'s>(items: &'s [Violation<'_>]) -> Vec<Line<'s>> {
+    violations(items).into_iter().map(Line::from).collect()
 }
 
 /// Rewrites in report order.

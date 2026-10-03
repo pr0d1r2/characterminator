@@ -19,48 +19,81 @@ use crate::charset::{CharRange, CharSet};
 use crate::lint::Level;
 use crate::render::Violation;
 use crate::render::escape::string;
-use crate::render::name::{codepoint, level_name, method_name};
+use crate::render::line::{Line, Spelled};
+use crate::render::name::{Codepoint, codepoint, level_name, method_name};
 use crate::render::order;
-use crate::render::value::{array, field, number, object, optional};
+use crate::render::value::{
+    Fields, array, field, list, number, object, optional,
+};
 use crate::render::{Change, Explanation, FileStats, InForce, Skipped};
 use crate::rules::{LevelChoice, Origin, Rule, Sourced};
 use crate::scan::{Hit, Unreadable};
 use crate::tokens::Count;
+use std::borrow::Cow;
 use std::path::Path;
+
+/// About what one violation object costs, so a report of millions is
+/// sized once rather than grown by doubling (R17).
+const VIOLATION_BYTES: usize = 160;
 
 /// `check`: every violation, and every file that could not be read.
 pub fn check(items: &[Violation<'_>], skipped: &[Skipped<'_>]) -> String {
-    let found: Vec<String> = order::violations(items)
-        .into_iter()
-        .map(violation)
-        .collect();
-    object(&[
-        field("verb", &string("check")),
-        field("violations", &array(&found)),
-        field("skipped", &unread(skipped)),
-    ])
+    check_lines(order::lines(items), skipped)
 }
 
-fn violation(item: &Violation<'_>) -> String {
-    let mut fields = vec![field("path", &string(item.path))];
-    fields.extend(hit_fields(item.finding.hit));
-    fields.push(field("set", &string(item.set)));
-    fields.push(field("lint", &string(item.finding.lint.name)));
-    fields.push(field("level", &string(level_name(item.finding.level))));
-    object(&fields)
+/// [`check`] over violations ALREADY in report order.
+pub fn check_lines<'a>(
+    lines: impl IntoIterator<Item = Line<'a>>,
+    skipped: &[Skipped<'_>],
+) -> String {
+    let mut out = String::new();
+    let mut doc = Fields::open(&mut out);
+    doc.text("verb", "check");
+    violations(doc.key("violations"), lines);
+    doc.raw("skipped", &unread(skipped));
+    doc.close();
+    out
+}
+
+/// The array of violation objects, each path escaped once per file.
+fn violations<'a>(out: &mut String, lines: impl IntoIterator<Item = Line<'a>>) {
+    let lines = lines.into_iter();
+    out.reserve(lines.size_hint().0.saturating_mul(VIOLATION_BYTES));
+    let mut path = Spelled::new(literal);
+    list(out, lines, |out, item| {
+        violation(out, path.of(item.path), item)
+    });
+}
+
+/// A path as a json literal, for [`Spelled`].
+fn literal(path: &str) -> Cow<'_, str> {
+    Cow::Owned(string(path))
+}
+
+/// `path` is the json literal, already escaped.
+fn violation(out: &mut String, path: &str, item: Line<'_>) {
+    let mut fields = Fields::open(out);
+    fields.raw("path", path);
+    hit_fields(&mut fields, item.finding.hit);
+    fields.text("set", item.set);
+    fields.text("lint", item.finding.lint.name);
+    fields.text("level", level_name(item.finding.level));
+    fields.close();
 }
 
 /// The position in all three units, plus the character itself: a consumer
 /// that wants to show it should not have to parse `U+XXXX` back into a code
 /// point, and the escaper keeps it ASCII on the way out.
-fn hit_fields(hit: Hit) -> Vec<String> {
-    vec![
-        field("line", &number(hit.position.line)),
-        field("column", &number(hit.position.column)),
-        field("byte", &number(hit.position.byte)),
-        field("codepoint", &string(&codepoint(hit.character))),
-        field("character", &string(&String::from(hit.character))),
-    ]
+fn hit_fields(fields: &mut Fields<'_>, hit: Hit) {
+    fields.number("line", hit.position.line);
+    fields.number("column", hit.position.column);
+    fields.number("byte", hit.position.byte);
+    fields.number(
+        "codepoint",
+        format_args!("\"{}\"", Codepoint(hit.character)),
+    );
+    let mut buffer = [0_u8; 4];
+    fields.text("character", hit.character.encode_utf8(&mut buffer));
 }
 
 fn unread(items: &[Skipped<'_>]) -> String {
@@ -92,25 +125,26 @@ pub fn fix(
     unmapped: &[Violation<'_>],
     skipped: &[Skipped<'_>],
 ) -> String {
-    let rewrites: Vec<String> =
-        order::changes(items).into_iter().map(change).collect();
-    let kept: Vec<String> = order::violations(unmapped)
-        .into_iter()
-        .map(violation)
-        .collect();
-    object(&[
-        field("verb", &string("fix")),
-        field("rewrites", &array(&rewrites)),
-        field("unmapped", &array(&kept)),
-        field("skipped", &unread(skipped)),
-    ])
+    let mut out = String::new();
+    let mut doc = Fields::open(&mut out);
+    doc.text("verb", "fix");
+    let mut path = Spelled::new(literal);
+    let rewrites = order::changes(items);
+    list(doc.key("rewrites"), rewrites, |out, item| {
+        change(out, path.of(item.path), item);
+    });
+    violations(doc.key("unmapped"), order::lines(unmapped));
+    doc.raw("skipped", &unread(skipped));
+    doc.close();
+    out
 }
 
-fn change(item: &Change<'_>) -> String {
-    let mut fields = vec![field("path", &string(item.path))];
-    fields.extend(hit_fields(item.rewrite.hit));
-    fields.push(field("to", &string(&item.rewrite.to)));
-    object(&fields)
+fn change(out: &mut String, path: &str, item: &Change<'_>) {
+    let mut fields = Fields::open(out);
+    fields.raw("path", path);
+    hit_fields(&mut fields, item.rewrite.hit);
+    fields.text("to", &item.rewrite.to);
+    fields.close();
 }
 
 /// `stats`: one row per file, and every file that is not text.

@@ -38,6 +38,7 @@
 mod escape;
 mod human;
 mod json;
+mod line;
 mod name;
 mod order;
 mod sarif;
@@ -240,5 +241,71 @@ mod tests {
         let log = check(Format::Sarif, &[], &[]);
         assert!(log.contains("\"version\":\"2.1.0\""), "{log}");
         assert_eq!(sets(Format::Sarif, &[]), sets(Format::Json, &[]));
+    }
+}
+
+/// R17: a path is spelled once per RUN of findings rather than once per
+/// finding, so these hold the spelling to the path it belongs to when
+/// the path changes and changes back.
+#[cfg(test)]
+mod spelled_once {
+    use super::{Format, Violation, check};
+    use crate::lint::{Finding, Group, Level, Lint};
+    use crate::scan::{Hit, Position};
+
+    /// U+202E RIGHT-TO-LEFT OVERRIDE, in a file name.
+    const ODD: &str = "b\u{202e}.md";
+
+    fn at(path: &str, byte: usize) -> Violation<'_> {
+        let (line, column, character) = (1, byte, '\u{2014}');
+        let position = Position { line, column, byte };
+        let hit = Hit {
+            position,
+            character,
+        };
+        let (lint, level) =
+            (Lint::new("outside-set", Group::Charset), Level::Deny);
+        let (finding, set) = (Finding { hit, lint, level }, "ascii");
+        Violation { path, finding, set }
+    }
+
+    fn report(format: Format) -> String {
+        let items = [at(ODD, 2), at("a.md", 1), at(ODD, 1), at("c.md", 1)];
+        check(format, &items, &[])
+    }
+
+    #[test]
+    fn every_human_line_names_its_own_path() {
+        let expected = concat!(
+            "a.md:1:1 U+2014 ascii\n",
+            "b<U+202E>.md:1:1 U+2014 ascii\n",
+            "b<U+202E>.md:1:2 U+2014 ascii\n",
+            "c.md:1:1 U+2014 ascii"
+        );
+        assert_eq!(report(Format::Human), expected);
+    }
+
+    #[test]
+    fn every_json_violation_names_its_own_path() {
+        let said = report(Format::Json);
+        let paths: Vec<&str> = said
+            .split("\"path\":")
+            .skip(1)
+            .filter_map(|rest| rest.split(',').next())
+            .collect();
+        let odd = "\"b\\u202e.md\"";
+        assert_eq!(paths, ["\"a.md\"", odd, odd, "\"c.md\""]);
+    }
+
+    #[test]
+    fn every_sarif_result_names_its_own_uri() {
+        let said = report(Format::Sarif);
+        let uris: Vec<&str> = said
+            .split("\"uri\":")
+            .skip(1)
+            .filter_map(|rest| rest.split('}').next())
+            .collect();
+        let odd = "\"b%E2%80%AE.md\"";
+        assert_eq!(uris, ["\"a.md\"", odd, odd, "\"c.md\""]);
     }
 }

@@ -5,32 +5,60 @@
 //! them back in, and an ASCII document survives every pipe, terminal and log
 //! it will be read through. So every code point at or above `0x80` leaves as
 //! a `\u` escape, and the escaping is written by hand: no serde.
+//!
+//! Written INTO a caller's buffer (R17): a report of two million findings
+//! that built one `String` per escaped character spent its time in the
+//! allocator. Text that needs no escape at all -- nearly every path -- is
+//! copied in one piece.
+
+use std::fmt::Write;
 
 /// A json string literal: quoted, escaped, and pure ASCII.
 pub fn string(text: &str) -> String {
-    let mut out = String::from("\"");
-    for character in text.chars() {
-        out.push_str(&escaped(character));
-    }
-    out.push('"');
+    let mut out = String::with_capacity(text.len().saturating_add(2));
+    push(&mut out, text);
     out
+}
+
+/// [`string`], appended to `out`.
+pub fn push(out: &mut String, text: &str) {
+    out.push('"');
+    inner(out, text);
+    out.push('"');
+}
+
+/// [`push`] without the quotes: the escaped body of a literal whose other
+/// parts the caller writes.
+pub fn inner(out: &mut String, text: &str) {
+    if text.bytes().all(plain) {
+        out.push_str(text);
+    } else {
+        text.chars().for_each(|character| escaped(out, character));
+    }
+}
+
+/// A byte json carries as itself: printable ASCII, less the two that
+/// would end or escape the literal.
+const fn plain(byte: u8) -> bool {
+    matches!(byte, 0x20..=0x7E) && byte != b'"' && byte != b'\\'
 }
 
 /// One character as json writes it.
 ///
 /// The named escapes come first because they are shorter and because a
 /// reader recognises `\n` where `\u000a` reads as noise.
-fn escaped(character: char) -> String {
-    match character {
-        '"' => String::from("\\\""),
-        '\\' => String::from("\\\\"),
-        '\n' => String::from("\\n"),
-        '\r' => String::from("\\r"),
-        '\t' => String::from("\\t"),
-        '\u{8}' => String::from("\\b"),
-        '\u{c}' => String::from("\\f"),
-        _ => unnamed(character),
-    }
+fn escaped(out: &mut String, character: char) {
+    let named = match character {
+        '"' => "\\\"",
+        '\\' => "\\\\",
+        '\n' => "\\n",
+        '\r' => "\\r",
+        '\t' => "\\t",
+        '\u{8}' => "\\b",
+        '\u{c}' => "\\f",
+        _ => return unnamed(out, character),
+    };
+    out.push_str(named);
 }
 
 /// Everything without a named escape: printable ASCII passes through, the
@@ -38,20 +66,21 @@ fn escaped(character: char) -> String {
 ///
 /// DEL (`U+007F`) is escaped although json does not demand it: it is a
 /// control character, and a report is read in a terminal.
-fn unnamed(character: char) -> String {
+fn unnamed(out: &mut String, character: char) {
     let code = u32::from(character);
     if (0x20..0x7F).contains(&code) {
-        return String::from(character);
+        return out.push(character);
     }
     if code > 0xFFFF {
-        return surrogates(code);
+        return surrogates(out, code);
     }
-    unit(code)
+    unit(out, code);
 }
 
-/// One `\uXXXX` escape: lowercase hex, four digits.
-fn unit(code: u32) -> String {
-    format!("\\u{code:04x}")
+/// One `\uXXXX` escape: lowercase hex, four digits. Writing into a
+/// `String` cannot fail, so there is no error to pass on.
+fn unit(out: &mut String, code: u32) {
+    let _infallible = write!(out, "\\u{code:04x}");
 }
 
 /// An astral code point as the surrogate pair json requires.
@@ -61,13 +90,10 @@ fn unit(code: u32) -> String {
 /// each operand is under `0x400`, so the OR sets exactly the bits an
 /// addition would have carried into. It also cannot overflow, which spares
 /// this from being the one place that has to prove it can.
-fn surrogates(code: u32) -> String {
+fn surrogates(out: &mut String, code: u32) {
     let rest = code.saturating_sub(0x1_0000);
-    let high = 0xD800 | (rest >> 10);
-    let low = 0xDC00 | (rest & 0x3FF);
-    let mut out = unit(high);
-    out.push_str(&unit(low));
-    out
+    unit(out, 0xD800 | (rest >> 10));
+    unit(out, 0xDC00 | (rest & 0x3FF));
 }
 
 #[cfg(test)]
