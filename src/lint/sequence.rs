@@ -28,6 +28,9 @@ const VS16: char = '\u{FE0F}';
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Sequences {
     by_first: BTreeMap<char, Vec<String>>,
+    /// The longest listed sequence, in bytes: how far before a joinable
+    /// character a sequence holding it can start.
+    widest: usize,
 }
 
 impl Sequences {
@@ -44,22 +47,41 @@ impl Sequences {
         for held in by_first.values_mut() {
             held.sort_by_key(|text| Reverse(text.len()));
         }
-        Self { by_first }
+        let widest = by_first.values().flatten().map(String::len).max();
+        let widest = widest.unwrap_or(0);
+        Self { by_first, widest }
     }
 
     /// The byte offset of every joiner and tag character in `text` that
     /// sits inside a listed sequence, ascending. A text holding neither
     /// costs one pass and no lookup.
+    ///
+    /// Matching is tried only in a WINDOW before each joinable character
+    /// (R17). Every listed sequence holds one (a test holds the list to
+    /// that), so a sequence starting more than [`Sequences::widest`]
+    /// bytes before the next one cannot reach it and cannot match at
+    /// all. Every position skipped is one the walk would have stepped
+    /// past one character at a time, so the matches -- longest first,
+    /// left to right, a match consuming what it covers -- are exactly
+    /// those of trying every position.
     pub fn exempt(&self, text: &str) -> Vec<usize> {
         let mut found = Vec::new();
-        if !text.contains(joined) {
-            return found;
-        }
         let mut at = 0_usize;
-        while let Some(rest) = text.get(at..).filter(|r| !r.is_empty()) {
-            at = at.saturating_add(self.step(rest, at, &mut found));
+        while let Some(next) = next_joined(text, at) {
+            at = at.max(self.window(text, next));
+            while at <= next {
+                let rest = text.get(at..).unwrap_or_default();
+                at = at.saturating_add(self.step(rest, at, &mut found));
+            }
         }
         found
+    }
+
+    /// The first char boundary at which a listed sequence could start
+    /// and still reach the joinable character at `next`.
+    fn window(&self, text: &str, next: usize) -> usize {
+        let reach = self.widest.saturating_sub(1);
+        text.ceil_char_boundary(next.saturating_sub(reach))
     }
 
     /// Past one listed sequence at `at`, noting its exempt offsets, or
@@ -85,6 +107,13 @@ impl Sequences {
 /// Whether a character is one this exemption can let off.
 fn joined(c: char) -> bool {
     c == ZWJ || c == VS16 || TAGS.contains(&c)
+}
+
+/// The byte offset of the first joinable character at or after `at`.
+fn next_joined(text: &str, at: usize) -> Option<usize> {
+    let rest = text.get(at..)?;
+    let (offset, _) = rest.char_indices().find(|(_, c)| joined(*c))?;
+    at.checked_add(offset)
 }
 
 /// The offsets of the exemptible characters inside one sequence.
@@ -183,5 +212,126 @@ mod tests {
 
     fn tag(c: char) -> Option<char> {
         char::from_u32(u32::from(c).checked_add(0xE0000)?)
+    }
+}
+
+/// R17: the windowed walk against the walk it replaced, which tried every
+/// position once any joinable character was present. Kept here, as the
+/// reference, and nowhere else.
+#[cfg(test)]
+mod windowed {
+    use super::{Sequences, joined};
+
+    fn everywhere(held: &Sequences, text: &str) -> Vec<usize> {
+        let mut found = Vec::new();
+        if !text.contains(joined) {
+            return found;
+        }
+        let mut at = 0_usize;
+        while let Some(rest) = text.get(at..).filter(|r| !r.is_empty()) {
+            at = at.saturating_add(held.step(rest, at, &mut found));
+        }
+        found
+    }
+
+    /// Pieces a text is built from: letters of one to four bytes, every
+    /// joinable kind, the first characters of listed sequences, a skin
+    /// tone, a keycap, and a run of padding longer than any sequence.
+    const PIECES: [&str; 20] = [
+        "a",
+        "\u{e9}",
+        "\u{4E2D}",
+        "\u{1F468}",
+        "\u{1F469}",
+        "\u{1F467}",
+        "\u{200D}",
+        "\u{FE0F}",
+        "\u{2764}",
+        "\u{1F3F4}",
+        "\u{E0067}",
+        "\u{E0062}",
+        "\u{E0065}",
+        "\u{E006E}",
+        "\u{E007F}",
+        "1",
+        "\u{20E3}",
+        "\u{1F3FB}",
+        "\u{1F600}",
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    ];
+
+    /// A fixed pseudo-random walk (64-bit LCG), so a failure reproduces.
+    struct Draw(u64);
+
+    impl Draw {
+        /// A number below `n`, or 0 when `n` is 0.
+        fn below(&mut self, n: usize) -> usize {
+            self.0 = self
+                .0
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            let high = usize::try_from(self.0 >> 33).unwrap_or(0);
+            high.checked_rem(n).unwrap_or(0)
+        }
+    }
+
+    /// One text of up to 23 pieces, a quarter of them listed sequences.
+    fn text(draw: &mut Draw, listed: &[&str]) -> String {
+        let mut text = String::new();
+        for _ in 0..draw.below(24) {
+            let piece = match draw.below(4) {
+                0 => listed.get(draw.below(listed.len())),
+                _ => PIECES.get(draw.below(PIECES.len())),
+            };
+            text.push_str(piece.copied().unwrap_or_default());
+        }
+        text
+    }
+
+    fn same(held: &Sequences, text: &str) {
+        assert_eq!(held.exempt(text), everywhere(held, text), "{text:?}");
+    }
+
+    #[test]
+    fn the_window_finds_what_trying_everywhere_finds() {
+        let held = Sequences::builtin();
+        let listed: Vec<&str> = held
+            .by_first
+            .values()
+            .flatten()
+            .map(String::as_str)
+            .collect();
+        let mut draw = Draw(0x2545_F491_4F6C_DD1D);
+        for _ in 0..4000 {
+            same(&held, &text(&mut draw, &listed));
+        }
+    }
+
+    /// Every listed sequence, behind padding wider than the window, with
+    /// one character cut off its end, and doubled.
+    #[test]
+    fn every_listed_sequence_is_found_behind_padding_and_cut_short() {
+        let held = Sequences::builtin();
+        let pad = "y".repeat(held.widest.saturating_add(3));
+        for listed in held.by_first.values().flatten() {
+            let mut cut = listed.clone();
+            cut.pop();
+            same(&held, &format!("{pad}{listed}"));
+            same(&held, &format!("{pad}{cut}"));
+            same(&held, &listed.repeat(2));
+        }
+    }
+
+    /// What the window rests on: no listed sequence lacks a joinable
+    /// character, so none can match out of reach of one.
+    #[test]
+    fn every_listed_sequence_holds_a_joinable_character() {
+        let held = Sequences::builtin();
+        let bare = held
+            .by_first
+            .values()
+            .flatten()
+            .find(|s| !s.contains(joined));
+        assert_eq!(bare, None);
     }
 }
