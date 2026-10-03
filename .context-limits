@@ -139,7 +139,10 @@ src/lint/SPEC.md     775
 # Set 2026-10-03 with the split, ~12% over each measured spec: the hazard
 # group (four invariants, two bug rows) and the pedantic group (three
 # invariants, the open T58, one bug row).
-src/lint/hazard/SPEC.md   1550
+# hazard 1550 -> 1780 on 2026-10-03 for V113 and B66: the context-aware
+# library call `Hazards::lints_in`, and `lint_for` going crate-private.
+# Nothing to archive (T36 is already a stub). ~12% over the measured 1587.
+src/lint/hazard/SPEC.md   1780
 src/lint/pedantic/SPEC.md 1115
 # RAISED 740 -> 860, reviewed. The node gained a task row for the `fix`
 # verbs, which had NO row at all: the root spec's interface section named
@@ -191,7 +194,13 @@ src/lint/pedantic/SPEC.md 1115
 src/cli/SPEC.md      3000
 # Set 2026-10-02 with the split, ~12% over each measured spec: the hook
 # adapter (four invariants, four bug rows) and the explain verbs (V32).
-src/cli/guard/SPEC.md 1350
+# guard 1350 -> 1910 on 2026-10-03 for the guard DX wave, built together
+# and raised once: the hazard tiers (V110), next steps in every reason
+# (V111), silent non-text reads (V112), and the bug rows B64 (cap cut) and
+# B65 (invalid UTF-8 stdin), which amend V102 and V67. The text was cut
+# from ~1880 to 1703 before this moved; nothing to archive (T37 is a
+# stub). ~12% over the measured 1703.
+src/cli/guard/SPEC.md 1910
 src/cli/explain/SPEC.md  365
 src/scan/SPEC.md     470
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
@@ -261,17 +270,22 @@ src/render/SPEC.md   1680
 # ~12% over the measured 3323. The sub-nodes get rows of their own, ~12%
 # over their measured chains (emoji 4417, words 3664), for the reason the
 # cli sub-nodes did: emoji's chain is over the parent's lowered 3720.
+#
+# src/cli/guard 4920 -> 5370 and src/lint/hazard 4000 -> 4160 on
+# 2026-10-03, with the file rows above (V110-V113, B64-B66): ~12% over
+# the measured 4793 and 3718. guard now sits ~130 under the V103 cap of
+# 5500, so the next guard rule that needs room is a split, not a raise.
 src                  2390
 src/charset          4210
 src/charset/locale   5180
 src/cli              3960
 src/cli/explain      4190
-src/cli/guard        4920
+src/cli/guard        5370
 src/fix              3490
 src/fix/emoji        4660
 src/fix/words        3840
 src/lint             2790
-src/lint/hazard      4000
+src/lint/hazard      4160
 src/lint/pedantic    3660
 src/render           3450
 src/rules            3650
