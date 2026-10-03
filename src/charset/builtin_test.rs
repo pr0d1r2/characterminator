@@ -434,3 +434,20 @@ fn every_generator_fetch_makes_its_dir_and_reports_failure() {
         assert!(script.contains("curl -sSfL") && !script.contains("curl -sfL"));
     }
 }
+
+/// `src/cli/explain:V127`: every builtin set but the generated locales is
+/// curated -- it has a `#:` description -- and every description names a
+/// set the build declares, so `ctrm sets` cannot list an unexplained
+/// preset or explain one that is gone.
+#[test]
+fn every_builtin_preset_has_exactly_one_description() {
+    let described: Vec<&str> = super::described().map(|(n, _)| n).collect();
+    let built = catalog().unwrap_or_default();
+    let mut declared: Vec<&str> = built.names().collect();
+    let mut listed = described.clone();
+    declared.sort_unstable();
+    listed.sort_unstable();
+    assert_eq!(listed, declared);
+    assert!(described.first() == Some(&"ascii"));
+    assert!(super::described().all(|(_, said)| !said.trim().is_empty()));
+}

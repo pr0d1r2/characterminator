@@ -157,12 +157,12 @@ fn format_of(args: &Args) -> Result<Format, String> {
     }
 }
 
-/// How many paths a verb takes (V73): `sets` none, `explain` at most one,
-/// the rest any number. A path past that is REFUSED: `explain a.md b.txt`
-/// used to answer for `a.md` alone, which reads as an answer about both.
+/// How many paths a verb takes (V73): `explain` at most one, the rest any
+/// number; `sets` takes set names instead, each of which must resolve. A
+/// path past that is REFUSED: `explain a.md b.txt` used to answer for
+/// `a.md` alone, which reads as an answer about both.
 fn arity(verb: &str, paths: &[String]) -> Result<(), String> {
     let most = match verb {
-        "sets" => 0,
         "explain" => 1,
         _ => return Ok(()),
     };
@@ -283,8 +283,15 @@ fn explained(run: &Run<'_>) -> Outcome {
 /// `sets` resolves at the family the run's rules give (`src/rules:V29`),
 /// where `--fidelity` is already the rule `* @<f>`: reading the flag here
 /// as well ignored a `--rule '* @emoji'` that meant the same (B30).
+///
+/// Its words are set NAMES, not paths (`src/cli/explain:V127`).
 fn listed(run: &Run<'_>) -> Outcome {
-    said(run, explain::sets(run.config, run.format))
+    let asked = explain::Asked {
+        names: &run.args.paths,
+        locales: run.args.has("--locales"),
+        containing: run.args.value("--containing"),
+    };
+    said(run, explain::sets(run.config, run.format, &asked))
 }
 
 /// `fix` WRITES unless `--check` is given, which is V7's split: the verb
@@ -403,7 +410,9 @@ pub(super) const USAGE: &str =
     [--summary] [--max <n>]      one row per file and code point; at most n
   ctrm explain [<path>]          the set in force, and the rule behind it
     [--as args|lines|prompt]     or the config as flags, files, a prompt
-  ctrm sets [--fidelity <f>]     every declared set and what it holds
+  ctrm sets [<name>...]          the presets, what each is for, members
+    [--locales]                  the CLDR locale sets instead
+    [--containing <c>]           only the sets holding c (or U+XXXX)
   ctrm fix [--check] [<path>...] rewrite them, or report the drift
   ctrm stats [--bpe] [<path>...] what they cost now, and after a fix
   ctrm guard                     agent hook: hook JSON in, decision out

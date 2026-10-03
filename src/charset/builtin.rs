@@ -96,6 +96,16 @@ pub(crate) const SETS: &str = concat!(
     include_str!("hazard.ctrm-sets")
 );
 
+/// The curated presets in the order `ctrm sets` lists them, each with its
+/// one-line description (`src/cli/explain:V127`): the `#: <name> <text>`
+/// lines of the preset file. Kept beside the sets they describe, so a
+/// preset and the sentence about it are reviewed in one diff.
+pub(crate) fn described() -> impl Iterator<Item = (&'static str, &'static str)>
+{
+    SETS.lines()
+        .filter_map(|line| line.strip_prefix("#: ")?.split_once(' '))
+}
+
 /// The generated hazard file alone (`src/lint/hazard:V34`).
 ///
 /// Kept apart from [`SETS`] because the lint node reads it DIRECTLY: a

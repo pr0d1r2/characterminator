@@ -13,10 +13,9 @@
 
 use super::export::{self, Shape};
 use super::prompt;
-use crate::charset::CharSet;
 use crate::judge::{Checker, Config};
+use crate::render::explain as render_explain;
 use crate::render::{Explanation, Format, InForce};
-use crate::render::{explain as render_explain, sets as render_sets};
 use crate::rules::{self, Resolution, Sourced};
 
 /// `explain [<path>]`: the effective set for a path, and the rule behind
@@ -100,31 +99,9 @@ pub(crate) fn exported(
     }
 }
 
-/// `sets`: every declared set and what it holds.
-///
-/// Resolved at the family the run's rules give the whole repo, the
-/// question `explain` with no path asks (`src/rules:V29`): a preset with
-/// labelled members (`src/charset:V41`) holds different characters at
-/// another family, so `--fidelity emoji` and `--rule '* @emoji'`, which
-/// are one rule, list the same thing (B30).
-///
-/// Every CLDR locale set is listed, not only the ones the rules name.
-///
-/// # Errors
-///
-/// As [`Checker::configured`], plus a declared set that cannot be resolved --
-/// a cycle, or a member naming a set nothing declares.
-pub(crate) fn sets(config: &Config, format: Format) -> Result<String, String> {
-    let checker = Checker::listing(config)?;
-    let rules = config.rules()?;
-    let family = rules::resolve("", &rules, &rules::matches).family;
-    let listed: Vec<CharSet> = checker.declared(&family)?;
-    Ok(render_sets(format, &listed))
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{Config, run, sets};
+    use super::{Config, run};
     use crate::cli::testkit::fixture;
     use crate::render::Format;
     use std::path::Path;
@@ -185,75 +162,6 @@ mod tests {
         let words = std::iter::once("explain").chain(flags.split('|'));
         let argv: Vec<String> = words.map(str::to_owned).collect();
         crate::cli::config::from_argv(root, &argv).unwrap_or_default()
-    }
-
-    #[test]
-    fn sets_lists_what_a_name_holds() {
-        let Some(root) = fixture("ctrm-sets-fixture", &[]) else {
-            return;
-        };
-        let listed = sets(&crate::cli::config::discovered(&root), HUMAN)
-            .unwrap_or_default();
-        assert!(listed.contains("caveman"), "{listed}");
-        assert!(listed.contains("U+2192"), "{listed}");
-    }
-
-    /// A repo's own declarations are listed beside the builtins, because
-    /// the question `sets` answers is "what may I name here".
-    #[test]
-    fn sets_lists_what_the_repo_declared_too() {
-        let files = [(".ctrm-sets", "house U+2261\n")];
-        let Some(root) = fixture("ctrm-sets-declared-fixture", &files) else {
-            return;
-        };
-        let listed = sets(&crate::cli::config::discovered(&root), HUMAN)
-            .unwrap_or_default();
-        assert!(listed.contains("house U+2261"), "{listed}");
-    }
-
-    /// `src/charset/locale:V61`: the listing carries every locale, while the
-    /// catalog a check reads holds only the locales its rules name.
-    #[test]
-    fn sets_lists_every_locale_but_a_check_reads_only_the_named() {
-        let files = [(".ctrm", "*.md ascii+pl\n")];
-        let Some(root) = fixture("ctrm-sets-locale-fixture", &files) else {
-            return;
-        };
-        let config = crate::cli::config::discovered(&root);
-        let listed = sets(&config, HUMAN).unwrap_or_default();
-        assert!(listed.contains("ja U+3005"), "{listed}");
-        assert!(listed.contains("pt-BR U+"), "{listed}");
-        let catalog = config.catalog().unwrap_or_default();
-        assert!(catalog.get("pl").is_some());
-        assert!(catalog.get("ja").is_none());
-    }
-
-    /// V41 is visible here: `marks` holds different characters at another
-    /// fidelity, so the listing has to be asked for one.
-    #[test]
-    fn sets_lists_a_preset_at_the_fidelity_it_was_asked_for() {
-        let Some(root) = fixture("ctrm-sets-fidelity-fixture", &[]) else {
-            return;
-        };
-        let text = sets(&crate::cli::config::discovered(&root), HUMAN)
-            .unwrap_or_default();
-        let emoji =
-            sets(&argued(&root, "--fidelity|emoji"), HUMAN).unwrap_or_default();
-        assert!(text.contains("U+2713"), "{text}");
-        assert!(emoji.contains("U+2705"), "{emoji}");
-        assert_ne!(text, emoji);
-    }
-
-    /// B30: `--fidelity f` IS the rule `* @f`, so the listing cannot tell
-    /// them apart; it used to read the flag and ignore the rule.
-    #[test]
-    fn sets_lists_at_the_family_a_rule_names_as_at_the_flag() {
-        let Some(root) = fixture("ctrm-sets-rule-family-fixture", &[]) else {
-            return;
-        };
-        let flag = sets(&argued(&root, "--fidelity|emoji"), HUMAN);
-        let rule = sets(&argued(&root, "--rule|* @emoji"), HUMAN);
-        assert!(flag.is_ok() && flag == rule, "{flag:?} {rule:?}");
     }
 
     /// B30: a family the map's tree does not declare is refused, at the

@@ -124,6 +124,13 @@ where
     Ok(())
 }
 
+/// Every locale set's name, in file order, without parsing a member:
+/// what `ctrm sets` counts when it does not list them.
+pub(crate) fn names() -> impl Iterator<Item = &'static str> {
+    let declaring = LOCALES.lines().filter(|line| !line.starts_with('#'));
+    declaring.filter_map(|line| line.split_whitespace().next())
+}
+
 /// Declare EVERY locale set `catalog` lacks: what `ctrm sets` lists, since
 /// its question is "what may I name here".
 ///

@@ -87,7 +87,6 @@ fn a_path_the_verb_would_ignore_is_refused() {
         let verb = words.first().copied().unwrap_or_default();
         prepared(verb, &argv(words)).err().unwrap_or_default()
     };
-    assert!(refused(&["sets", "a.md"]).contains("`a.md`"));
     assert!(refused(&["explain", "a.md", "b.txt"]).contains("`b.txt`"));
     let as_args = ["explain", "--as", "args", "a.md", "b.txt"];
     assert!(refused(&as_args).contains("`b.txt`"));

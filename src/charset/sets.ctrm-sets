@@ -11,6 +11,12 @@
 #
 # `ascii` is NOT here. It is the one set that must survive
 # `--no-builtin-sets`, so it lives in code (`src/rules:V21`).
+#
+# A `#: <name> <description>` line is a comment to the set grammar and
+# DATA to `ctrm sets` (`src/cli/explain:V127`): the curated presets, in
+# the order they are listed, each with the one line that says what it is
+# for. A preset without one is not curated and lists after them.
+#: ascii printable ASCII, tab and newline: the default everywhere
 
 # The symbols a caveman-compressed document is made of. The first eleven are
 # FORMAT.md's own list; the rest are what the corpus actually contained, and
@@ -22,12 +28,14 @@
 # MULTIPLICATION SIGN, LOGICAL OR, LOGICAL AND, NOT SIGN, LEFTWARDS ARROW,
 # LEFT RIGHT ARROW, LEFT RIGHT DOUBLE ARROW, ALMOST EQUAL TO, EMPTY SET,
 # SUBSET OF OR EQUAL TO, UNION, INTERSECTION, UPWARDS ARROW, DOWNWARDS ARROW
+#: caveman the logic and arrow symbols compressed notation uses
 caveman U+2192 U+2234 U+2200 U+2203 U+22A5 U+2260 U+2208 U+2209 U+2264 U+2265 U+00A7 U+21D2 U+2235 U+00B7 U+00D7 U+2228 U+2227 U+00AC U+2190 U+2194 U+21D4 U+2248 U+2205 U+2286 U+222A U+2229 U+2191 U+2193
 
 # Box Drawing, then Geometric Shapes: the two blocks a drawn diagram uses.
 # Granted whole rather than character by character -- a diagram reaches for
 # whichever corner and shade it needs, and a set that held only the ones
 # seen so far would fail on the next drawing.
+#: box box drawing and geometric shapes
 box U+2500-U+257F U+25A0-U+25FF
 
 # The mathematics that appears in prose rather than in a formula.
@@ -36,11 +44,13 @@ box U+2500-U+257F U+25A0-U+25FF
 # SUPERSCRIPT TWO, SUPERSCRIPT THREE, LESS-THAN OR EQUAL TO, GREATER-THAN OR
 # EQUAL TO, NOT EQUAL TO, ALMOST EQUAL TO, INFINITY, MICRO SIGN, SQUARE
 # ROOT, N-ARY SUMMATION, GREEK SMALL LETTER PI
+#: math the mathematics that turns up in prose
 math U+00D7 U+00F7 U+00B1 U+00B0 U+00B2 U+00B3 U+2264 U+2265 U+2260 U+2248 U+221E U+00B5 U+221A U+2211 U+03C0
 
 # COPYRIGHT SIGN, REGISTERED SIGN, TRADE MARK SIGN. R5 found these across
 # the fleet and nothing maps them: a notice that says `(c)` is a different
 # notice.
+#: legal copyright, registered, trade mark
 legal U+00A9 U+00AE U+2122
 
 # Real typography, which is a GRANT and not a default (V26).
@@ -55,6 +65,7 @@ legal U+00A9 U+00AE U+2122
 # then SINGLE and DOUBLE LOW-9 and HIGH-REVERSED-9 QUOTATION MARK: the
 # map targets those too (B73), so a granted Polish quotation keeps both
 # of its quotes rather than losing the opening one alone.
+#: typography real dashes, curly and low-9 quotes, ellipsis, no-break space
 typography U+2014 U+2013 U+2018 U+2019 U+201C U+201D U+2026 U+00AB U+00BB U+00A0 U+2212 U+201A U+201B U+201E U+201F
 
 # Emoji as SINGLE code points only (V31). No variation selector, no skin
@@ -70,6 +81,7 @@ typography U+2014 U+2013 U+2018 U+2019 U+201C U+201D U+2026 U+00AB U+00BB U+00A0
 # back once a range has given it, so the gap has to be in how the range is
 # written. `src/charset/SPEC.md` I states the block unbroken; V31 is the
 # narrower rule and wins.
+#: emoji emoji as single code points; a sequence compresses to one
 emoji U+1F300-U+1F3FA U+1F400-U+1FAFF U+2600-U+27BF
 
 # The status marks, in BOTH spellings, each labelled with the fidelity it
@@ -83,11 +95,13 @@ emoji U+1F300-U+1F3FA U+1F400-U+1FAFF U+2600-U+27BF
 #
 # CHECK MARK, BALLOT X, RIGHTWARDS ARROW @ text; WHITE HEAVY CHECK MARK,
 # CROSS MARK, BLACK RIGHTWARDS ARROW @ emoji.
+#: marks check, cross, warning, arrow -- in both spellings
 marks U+26A0 text:U+2713 text:U+2717 text:U+2192 emoji:U+2705 emoji:U+274C emoji:U+27A1
 
 # CARRIAGE RETURN, alone. Separate from `ascii` because a file granting it
 # is making a decision about LINE ENDINGS, not about characters, and that
 # decision deserves to be visible in the rule that makes it.
+#: cr carriage return, alone
 cr U+000D
 
 # COARSE BLOCKS. V23 recommends these ONLY for multi-language data such as
@@ -98,10 +112,15 @@ cr U+000D
 # locale code, which is generated from CLDR (`src/charset/locale:V30`).
 #
 # Latin-1 Supplement; Latin Extended-A; Cyrillic; Greek and Coptic; Arabic.
+#: latin1 coarse block, Latin-1 Supplement: multi-language data only
 latin1 U+0080-U+00FF
+#: latin-ext coarse block, Latin Extended-A: multi-language data only
 latin-ext U+0100-U+017F
+#: cyrillic coarse block, Cyrillic: multi-language data only
 cyrillic U+0400-U+04FF
+#: greek coarse block, Greek and Coptic: multi-language data only
 greek U+0370-U+03FF
+#: arabic coarse block, Arabic: multi-language data only
 arabic U+0600-U+06FF
 
 # SCRIPTS WHOSE SPELLING NEEDS A JOINER (`src/lint/hazard:V57`). Persian writes
@@ -110,11 +129,23 @@ arabic U+0600-U+06FF
 # naming one of these presets is the explicit grant that says this file is
 # in that script. Nothing else is excused: `persian` leaves out U+061C,
 # ARABIC LETTER MARK, because a bidi control stays a hazard in any script.
+#: persian Persian script, with the zero width non-joiner it spells with
 persian U+0600-U+061B U+061D-U+06FF U+200C
+#: hindi Devanagari script, with the joiners it spells with
 hindi U+0900-U+097F U+200C-U+200D
 
 # Every code point there is, which is how a file opts OUT of being checked
 # while staying in the configuration rather than disappearing from it: a
 # path granted `any` still has a rule, an origin, and a line `explain` can
 # print. The gap is the surrogate range, which holds no character.
+#: any everything, for a file you do not own -- hazards still fire
 any U+0000-U+D7FF U+E000-U+10FFFF
+
+# The generated hazard sets live in `hazard.ctrm-sets`, which has no
+# hand-written lines; their descriptions are kept here, with the rest.
+#: hazard invisible and reordering characters: never granted, always fail
+#: hazard-bidi bidi controls, which reorder what a reader sees
+#: hazard-tag tag characters: invisible ASCII a model still reads
+#: hazard-bom a byte order mark anywhere but byte 0
+#: hazard-control C0 and C1 controls other than tab, newline and carriage return
+#: hazard-invisible zero width and other invisible characters

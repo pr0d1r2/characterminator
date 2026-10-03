@@ -14,7 +14,7 @@ pub(crate) mod set;
 
 pub(crate) use builtin::ASCII;
 pub use compose::{ComposeError, SetCatalog};
-pub(crate) use locale::{adopt, adopt_all};
+pub(crate) use locale::{adopt, adopt_all, names as locale_names};
 pub(crate) use parse::{
     ParseError, SetDefinition, SetMember, code_points, parse_line,
 };

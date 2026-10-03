@@ -24,6 +24,7 @@ const VALUED: &[&str] = &[
     "-C",
     "--as",
     "--max",
+    "--containing",
 ];
 
 /// The flags that stand alone.
@@ -36,6 +37,7 @@ const SWITCHES: &[&str] = &[
     "--no-builtin-sets",
     "--strict",
     "--pedantic",
+    "--locales",
     // Accepted on every verb and changes nothing: ctrm never prints colour,
     // so there is none to turn off. It is in the table because unknown
     // flags are REFUSED, and a wrapper that passes `--no-color` to every
@@ -58,6 +60,8 @@ const OWNED: &[(&str, &str)] = &[
     ("--as", "explain"),
     ("--summary", "check"),
     ("--max", "check"),
+    ("--locales", "sets"),
+    ("--containing", "sets"),
 ];
 
 /// Ends the flags: every word after it is a path, so a file whose name

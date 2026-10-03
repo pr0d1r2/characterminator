@@ -40,6 +40,7 @@ mod group;
 mod human;
 mod json;
 mod line;
+mod listing;
 mod name;
 mod order;
 mod sarif;
@@ -47,6 +48,7 @@ mod total;
 mod value;
 
 pub(crate) use escape::string as json_string;
+pub(crate) use listing::{Listed, Listing, SetKind, listing};
 pub(crate) use name::codepoint;
 
 use crate::charset::CharSet;

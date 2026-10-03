@@ -8,4 +8,4 @@
 
 mod lookup;
 
-pub(crate) use lookup::{adopt, adopt_all};
+pub(crate) use lookup::{adopt, adopt_all, names};

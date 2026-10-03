@@ -167,7 +167,7 @@ Pin both actions to a commit SHA in real use.
 | `ctrm stats [--bpe] [<path>...]` | what the files cost now, and after a fix |
 | `ctrm explain [<path>]` | the set in force, and the config line that decided it |
 | `ctrm explain [<path>] --as args\|lines\|prompt` | the whole configuration as flags, as data files, or as an agent prompt |
-| `ctrm sets [--fidelity <f>]` | every declared set and what it holds |
+| `ctrm sets [<name>...] [--locales] [--containing <c>]` | the curated presets and what each is for, then your own; locales on request |
 | `ctrm guard` | agent hook: hook JSON in, decision JSON out. See [guarding an agent](#guarding-an-agent) |
 
 Every verb but `guard` takes `--format json`, which is a stable contract:
@@ -304,7 +304,13 @@ hazard-bidi U+061C U+200E-U+200F U+202A-U+202E U+2066-U+2069
 
 ## The sets
 
-`ctrm sets` lists them with their members. The shape is small on purpose:
+`ctrm sets` lists them with their members, the curated presets first, each
+with the line below that says what it is for, then any your repository
+declares. The CLDR locales are counted in one line rather than listed:
+`ctrm sets --locales` lists them, `ctrm sets pl typography` lists just the
+sets you name, and `ctrm sets --containing U+22A5` (or the character itself)
+answers which sets hold a code point. `--format json` says the same, with
+each set's `kind` and `description`. The shape is small on purpose:
 measured across 227 repositories, a typical non-ASCII file needs `ascii`
 plus **one** of these.
 
@@ -318,7 +324,7 @@ plus **one** of these.
 | `box` | box drawing and geometric shapes |
 | `emoji` | emoji as single code points |
 | `cr` | carriage return, alone |
-| `pl`, `ja`, `pt-BR`, `sr-Latn`, ... | one locale's letters, from CLDR, both cases: every locale CLDR ships (766, CJK, Indic and RTL included), named by its code; a variant equal to its parent is an alias (`pt-BR` is `pt`). `<code>-aux` adds its loan letters; a locale whose letters are all ASCII (`en`) is `ascii`, and its `-aux` alone adds anything. Read only when a rule names one, and listed by `ctrm sets` |
+| `pl`, `ja`, `pt-BR`, `sr-Latn`, ... | one locale's letters, from CLDR, both cases: every locale CLDR ships (766, CJK, Indic and RTL included), named by its code; a variant equal to its parent is an alias (`pt-BR` is `pt`). `<code>-aux` adds its loan letters; a locale whose letters are all ASCII (`en`) is `ascii`, and its `-aux` alone adds anything. Read only when a rule names one, and listed by `ctrm sets --locales` |
 | `latin1`, `latin-ext`, `cyrillic`, `greek`, `arabic` | coarse blocks |
 | `persian`, `hindi` | a script whose spelling needs a zero width joiner: naming one is what lets that joiner through, and nothing else |
 | `any` | everything, for a file you do not own -- hazards still fire |
@@ -346,11 +352,13 @@ is kept and reported unless a `.ctrm-map` line says what it becomes.
 same mark, and which one you get depends on the fidelity in force:
 
 ```text
-$ ctrm sets | grep marks
-marks U+2192 U+26A0 U+2713 U+2717
+$ ctrm sets marks
+marks -- check, cross, warning, arrow -- in both spellings
+  U+2192 U+26A0 U+2713 U+2717
 
-$ ctrm sets --fidelity emoji | grep marks
-marks U+26A0 U+2705 U+274C U+27A1
+$ ctrm sets marks --fidelity emoji
+marks -- check, cross, warning, arrow -- in both spellings
+  U+26A0 U+2705 U+274C U+27A1
 ```
 
 So a rule can say "this directory speaks emoji" once, rather than listing
