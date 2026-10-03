@@ -182,7 +182,13 @@ src/lint/pedantic/SPEC.md 1115
 # `explain` sub-nodes took V32, V35, V53, V66, V67 and their bug rows
 # with them. ~12% over the measured 1951, so the parent cannot quietly
 # regrow into the room its children took.
-src/cli/SPEC.md      2540
+# 2540 -> 3000 on 2026-10-03 for the DX review: V115 (the run root is the
+# git work tree, so `cd docs; ctrm check` reads the repo's `.ctrm`) and its
+# bug row B67. Nothing left to archive: every finished row is a stub. The
+# rule was cut from ~150 tokens to ~95 before this moved; the help and
+# message rules of the same review go to a `usage` sub-node instead of
+# here. 3000 is ~12% over the measured 2674.
+src/cli/SPEC.md      3000
 # Set 2026-10-02 with the split, ~12% over each measured spec: the hook
 # adapter (four invariants, four bug rows) and the explain verbs (V32).
 src/cli/guard/SPEC.md 1350
