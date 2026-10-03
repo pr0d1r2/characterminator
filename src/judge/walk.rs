@@ -19,19 +19,28 @@ pub(crate) struct File {
     pub(crate) text: Result<String, Unreadable>,
 }
 
+/// A bare run over a work tree with nothing tracked (V118). A run that
+/// judged no file printed nothing and exited 0, which is the clean verdict
+/// -- about files nobody looked at (B69).
+pub(crate) const NOTHING_TRACKED: &str =
+    "no git-tracked files to check -- `git add` them or name paths";
+
 /// Every file `paths` names under `root` -- the git-tracked fileset when
 /// it names none (`src/tokens:V9`) -- in order, each read when reached.
 ///
 /// # Errors
 ///
-/// A path the fileset refuses, up front; then, per file, one that cannot
-/// be read, named with its path.
+/// A path the fileset refuses, or a bare run with nothing tracked (V118),
+/// up front; then, per file, one that cannot be read, named with its path.
 pub(crate) fn files(
     root: &Path,
     paths: &[String],
 ) -> Result<impl Iterator<Item = Result<File, String>>, String> {
     let selected = tokens::select(root, paths)
         .map_err(|bad| format!("{}: {}", bad.path.display(), bad.reason))?;
+    if paths.is_empty() && selected.is_empty() {
+        return Err(NOTHING_TRACKED.to_owned());
+    }
     let root = root.to_owned();
     Ok(selected.into_iter().map(move |full| read(&root, full)))
 }
@@ -64,8 +73,28 @@ pub(crate) fn shown_path(root: &Path, full: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::shown_path;
+    use super::{NOTHING_TRACKED, files, shown_path};
     use std::path::Path;
+
+    /// B69 / V118: a bare run in a work tree tracking nothing is refused,
+    /// not answered with the silence of a clean run. Skipped without git.
+    #[test]
+    fn a_bare_run_with_nothing_tracked_is_refused() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("ctrm-nothing-tracked-fixture");
+        let made = std::fs::create_dir_all(&root).and_then(|()| {
+            std::process::Command::new("git")
+                .args(["init", "-q"])
+                .current_dir(&root)
+                .status()
+        });
+        if !made.is_ok_and(|status| status.success()) {
+            return;
+        }
+        let refused = files(&root, &[]).err();
+        assert_eq!(refused.as_deref(), Some(NOTHING_TRACKED));
+    }
 
     #[test]
     fn a_path_is_shown_relative_to_the_root() {

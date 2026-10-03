@@ -302,6 +302,9 @@ impl Map {
         number: usize,
     ) -> Result<(), Error> {
         let entry = entry.ok_or(Error::Syntax { line: number })?;
+        if never_withheld(&entry.from) {
+            return Err(Error::NeverRewritten { line: number });
+        }
         self.entries.push(entry);
         Ok(())
     }
@@ -397,6 +400,15 @@ pub(crate) fn named(word: &str) -> Option<String> {
         return None;
     }
     Some(word.to_owned())
+}
+
+/// Whether every character of a source is in `ascii`, which every rule
+/// grants (`src/rules:V24`) and no hazard touches: such a source is never
+/// a violation, so it is never rewritten (V6). `foo bar` parsed as a map
+/// line that did nothing (`src/judge:V116`, B68).
+fn never_withheld(source: &str) -> bool {
+    let ascii = crate::charset::builtin::ascii();
+    source.chars().all(|ch| ascii.contains(ch))
 }
 
 /// Whether any character of `text` is one the caller disallows.

@@ -264,6 +264,23 @@ fn a_rule_naming_an_undeclared_set_is_refused_at_its_origin() {
     assert!(why.contains("argv[4]") && why.contains("asci"), "{why}");
 }
 
+/// B68 / `src/judge:V116`: `ascii`, `any` and the `hazard*` names are
+/// the tool's own, so a declared set taking one is refused at its
+/// origin. Any other preset may still be replaced (`src/rules:V19`).
+#[test]
+fn a_set_taking_a_reserved_name_is_refused_at_its_origin() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let validated = |line: &str| {
+        let words = argv(&["check", "--no-files", "--set", line]);
+        from_argv(root, &words).and_then(|c| c.validate())
+    };
+    for line in ["ascii U+00E9", "any U+0041", "hazard-bom U+0041"] {
+        let why = validated(line).err().unwrap_or_default();
+        assert!(why.contains("argv[4]") && why.contains("reserved"), "{why}");
+    }
+    assert_eq!(validated("box U+2261"), Ok(()));
+}
+
 /// A tree that is a git work tree to `root_of` (a `.git` directory is
 /// all it asks), granting `typography` under `docs/` only.
 fn work_tree(name: &str) -> Option<PathBuf> {

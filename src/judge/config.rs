@@ -182,10 +182,33 @@ fn set_line(
     origin: rules::Origin,
 ) -> Result<SetDefinition, rules::ParseError> {
     match charset::parse_line(line) {
-        Ok(Some(declared)) => Ok(declared),
+        Ok(Some(declared)) => unreserved(declared, origin),
         // The chain skips blank and comment lines before calling this, so
         // a line declaring nothing cannot arrive here.
         Ok(None) => Err(rules::error(origin, "declares no set")),
         Err(bad) => Err(rules::error(origin, bad.to_string())),
     }
+}
+
+/// A declared set may not take a name the tool itself relies on (V116):
+/// `ascii`, the base every rule adds; `any`, the explicit opt-out; and the
+/// `hazard*` classes. A `.ctrm-sets` line `ascii U+00E9` used to replace
+/// the base, and every ASCII byte in the tree became a violation (B68).
+/// Every other preset name stays replaceable (`src/rules:V19`), and the
+/// builtin data, which DEFINES `any` and the hazard sets, is exempt.
+fn unreserved(
+    declared: SetDefinition,
+    origin: rules::Origin,
+) -> Result<SetDefinition, rules::ParseError> {
+    let name = declared.name.as_str();
+    let reserved =
+        name == charset::ASCII || name == "any" || name.starts_with("hazard");
+    if !reserved || matches!(origin, rules::Origin::Builtin { .. }) {
+        return Ok(declared);
+    }
+    let why = format!(
+        "set `{name}` is reserved and cannot be redeclared \
+         (`ascii`, `any` and `hazard*` are the tool's own) -- pick another name"
+    );
+    Err(rules::error(origin, why))
 }

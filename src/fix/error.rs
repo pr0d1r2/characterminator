@@ -11,6 +11,9 @@
 pub enum Error {
     /// A map line that is not one of the declared forms, by 1-based number.
     Syntax { line: usize },
+    /// A map line whose source every set grants, so it can never be
+    /// rewritten (`src/judge:V116`).
+    NeverRewritten { line: usize },
     /// A replacement is rewritten again without ever settling, so the map
     /// chains back to a source it already used.
     MapCycle,
@@ -35,7 +38,9 @@ impl Error {
     /// the fault belongs to the map as a whole.
     fn subject(&self) -> String {
         match self {
-            Self::Syntax { line } => format!("map line {line}"),
+            Self::Syntax { line } | Self::NeverRewritten { line } => {
+                format!("map line {line}")
+            }
             Self::UnknownFamily { name }
             | Self::FamilyCycle { name }
             | Self::UnrootedFamily { name } => format!("family '{name}'"),
@@ -63,6 +68,10 @@ impl Error {
     const fn reason(&self) -> &'static str {
         match self {
             Self::Syntax { .. } => "is not a declared form",
+            Self::NeverRewritten { .. } => {
+                "maps a source made only of `ascii`, which every set grants, \
+                 so it would never be rewritten"
+            }
             Self::MapCycle => "rewrites in a cycle and never settles",
             Self::UnknownFamily { .. } => "is not declared",
             Self::UnknownMap { .. } => "is not a builtin map (V51)",

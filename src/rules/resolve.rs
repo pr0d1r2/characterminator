@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn a_later_rule_overrides_one_level_and_leaves_the_rest() {
-        let lines = &["* !pedantic=warn !hazard=deny", "src/* !pedantic=allow"];
+        let lines = &["* !pedantic=warn !crlf=deny", "src/* !pedantic=allow"];
         let levels = resolved("src/main.rs", &rules(lines)).levels;
         let pedantic = levels.first().map(|held| held.level);
         assert_eq!(pedantic, Some(Level::Allow));

@@ -11,7 +11,7 @@
 //! level, and anything else is the set list. That is why the parse needs
 //! no lookahead and no dependency.
 
-use crate::lint::Level;
+use crate::lint::{Group, Level, Target};
 use crate::rules::line::{ParseError, error};
 use crate::rules::{LevelChoice, Origin, Rule};
 
@@ -132,12 +132,33 @@ fn add_level(
     if target.is_empty() {
         return Err(error(origin.clone(), "`!=` needs a lint or a group"));
     }
-    let level = level_named(name, origin)?;
+    let level = unlowered(target, level_named(name, origin)?, origin)?;
     rule.levels.push(LevelChoice {
         target: target.to_string(),
         level,
     });
     Ok(())
+}
+
+/// A level for the `hazard` group or one of its lints must be `forbid`
+/// (V117). `src/lint:V36` keeps them there whatever a rule says, so
+/// `!hazard=warn` was accepted and ignored -- a line that read as a
+/// lowering that worked (B68).
+fn unlowered(
+    target: &str,
+    level: Level,
+    origin: &Origin,
+) -> Result<Level, ParseError> {
+    let hazard = match Target::named(target) {
+        Some(Target::Group(group)) => group == Group::Hazard,
+        Some(Target::Lint(lint)) => lint.group == Group::Hazard,
+        None => false,
+    };
+    if hazard && level != Level::Forbid {
+        let why = "hazard lints are forbid and cannot be lowered";
+        return Err(error(origin.clone(), why));
+    }
+    Ok(level)
 }
 
 /// The rule's own level, the one a named target falls back to.
@@ -182,6 +203,23 @@ mod tests {
 
     /// V75: a pattern alone grants and levels nothing, so it is refused at
     /// its origin rather than accepted as a rule that did nothing.
+    /// V117: a hazard stays forbid, so a line lowering it is refused
+    /// rather than accepted and ignored (B68). Naming forbid is no
+    /// lowering, and a pedantic lint may be set to anything.
+    #[test]
+    fn a_line_lowering_a_hazard_is_refused() {
+        for line in [
+            "* !hazard=warn",
+            "* !bidi-control=allow",
+            "* !invisible=deny",
+        ] {
+            let said = parse_rule(line, origin()).err().map(|e| e.to_string());
+            let said = said.unwrap_or_default();
+            assert!(said.contains("cannot be lowered"), "{line}: {said}");
+        }
+        assert!(parse("* !hazard=forbid !crlf=allow").is_some());
+    }
+
     #[test]
     fn a_pattern_alone_is_refused() {
         let failure = parse_rule("docs/**", Origin::Argument { index: 3 });

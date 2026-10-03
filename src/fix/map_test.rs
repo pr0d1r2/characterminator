@@ -20,6 +20,16 @@ fn reads_a_line_in_either_form() {
     assert_eq!(map.entries().len(), 2);
 }
 
+/// B68 / `src/judge:V116`: a source every set grants is never a
+/// violation, so a line mapping it did nothing and was accepted.
+#[test]
+fn a_source_made_only_of_ascii_is_refused() {
+    let never = Err(Error::NeverRewritten { line: 2 });
+    assert_eq!(parse("U+2014 -\nfoo bar\n"), never);
+    assert_eq!(parse("U+2014 -\nword U+0041 b\n"), never);
+    assert!(parse("U+000D\nfoo\u{2014} x\n").is_ok());
+}
+
 #[test]
 fn an_absent_replacement_is_an_explicit_delete() {
     let map = parsed("U+200B\n");

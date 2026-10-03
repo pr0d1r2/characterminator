@@ -28,18 +28,37 @@ fn report(name: &str, ctrm: &str, files: &[(&str, &str)]) -> String {
     found.map(|r| r.text).unwrap_or_else(|why| why)
 }
 
+/// The lines that try to talk a hazard down -- allowing the group or a
+/// lint, redeclaring a class as harmless -- are REFUSED at their origin
+/// (`src/rules:V117`, `src/judge:V116`), where they used to be accepted
+/// and ignored, which read as a lowering that worked (B68).
+#[test]
+fn a_line_lowering_a_hazard_is_refused_at_its_origin() {
+    let lowering = [
+        ["--rule", "* any !hazard=allow"],
+        ["--rule", "* any !invisible=warn"],
+        ["--rule", "* any !bidi-control=deny"],
+        ["--set", "hazard-invisible U+0041"],
+    ];
+    let here = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    for [flag, value] in lowering {
+        let words = crate::cli::testkit::argv(&["check", flag, value]);
+        let config = crate::cli::config::from_argv(here, &words);
+        let why = config.and_then(|c| c.validate()).err().unwrap_or_default();
+        assert!(why.contains("argv[3]"), "{value}: {why}");
+    }
+}
+
 /// The whole path, through a real `.ctrm`: a rule that grants `any`
-/// and tries to allow the group, the lint, and the charset findings,
-/// plus a `.ctrm-sets` that redeclares the class as harmless. None of
-/// it lowers the forbid (V36), and the run fails.
+/// and allows the charset findings does not lower the forbid (V36), and
+/// the run fails.
 #[test]
 fn no_configuration_talks_a_hazard_down() {
     let files = [
-        (".ctrm", "* any !hazard=allow !invisible=allow !allow\n"),
-        (".ctrm-sets", "hazard-invisible U+0041\n"),
+        (".ctrm", "* any !hazard=forbid !allow\n"),
         ("smuggled.txt", "fine\u{200B}\n"),
     ];
-    let Some(root) = fixture("ctrm-hazard-fixture", &files) else {
+    let Some(root) = fixture("ctrm-hazard-forbid-fixture", &files) else {
         return;
     };
     let paths = [String::from("smuggled.txt")];

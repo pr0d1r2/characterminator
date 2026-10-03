@@ -32,6 +32,8 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
 V71: path matched (`src/rules`) & shown in LEXICAL normal form: `.` dropped, `..` folded ∴ `sub/../sub/c.md` ≡ `sub/c.md` ∀ anchored rule. symlink ⊥ resolved.
 V99: ∀ verb & `guard` judge bytes through ONE `Checker` ∴ ⊥ two verdicts on the same bytes (`src/cli/guard:V35`, `src/cli:V80`). per char ≤ 1 finding: hazard > `outside-set` > pedantic (`src/lint/pedantic:V55`); a hazard stops the scan even where the set grants it (`src/lint/hazard:V34`); `allow` ⊥ reported. a union = resolved once per sets + family. runner: `checker_test.rs` & children.
+V116: a config line that ⊥ can take effect → refused at its origin, exit 2 (`src/cli:V74`): a declared set (⊥ builtin) named `ascii`, `any` | `hazard*` ∵ the intrinsic base, the opt-out & the forbid classes (`ascii` redeclared made every ASCII byte a violation); other preset names stay replaceable (`src/rules:V19`). map source w/ ⊥ char outside `ascii` (`foo bar`) ∵ every set grants it ∴ ⊥ rewritten (`src/fix:V6`). runner `config_test.rs`, `src/fix/map_test.rs`.
+V118: bare `check`/`fix`/`stats` (⊥ path) & tracked set EMPTY → exit 2 `no git-tracked files to check` + remedy ∵ 0 files judged = ⊥ output & exit 0 ≡ a clean verdict about nothing (as `src/tokens:V69`).
 
 ## §T TASKS
 
@@ -43,3 +45,5 @@ T66|x|ARCHIVED to SPEC-ARCHIVE.md|V71,`src/scan:V8`
 
 id|date|cause|fix
 B38|2026-10-02|a named path w/ `..` (`sub/../sub/c.md`) ⊥ normalised ∴ missed anchored rules & was judged `ascii`. via release review|V71
+B68|2026-10-03|config lines that did nothing accepted: `.ctrm-sets` `ascii U+00E9` made every ASCII byte a violation, map `foo bar` ⊥ matched, `!hazard=warn` ignored. via DX review|V116,`src/rules:V117`
+B69|2026-10-03|bare run w/ ⊥ file tracked yet judged 0 files: ⊥ output, exit 0. via DX review|V118
