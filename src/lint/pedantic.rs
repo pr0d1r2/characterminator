@@ -120,10 +120,20 @@ pub fn char_lints(character: char) -> [Option<Lint>; 3] {
 
 /// Every finding that needs the characters around it to decide, in byte
 /// order, `not-nfc` before `mixed-script` on the same character.
+///
+/// Pure ASCII answers NOTHING, at once (R17): it is NFC by definition
+/// (no ASCII character decomposes or composes, and each passes the quick
+/// check), and its words are Latin letters and Common digits, whose
+/// script sets never intersect to empty. Otherwise the text is walked,
+/// not copied into a list of hits: `mixed-script` streams, and `not-nfc`
+/// lays the hits out only for a text the quick check cannot clear.
 pub fn text_hits(text: &str) -> Vec<(Lint, Hit)> {
-    let hits: Vec<Hit> = located(text).collect();
-    let nfc = ucd::denormal(&hits).into_iter().map(|hit| (NOT_NFC, hit));
-    let words = ucd::mixed(&hits).into_iter().map(|hit| (MIXED_SCRIPT, hit));
+    if text.is_ascii() {
+        return Vec::new();
+    }
+    let nfc = ucd::denormal_in(text).into_iter().map(|hit| (NOT_NFC, hit));
+    let words = ucd::mixed_in(located(text));
+    let words = words.into_iter().map(|hit| (MIXED_SCRIPT, hit));
     let mut found: Vec<(Lint, Hit)> = nfc.chain(words).collect();
     found.sort_by_key(|(_, hit)| hit.position.byte);
     found

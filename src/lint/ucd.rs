@@ -23,7 +23,7 @@ use unicode_normalization::{IsNormalized, UnicodeNormalization, is_nfc_quick};
 use unicode_security::mixed_script::AugmentedScriptSet;
 use unicode_security::skeleton;
 
-use crate::scan::Hit;
+use crate::scan::{Hit, located};
 
 /// Whether NFKC changes this character where NFC does not: a fullwidth
 /// form, a ligature, a superscript, a circled digit.
@@ -82,24 +82,60 @@ fn divergence(segment: &[Hit]) -> Option<Hit> {
 /// a run of alphanumerics and combining marks, so `foo_bar` is two words
 /// and a Cyrillic letter in `p\u{0430}ypal` is in the same word as the
 /// Latin around it.
+#[cfg(test)]
 pub fn mixed(hits: &[Hit]) -> Vec<Hit> {
-    hits.chunk_by(|a, b| in_word(a.character) && in_word(b.character))
-        .filter_map(first_foreign)
-        .collect()
+    mixed_in(hits.iter().copied())
+}
+
+/// [`mixed`], STREAMED (R17): one pass, holding one word's script set and
+/// no list of hits. A word is what `chunk_by` over the hits makes of it
+/// -- a run in which every neighbouring pair is in-word -- so a lone
+/// character that is not in a word is a word of its own, as it was.
+pub fn mixed_in(hits: impl IntoIterator<Item = Hit>) -> Vec<Hit> {
+    let mut words = Words::default();
+    hits.into_iter().filter_map(|hit| words.step(hit)).collect()
+}
+
+/// The word a [`mixed_in`] walk is inside: its scripts so far, whether it
+/// already pointed, and the character before.
+#[derive(Default)]
+struct Words {
+    scripts: AugmentedScriptSet,
+    pointed: bool,
+    last: Option<char>,
+}
+
+impl Words {
+    /// The hit this character makes the word point at, if any.
+    fn step(&mut self, hit: Hit) -> Option<Hit> {
+        let joins = self.last.is_some_and(in_word) && in_word(hit.character);
+        self.last = Some(hit.character);
+        if !joins {
+            self.scripts = AugmentedScriptSet::default();
+            self.pointed = false;
+        }
+        if self.pointed {
+            return None;
+        }
+        self.scripts
+            .intersect_with(AugmentedScriptSet::for_char(hit.character));
+        self.pointed = self.scripts.is_empty();
+        self.pointed.then_some(hit)
+    }
 }
 
 fn in_word(character: char) -> bool {
     character.is_alphanumeric() || is_combining_mark(character)
 }
 
-/// The first character after which the word's resolved script set is
-/// empty. Common and Inherited characters (digits, marks) leave it as is.
-fn first_foreign(word: &[Hit]) -> Option<Hit> {
-    let mut scripts = AugmentedScriptSet::default();
-    word.iter().copied().find(|hit| {
-        scripts.intersect_with(AugmentedScriptSet::for_char(hit.character));
-        scripts.is_empty()
-    })
+/// [`denormal`] over a whole text, collecting its hits only when the
+/// quick check cannot clear it -- which nearly every text it can (R17).
+pub fn denormal_in(text: &str) -> Vec<Hit> {
+    if is_nfc_quick(text.chars()) == IsNormalized::Yes {
+        return Vec::new();
+    }
+    let hits: Vec<Hit> = located(text).collect();
+    denormal(&hits)
 }
 
 #[cfg(test)]
@@ -176,5 +212,77 @@ mod tests {
     fn mixed_points_at_the_first_foreign_letter_once_per_word() {
         let text = "p\u{0430}yp\u{0430}l ok \u{0430}b\n";
         assert_eq!(at(text, mixed), vec![(2, '\u{0430}'), (12, 'b')]);
+    }
+}
+
+/// R17: the streamed walks answer what the slice walks they replaced
+/// answered, and pure ASCII answers nothing either way.
+#[cfg(test)]
+mod streamed {
+    use super::{denormal, denormal_in, in_word, mixed_in};
+    use crate::scan::{Hit, located};
+    use unicode_security::mixed_script::AugmentedScriptSet;
+
+    /// The `chunk_by` walk `mixed` was before it streamed, kept as the
+    /// reference the streamed one is held to.
+    fn chunked(hits: &[Hit]) -> Vec<Hit> {
+        hits.chunk_by(|a, b| in_word(a.character) && in_word(b.character))
+            .filter_map(|word| {
+                let mut scripts = AugmentedScriptSet::default();
+                word.iter().copied().find(|hit| {
+                    let one = AugmentedScriptSet::for_char(hit.character);
+                    scripts.intersect_with(one);
+                    scripts.is_empty()
+                })
+            })
+            .collect()
+    }
+
+    /// Mixed words, a lone unassigned code point (U+0378), marks, digits,
+    /// CJK beside kana, and words that end the text.
+    const TEXTS: [&str; 6] = [
+        "p\u{0430}yp\u{0430}l ok \u{0430}b\n",
+        "\u{0378} a\u{0378}b \u{0378}\u{0378}",
+        "x\u{0301}\u{0430} 12\u{0430}3 \u{6F22}\u{3042}a",
+        "\u{043C}\u{0438}\u{0440}hello",
+        "",
+        "a\u{0300}\u{0300}\u{0410}\u{0410}a",
+    ];
+
+    #[test]
+    fn the_streamed_word_walk_answers_as_the_chunked_one() {
+        for text in TEXTS {
+            let hits: Vec<Hit> = located(text).collect();
+            assert_eq!(
+                mixed_in(hits.iter().copied()),
+                chunked(&hits),
+                "{text:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_whole_text_nfc_walk_answers_as_the_slice_one() {
+        for text in [
+            "cafe\u{0301} x\u{212B}\n",
+            "caf\u{00E9}\n",
+            "\u{1100}\u{1161}",
+        ] {
+            let hits: Vec<Hit> = located(text).collect();
+            assert_eq!(denormal_in(text), denormal(&hits), "{text:?}");
+        }
+    }
+
+    /// Every ASCII character, alone and inside words, is neither
+    /// denormal nor mixed: what lets `text_hits` return early on ASCII.
+    #[test]
+    fn no_ascii_text_is_denormal_or_mixed() {
+        let every: String = (0_u8..=0x7F).map(char::from).collect();
+        let words: String = every.chars().flat_map(|c| ['a', c, '1']).collect();
+        for text in [every, words] {
+            let hits: Vec<Hit> = located(&text).collect();
+            assert!(denormal(&hits).is_empty());
+            assert!(chunked(&hits).is_empty());
+        }
     }
 }
