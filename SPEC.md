@@ -51,7 +51,7 @@ V44: ∀ flake input pins a TAG, bumped in its OWN reviewed commit. FOLLOWING a 
 
 V46: line coverage GATED, ⊥ reported. FLOOR = hard min; `.coverage` = CEILING, the figure the badge CLAIMS. measured < floor → FAIL. measured < claim → FAIL ∵ badge OVERSTATES. measured − claim > 0.5 → FAIL ∵ badge stale. `cargo llvm-cov` needs llvm tools matching `rustc`s LLVM ∴ gate asserts the majors agree: a mismatch reads as a crash, ⊥ as a pin.
 
-V52: adoption surfaces (pre-commit hook, GitHub Action) WRAP the `ctrm` binary, built from the consumer-pinned rev; ⊥ own rule logic ∵ a wrapper that judged files itself drifts from the tool it is named after. action: inputs reach the shell via `env` ONLY, ⊥ `${{ }}` in `run:` ∵ template injection; exit status preserved when `output` redirects. CI runs the action via `uses: ./` ∵ a wrapper nothing exercises ? rot unseen.
+V52: adoption surfaces (pre-commit, Action) WRAP the `ctrm` binary, built from the consumer-pinned rev; ⊥ own rule logic ∵ a wrapper judging files drifts from its tool. action: inputs → shell via `env` ONLY, ⊥ `${{ }}` in `run:` ∵ template injection; exit status kept when `output` redirects; rustc PINNED = MSRV via `RUSTUP_TOOLCHAIN` ∵ runner's Rust unverified. CI runs the action via `uses: ./` ∵ an unexercised wrapper ? rot unseen.
 
 V92: crate `characterminator`, bin `ctrm` (`rg`/`mth` shape: crate carries meaning, bin carries muscle memory). `ctr` REJECTED ∵ containerd ships `cmd/ctr`. `ctrm` free on crates.io, ⊥ found on PATH. runner: hk step `ctrm` = `cargo run --bin ctrm` ∴ a rename fails the gate; the record → `.spec-records`.
 

@@ -80,7 +80,7 @@ jobs:
       - run: nix flake check
 
   # THE ACTION, used the way a consumer uses it (V52): `uses: ./` builds
-  # ctrm from this checkout with the runner's own cargo -- no nix -- and
+  # ctrm from this checkout with the rustc the action pins -- no nix -- and
   # runs it over this tree. The gate job above already runs `ctrm check`;
   # this job proves the WRAPPER works, which nothing else exercises.
   action:

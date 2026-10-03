@@ -3,8 +3,16 @@
 # It builds the binary from THIS action's own source, at whatever ref the
 # caller pinned in `uses:`, so the rules a workflow enforces change when
 # that pin changes and at no other time -- the same reasoning V44 applies
-# to this repository's own flake inputs. It needs the runner's `cargo`,
-# which GitHub's hosted images ship.
+# to this repository's own flake inputs.
+#
+# The COMPILER is pinned too: rustc 1.95.0, the MSRV (`rust-version` in
+# Cargo.toml) and the rustc flake.lock pins, so the Action builds with
+# the compiler the gate tested. The runner's own Rust is whatever the
+# image shipped that week. `rustup`, which hosted images carry, installs
+# it -- no third-party action, so no SHA to keep current -- and
+# `RUSTUP_TOOLCHAIN` selects it, which also outranks a caller's own
+# `rust-toolchain.toml` in the directory the build runs from. Bump it
+# with the flake's rustc, in the same commit.
 #
 # Inputs reach the shell through `env`, never through `${{ }}` inside a
 # `run:` block: an expression expanded into a script is a template
@@ -36,9 +44,17 @@ inputs:
 runs:
   using: composite
   steps:
+    # The same literal in both steps: `$GITHUB_ENV` would carry it into
+    # the CALLER's later steps, which did not ask for this toolchain.
+    - name: Install the pinned Rust toolchain
+      shell: bash
+      env:
+        RUSTUP_TOOLCHAIN: "1.95.0"
+      run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --no-self-update
     - name: Build ctrm from the pinned action source
       shell: bash
       env:
+        RUSTUP_TOOLCHAIN: "1.95.0"
         SOURCE: ${{ github.action_path }}
       run: cargo install --locked --quiet --path "$SOURCE" --root "$RUNNER_TEMP/ctrm"
     - name: Run ctrm

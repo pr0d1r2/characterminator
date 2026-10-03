@@ -87,8 +87,9 @@ repos:
 
 ### In GitHub Actions
 
-The action builds `ctrm` with the runner's own cargo from the ref in
-`uses:`, then runs it. With `--format sarif`, violations appear in the
+The action installs a pinned Rust toolchain (1.95.0, the MSRV) with the
+runner's `rustup`, builds `ctrm` with it from the ref in `uses:`, then
+runs it. With `--format sarif`, violations appear in the
 pull request as code scanning alerts:
 
 ```yaml
