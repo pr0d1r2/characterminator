@@ -178,10 +178,11 @@ impl Config {
     ///
     /// The first line of any kind that does not parse, at its origin.
     pub fn validate(&self) -> Result<(), String> {
-        self.catalog()?;
+        let catalog = self.catalog()?;
         let map = self.map()?;
         for rule in self.rules()? {
             declared(&map, &rule)?;
+            granted(&catalog, &rule)?;
         }
         Ok(())
     }
@@ -274,6 +275,18 @@ fn declared(map: &Map, rule: &Rule) -> Result<(), String> {
         return Ok(());
     };
     match map.tree().path(family) {
+        Ok(_) => Ok(()),
+        Err(bad) => Err(format!("{}: {bad}", rules::describe(&rule.origin))),
+    }
+}
+
+/// Every set a rule names resolves against the catalog (V74), whether
+/// or not any file matches the rule. Resolved only when a file matched,
+/// `--rule '*.txt asci'` passed in a tree with no `.txt` file, and a
+/// refusal that did come named the set but not the rule's origin (B47).
+fn granted(catalog: &SetCatalog, rule: &Rule) -> Result<(), String> {
+    let family = rule.family.as_deref().unwrap_or(rules::TEXT);
+    match catalog.resolve_union(&rule.pattern, &rule.sets, family) {
         Ok(_) => Ok(()),
         Err(bad) => Err(format!("{}: {bad}", rules::describe(&rule.origin))),
     }

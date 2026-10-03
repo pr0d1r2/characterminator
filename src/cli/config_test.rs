@@ -265,3 +265,15 @@ fn a_bad_flag_value_is_refused_at_its_origin() {
     let bad = refusal(&["fix", "--set", "x", "--map", "use nothing"]);
     assert!(bad.contains("argv[5]") && bad.contains("nothing"), "{bad}");
 }
+
+/// B47: a rule naming an undeclared set is refused at validation, by
+/// its origin (V74) -- even when no file matches the rule, which is
+/// when it used to pass.
+#[test]
+fn a_rule_naming_an_undeclared_set_is_refused_at_its_origin() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let words = ["check", "--no-files", "--rule", "*.nomatch asci"];
+    let config = from_argv(root, &argv(&words));
+    let why = config.and_then(|c| c.validate()).err().unwrap_or_default();
+    assert!(why.contains("argv[4]") && why.contains("asci"), "{why}");
+}
