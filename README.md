@@ -509,6 +509,12 @@ list goes stale and that one does not.
 - **Windows is untested.** CI (`.github/workflows/ci.yml`) runs the gate on
   Linux (x86 and arm) and macOS, and the action on Linux.
 
+## Contributing
+
+Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md)
+has the quick path (`cargo test` is enough to start; CI runs the full gate),
+the dev shell, the spec workflow and the policy on LLM-assisted changes.
+
 ## Security
 
 A way past the hazard lints, the guard or the action is a vulnerability.
