@@ -21,6 +21,23 @@ readme = "README.md"
 repository = "https://github.com/pr0d1r2/characterminator"
 keywords = ["unicode", "ascii", "tokens", "lint", "agents"]
 categories = ["command-line-utilities", "development-tools"]
+# What ships to crates.io. The SOURCE and the SPECS (the spec is the law,
+# so a reader of the crate gets the rules with the code), the data files
+# compiled in, the integration tests, and the reader-facing docs. The dev
+# tooling -- nix flake, hk gate, vendored pkl schema, CI, coverage and
+# token-limit bookkeeping -- stays in the repository: a crate consumer
+# never runs it, and shipping it would only look like part of the API.
+include = [
+    "/src/**/*",
+    "/tests/**/*",
+    "/docs/**/*",
+    "/SPEC.md",
+    "/SPEC-ARCHIVE.md",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/SECURITY.md",
+    "/LICENSE",
+]
 
 # Two names on purpose: `characterminator` is what you depend on, `ctrm` is
 # what you run. Paths and manifests take the crate name, anything invoked
