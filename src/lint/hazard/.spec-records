@@ -1,6 +1,6 @@
-# Closed options in src/lint/SPEC.md that must SURVIVE a later edit. Read by
-# `mth check --records src/lint/.spec-records src/lint/SPEC.md` (hk step
-# `mth-check`); format and rationale as in the root `.spec-records`.
+# Closed options in src/lint/hazard/SPEC.md that must SURVIVE a later edit. Read
+# by `mth check --records src/lint/hazard/.spec-records src/lint/hazard/SPEC.md`
+# (hk step `mth-check`); format and rationale as in the root `.spec-records`.
 
 # Exempting ZWJ/ZWNJ through a CLDR language preset. Without this, a later
 # reader proposes it as the general fix for scripts that spell with

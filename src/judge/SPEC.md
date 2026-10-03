@@ -31,7 +31,7 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 ## §V INVARIANTS
 
 V71: path matched (`src/rules`) & shown in LEXICAL normal form: `.` dropped, `..` folded ∴ `sub/../sub/c.md` ≡ `sub/c.md` ∀ anchored rule. symlink ⊥ resolved.
-V99: ∀ verb & `guard` judge bytes through ONE `Checker` ∴ ⊥ two verdicts on the same bytes (`src/cli/guard:V35`, `src/cli:V80`). per char ≤ 1 finding: hazard > `outside-set` > pedantic (`src/lint:V55`); a hazard stops the scan even where the set grants it (`src/lint:V34`); `allow` ⊥ reported. a union = resolved once per sets + family. runner: `checker_test.rs` & children.
+V99: ∀ verb & `guard` judge bytes through ONE `Checker` ∴ ⊥ two verdicts on the same bytes (`src/cli/guard:V35`, `src/cli:V80`). per char ≤ 1 finding: hazard > `outside-set` > pedantic (`src/lint/pedantic:V55`); a hazard stops the scan even where the set grants it (`src/lint/hazard:V34`); `allow` ⊥ reported. a union = resolved once per sets + family. runner: `checker_test.rs` & children.
 
 ## §T TASKS
 

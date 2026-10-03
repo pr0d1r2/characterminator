@@ -27,8 +27,8 @@ pub(super) const SETS: &str = ".ctrm-sets";
 /// The map file discovered beside it.
 pub(super) const MAP: &str = ".ctrm-map";
 
-/// What `--pedantic` stands for, word for word (`src/lint:V37`). A rule
-/// line rather than a mode, so it sits in the chain at its argv position
+/// What `--pedantic` stands for, word for word (`src/lint/pedantic:V37`). A
+/// rule line rather than a mode, so it sits in the chain at its argv position
 /// and `explain` names that position as its origin.
 pub(super) const PEDANTIC: &str = "* !pedantic=warn";
 

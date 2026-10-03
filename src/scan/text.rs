@@ -56,7 +56,7 @@ impl Cursor {
 /// This is THE walk: `scan_str` filters it, and a caller whose question
 /// is about a character's NEIGHBOURS rather than the character alone --
 /// a carriage return before a line feed, whitespace before a line end
-/// (`src/lint:V55`) -- reads it whole. Exposing the walk rather than a
+/// (`src/lint/pedantic:V55`) -- reads it whole. Exposing the walk rather than a
 /// second cursor keeps one definition of where a line ends and what a
 /// column counts, so a line-shaped finding and a character finding at
 /// the same place always agree on its position.

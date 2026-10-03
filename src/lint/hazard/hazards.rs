@@ -12,9 +12,9 @@
 //! text: a caller asks [`Hazards::exempt`] once per text and hands the
 //! offsets to [`Hazards::lint_at`]. The list lives in `sequence`.
 
+use super::sequence::Sequences;
 use crate::charset::{CharSet, SetCatalog, builtin};
 use crate::lint::Lint;
-use crate::lint::sequence::Sequences;
 use crate::scan::Hit;
 use std::sync::LazyLock;
 
@@ -74,9 +74,9 @@ pub struct Hazards {
 impl Hazards {
     /// The classes as this build ships them.
     ///
-    /// Read from the COMPILED-IN file, never from the run's catalog: a
-    /// hazard is the one finding no configuration may switch off (V36),
-    /// and a catalog is configuration.
+    /// Read from the COMPILED-IN file, never from the run's catalog: a hazard
+    /// is the one finding no configuration may switch off (`src/lint:V36`), and
+    /// a catalog is configuration.
     ///
     /// INFALLIBLE because the data is compiled in, and parsed ONCE per
     /// process. A defect in it -- a file that fails to parse, a class it
@@ -394,7 +394,8 @@ mod tests {
         }
     }
 
-    /// V36: `!hazard=allow`, and the lint named on its own, move nothing.
+    /// `src/lint:V36`: `!hazard=allow`, and the lint named on its own, move
+    /// nothing.
     #[test]
     fn no_rule_lowers_a_real_hazard_lint() {
         let lint = hazards().lint_for(at(5, '\u{202E}'));

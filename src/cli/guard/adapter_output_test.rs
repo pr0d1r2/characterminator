@@ -24,7 +24,7 @@ fn tag_smuggling_in_a_web_fetch_result_is_tainted() {
     }
 }
 
-/// `src/lint:V63`: the joiners of an RGI family and the tags of the
+/// `src/lint/hazard:V63`: the joiners of an RGI family and the tags of the
 /// England flag are no hazard in tool output; a joiner between two
 /// emoji that form no listed sequence, and tags after U+1F3F4 that
 /// spell no listed subdivision, still block.

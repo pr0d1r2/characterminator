@@ -33,8 +33,8 @@ pub(crate) enum Looked {
 pub(crate) struct Checker {
     rules: Vec<Rule>,
     catalog: SetCatalog,
-    /// The hazard classes, from the COMPILED-IN data (`src/lint:V34`) and
-    /// never from `catalog`: nothing a run configures can reach them.
+    /// The hazard classes, from the COMPILED-IN data (`src/lint/hazard:V34`)
+    /// and never from `catalog`: nothing a run configures can reach them.
     hazards: Hazards,
     /// `--strict`: warn counts as deny (`src/lint:V36`).
     strict: bool,
@@ -51,7 +51,7 @@ pub(crate) struct Judge<'a> {
     set: &'a CharSet,
     hazards: &'a Hazards,
     /// The offsets of this text's joiners and tags that sit inside an
-    /// RGI emoji sequence, and so are no hazard (`src/lint:V63`).
+    /// RGI emoji sequence, and so are no hazard (`src/lint/hazard:V63`).
     exempt: Vec<usize>,
 }
 
@@ -85,7 +85,7 @@ impl Judge<'_> {
     /// that lint speaks is the level's question, asked once in `loudest`.
     /// `deep` is whether any table-reading one is asked for; without it
     /// only the cheap space list is consulted, so a run that did not ask
-    /// pays no Unicode lookup per character (`src/lint:V58`).
+    /// pays no Unicode lookup per character (`src/lint/pedantic:V58`).
     fn passes(&self, character: char, deep: bool) -> bool {
         self.set.contains(character)
             && !self.hazard(character)
@@ -93,18 +93,18 @@ impl Judge<'_> {
             && !(deep && char_lints(character).iter().any(Option::is_some))
     }
 
-    /// Whether a character is a hazard IN THIS FILE: a joiner the file's
-    /// own script preset grants is spelling, not a hazard (`src/lint:V57`).
+    /// Whether a character is a hazard IN THIS FILE: a joiner the file's own
+    /// script preset grants is spelling, not a hazard (`src/lint/hazard:V57`).
     fn hazard(&self, character: char) -> bool {
         self.hazards.contains(character)
             && !self.hazards.excuses(&self.set.name, character)
     }
 
-    /// The lints one hit could fire, the strongest claim first: a hazard,
-    /// then `outside-set`, then the pedantic ones a character fires alone
-    /// (`src/lint:V55`, `src/lint:V58`). Empty is the byte order mark at
-    /// byte 0 in a file whose set grants it: no hazard (V34), and not
-    /// outside the set either.
+    /// The lints one hit could fire, the strongest claim first: a hazard, then
+    /// `outside-set`, then the pedantic ones a character fires alone
+    /// (`src/lint/pedantic:V55`, `src/lint/pedantic:V58`). Empty is the byte
+    /// order mark at byte 0 in a file whose set grants it: no hazard (V34), and
+    /// not outside the set either.
     ///
     /// LAZY in the pedantic tail (`src/render:R17`): the caller takes the first
     /// lint that speaks, and under the default that is `outside-set`, so the
@@ -311,10 +311,10 @@ pub(crate) fn inspect(
     }
 }
 
-/// The findings in one text: the character ones, then the line- and
-/// text-shaped ones, with ONE claim per character across all three
-/// (`src/lint:V55`): the walks each know only their own lints, so the lint
-/// node's claim order settles a byte two of them point at.
+/// The findings in one text: the character ones, then the line- and text-shaped
+/// ones, with ONE claim per character across all three
+/// (`src/lint/pedantic:V55`): the walks each know only their own lints, so the
+/// lint node's claim order settles a byte two of them point at.
 pub(crate) fn judged(
     text: &str,
     judge: &Judge<'_>,
@@ -359,14 +359,14 @@ fn loudest(hit: Hit, judge: &Judge<'_>, levels: &Levels) -> Option<Finding> {
 }
 
 /// The pedantic findings one character cannot decide alone: line-shaped
-/// (`src/lint:V55`) and text-shaped (`src/lint:V58`). Neither walk runs
-/// when every lint it serves is at `allow` -- which is every run that did
-/// not ask for pedantic. A character one of them shares with another
-/// finding is settled by `one_claim` in the caller: `ascii` does not
-/// grant the carriage return (`src/charset` keeps it in the separate `cr`
-/// set), so under the default a CR LF is ALREADY `outside-set`, and
-/// `crlf` speaks only where the set grants `cr`; a trailing space that is
-/// also the file's last character is `trailing-whitespace` alone.
+/// (`src/lint/pedantic:V55`) and text-shaped (`src/lint/pedantic:V58`). Neither
+/// walk runs when every lint it serves is at `allow` -- which is every run that
+/// did not ask for pedantic. A character one of them shares with another
+/// finding is settled by `one_claim` in the caller: `ascii` does not grant the
+/// carriage return (`src/charset` keeps it in the separate `cr` set), so under
+/// the default a CR LF is ALREADY `outside-set`, and `crlf` speaks only where
+/// the set grants `cr`; a trailing space that is also the file's last character
+/// is `trailing-whitespace` alone.
 fn context_findings(text: &str, levels: &Levels) -> Vec<Finding> {
     let mut found = Vec::new();
     if asked(&LINE_LINTS, levels) {

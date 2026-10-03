@@ -36,7 +36,7 @@ pub(crate) fn unruled(bytes: &[u8], hazards: &Hazards) -> Unruled {
 }
 
 /// The hazards among `hits` in `text`, less a joiner or tag inside an RGI
-/// emoji sequence (`src/lint:V63`).
+/// emoji sequence (`src/lint/hazard:V63`).
 fn found(text: &str, hits: Vec<Hit>, hazards: &Hazards) -> Vec<Finding> {
     let exempt = hazards.exempt(text);
     hazards_in(hits, |hit| hazards.lint_at(hit, &exempt))
@@ -53,7 +53,7 @@ fn lossy(bytes: &[u8], hazards: &Hazards) -> Vec<Finding> {
 
 /// The hazards among `hits`, each as the finding the lint node names, at
 /// its lint's own level. `lint` is the lint node's answer for one hit:
-/// less a joiner or tag inside an RGI emoji sequence (`src/lint:V63`)
+/// less a joiner or tag inside an RGI emoji sequence (`src/lint/hazard:V63`)
 /// always, and less a BOM at byte 0 only where the text has a file start.
 pub(crate) fn hazards_in(
     hits: Vec<Hit>,

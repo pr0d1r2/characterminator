@@ -22,9 +22,9 @@ impl Finding {
     }
 }
 
-/// ONE claim per character (V55): of the findings on one byte, the
-/// strongest -- a hazard, then `outside-set`, then the pedantic lints in
-/// [`CLAIM_ORDER`] -- and none of the rest. Returned in byte order.
+/// ONE claim per character (`src/lint/pedantic:V55`): of the findings on one
+/// byte, the strongest -- a hazard, then `outside-set`, then the pedantic lints
+/// in [`CLAIM_ORDER`] -- and none of the rest. Returned in byte order.
 ///
 /// The three walks that find them each know only their own lints, so
 /// this is the one place that sees a trailing space ALSO being the last
@@ -78,8 +78,8 @@ mod tests {
         Finding { hit, lint, level }
     }
 
-    /// V55: of the findings on one byte, the strongest claim alone stays,
-    /// whatever order the walks produced them in.
+    /// `src/lint/pedantic:V55`: of the findings on one byte, the strongest
+    /// claim alone stays, whatever order the walks produced them in.
     #[test]
     fn one_claim_keeps_the_strongest_finding_per_byte() {
         let on = |name, group| Finding {

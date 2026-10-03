@@ -1,6 +1,6 @@
 //! The hazards (V34, V36) and what exempts a character from one: an RGI
-//! emoji sequence (`src/lint:V63`) and a script preset's own joiner
-//! (`src/lint:V57`). A child of the `checker` tests, for their helpers;
+//! emoji sequence (`src/lint/hazard:V63`) and a script preset's own joiner
+//! (`src/lint/hazard:V57`). A child of the `checker` tests, for their helpers;
 //! the same through a real tree is `src/cli` `check_judged_test.rs`.
 
 use super::{any, findings};
@@ -63,7 +63,7 @@ fn emoji() -> CharSet {
         .unwrap_or_else(builtin::ascii)
 }
 
-/// `src/lint:V63`: a joiner inside an RGI ZWJ sequence is no hazard,
+/// `src/lint/hazard:V63`: a joiner inside an RGI ZWJ sequence is no hazard,
 /// so under `emoji` (which withholds it) it is `outside-set` and the
 /// sequence is `fix`'s to compress. A joiner in no listed sequence,
 /// and tags after U+1F3F4 that spell no listed flag, still fire.

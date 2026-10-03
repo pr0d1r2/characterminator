@@ -101,7 +101,7 @@ cyrillic U+0400-U+04FF
 greek U+0370-U+03FF
 arabic U+0600-U+06FF
 
-# SCRIPTS WHOSE SPELLING NEEDS A JOINER (`src/lint:V57`). Persian writes
+# SCRIPTS WHOSE SPELLING NEEDS A JOINER (`src/lint/hazard:V57`). Persian writes
 # ZERO WIDTH NON-JOINER inside words; Devanagari uses it and ZERO WIDTH
 # JOINER to choose conjunct forms. Both are hazards everywhere else, and
 # naming one of these presets is the explicit grant that says this file is

@@ -13,8 +13,8 @@
 //! that quietly removed characters would change what the model reads
 //! without anyone being told, which is the harm it exists to prevent.
 //!
-//! HAZARDS DO NOT DEPEND ON CONFIGURATION (V53). The classes are compiled
-//! in (`src/lint:V49`), so a `.ctrm` that cannot be read or applied still
+//! HAZARDS DO NOT DEPEND ON CONFIGURATION (V53). The classes are compiled in
+//! (`src/lint/hazard:V49`), so a `.ctrm` that cannot be read or applied still
 //! leaves every hazard judged; only the note about it changes.
 
 use super::hook::{self, Call, Event, Verdict};

@@ -254,7 +254,7 @@ fn code_point(token: &str, digits: &str) -> Result<char, ParseError> {
 ///
 /// The ONE decoder of the code-point spelling every grammar here shares:
 /// a set member, a map token (`src/fix`) and a line of the vendored emoji
-/// sequences (`src/lint:V63`). `None` for anything else, so each caller
+/// sequences (`src/lint/hazard:V63`). `None` for anything else, so each caller
 /// names the refusal in its own grammar's words.
 pub(crate) fn code_points(token: &str) -> Option<String> {
     token

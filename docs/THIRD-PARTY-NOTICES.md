@@ -38,11 +38,11 @@ build does not carry it.
 
 ## Direct dependencies: `unicode-normalization` and `unicode-security`
 
-The four data-bound pedantic lints read published Unicode tables:
-normalization for `not-nfc` and `nfkc-compat`, UTS #39 for `mixed-script`
-(the resolved script set) and `confusable` (the skeleton). Both crates are
-from the `unicode-rs` project, MIT OR Apache-2.0, and `src/lint/ucd.rs` is
-their only call site.
+The four data-bound pedantic lints read published Unicode tables: normalization
+for `not-nfc` and `nfkc-compat`, UTS #39 for `mixed-script` (the resolved script
+set) and `confusable` (the skeleton). Both crates are from the `unicode-rs`
+project, MIT OR Apache-2.0, and `src/lint/pedantic/ucd.rs` is their only call
+site.
 
 They are here because the alternative is a second private copy of a
 published table, which drifts from Unicode the day Unicode moves. Vendoring

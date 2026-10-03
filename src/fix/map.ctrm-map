@@ -55,7 +55,7 @@ U+00A0 U+0020
 # ZERO WIDTH SPACE and BYTE ORDER MARK carry no glyph, so there is nothing
 # to transliterate them INTO: any visible replacement would put a
 # character on the page that the author never typed. Both are also
-# hazards (`src/lint:V34`) when they turn up where nobody expects them,
+# hazards (`src/lint/hazard:V34`) when they turn up where nobody expects them,
 # which is the other half of why they leave rather than change.
 U+200B
 U+FEFF

@@ -9,7 +9,7 @@
 //! It says four things, each read from the node that owns it: which
 //! characters are allowed (the rules and the sets, resolved), what `fix`
 //! would rewrite and to what (the map, asked rather than restated), the
-//! fidelity, and the hazards -- which no grant reaches (`src/lint:V34`),
+//! fidelity, and the hazards -- which no grant reaches (`src/lint/hazard:V34`),
 //! so they are said as a flat prohibition.
 //!
 //! Code points are written `U+XXXX` and never as the characters
@@ -247,8 +247,8 @@ fn points(text: &str) -> String {
     each.join("+")
 }
 
-/// The hazard classes, listed from the compiled-in data the check itself
-/// reads (`src/lint:V34`), so the prohibition cannot drift from the rule.
+/// The hazard classes, listed from the compiled-in data the check itself reads
+/// (`src/lint/hazard:V34`), so the prohibition cannot drift from the rule.
 fn hazards() -> Result<Vec<String>, String> {
     let catalog = builtin::hazard_catalog().map_err(|bad| bad.to_string())?;
     let classes: Result<Vec<CharSet>, _> = catalog

@@ -4,11 +4,11 @@
 //! name, and a name nobody registered is an error instead of a directive
 //! that silently matches nothing.
 //!
-//! HOW A HAZARD LINT ARRIVED (T36): a row here with `group:
-//! Group::Hazard`, and nothing else. The group forbids and the resolver
-//! refuses to lower a forbid; the detection is `hazard.rs`, and the code
-//! points it reads are the charset node's generated data file -- no table
-//! of code points is shipped from this node.
+//! HOW A HAZARD LINT ARRIVED (`src/lint/hazard:T36`): a row here with `group:
+//! Group::Hazard`, and nothing else. The group forbids and the resolver refuses
+//! to lower a forbid; the detection is `hazard/hazards.rs`, and the code points
+//! it reads are the charset node's generated data file -- no table of code
+//! points is shipped from this node.
 
 use crate::lint::{Group, Level, pedantic};
 
@@ -29,14 +29,14 @@ pub struct Lint {
 /// The tests below enforce that.
 ///
 /// The pedantic rows ship their NAMES whether or not their detection has
-/// landed. V37 requires the group to stay `allow`, so a registered
-/// pedantic lint reports nothing until a run asks for it; registering the
-/// names up front is what lets `--pedantic` and `!not-nfc=warn` be parsed,
-/// explained and rejected-on-typo before any of them can fire.
+/// landed. `src/lint/pedantic:V37` requires the group to stay `allow`, so a
+/// registered pedantic lint reports nothing until a run asks for it;
+/// registering the names up front is what lets `--pedantic` and `!not-nfc=warn`
+/// be parsed, explained and rejected-on-typo before any of them can fire.
 ///
-/// Every pedantic row is the constant `pedantic.rs` detects under, so the
-/// name is spelled once: four need no data (V55), four read Unicode's
-/// tables (V58).
+/// Every pedantic row is the constant `pedantic/lints.rs` detects under, so the
+/// name is spelled once: four need no data (`src/lint/pedantic:V55`), four read
+/// Unicode's tables (`src/lint/pedantic:V58`).
 /// The tool's ordinary violation: a character outside the set the rules
 /// granted its path. Named for what is true of the character rather than
 /// for its group, because `charset` is already the group's name. A
@@ -44,17 +44,18 @@ pub struct Lint {
 pub(crate) const OUTSIDE_SET: Lint = Lint::new("outside-set", Group::Charset);
 
 pub(crate) const LINTS: &[Lint] = &[
-    // V34's classes, one lint each, in the order `hazard.rs` tries them.
-    // One lint per class rather than one `hazard` lint: the json names
-    // the lint, and "this is a bidi override" is the sentence a reader of
-    // a Trojan Source finding needs, where "this is a hazard" is not.
+    // `src/lint/hazard:V34` classes, one lint each, in the order
+    // `hazard/hazards.rs` tries them. One lint per class rather than one
+    // `hazard` lint: the json names the lint, and "this is a bidi override" is
+    // the sentence a reader of a Trojan Source finding needs, where "this is a
+    // hazard" is not.
     Lint::new("bidi-control", Group::Hazard),
     Lint::new("tag-character", Group::Hazard),
     Lint::new("stray-bom", Group::Hazard),
     Lint::new("control-character", Group::Hazard),
     Lint::new("invisible", Group::Hazard),
     OUTSIDE_SET,
-    // V37's candidates, in the order that spec lists them.
+    // `src/lint/pedantic:V37` candidates, in the order that spec lists them.
     pedantic::NOT_NFC,
     pedantic::NFKC_COMPAT,
     pedantic::UNICODE_SPACE,

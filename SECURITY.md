@@ -19,16 +19,16 @@ payload, or a workflow -- is the most useful thing a report can carry.
 ## In scope
 
 - **Hazard detection bypasses.** A bidi control, an invisible character,
-  tag smuggling or another hazard class (`src/lint:V34`) that `ctrm check`
-  does not report, under any configuration.
+  tag smuggling or another hazard class (`src/lint/hazard:V34`) that
+  `ctrm check` does not report, under any configuration.
 - **Guard bypasses.** A `Read`, web fetch, web search, shell or MCP output
   holding a hazard that `ctrm guard` passes, or an input that makes the
   guard exit `2` (which Claude Code reads as "block every call") or crash
   where it should decide (`src/cli/guard`).
 - **The sequence exemptions.** A joiner, tag or variation selector that
   escapes the hazard lints through the emoji sequence exemption
-  (`src/lint:V63`) or the script joiner exemption for Persian and Hindi
-  (`src/lint:V57`) when it is not part of what those rules exempt.
+  (`src/lint/hazard:V63`) or the script joiner exemption for Persian and Hindi
+  (`src/lint/hazard:V57`) when it is not part of what those rules exempt.
 - **`fix` writing a disallowed character.** A rewrite that leaves, or
   introduces, a character outside the set the file is granted, or a hazard,
   while reporting success.

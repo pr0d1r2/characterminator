@@ -26,7 +26,7 @@ impl Judge<'_> {
     }
 
     /// Every hazard in `text` as `check` judges it, ascending, each with
-    /// whether `fix` may delete it (`src/lint:V49` classes).
+    /// whether `fix` may delete it (`src/lint/hazard:V49` classes).
     fn hazards_in(&self, text: &str) -> Vec<Hazard> {
         let hits = scan_str(text, |c| !self.hazard(c));
         if hits.is_empty() {

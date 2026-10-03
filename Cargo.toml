@@ -43,13 +43,14 @@ path = "src/main.rs"
 [dependencies]
 itok = { version = "0.3", default-features = false, features = ["bpe"] }
 
-# The Unicode tables the four data-bound pedantic lints read (`src/lint:V58`):
-# normalization (`not-nfc`, `nfkc-compat`) and UTS #39 (`mixed-script`'s
-# resolved script set, `confusable`'s skeleton). Published tables, called
-# rather than re-vendored: a private copy of a decomposition or confusables
-# table is a second definition that drifts. `src/lint/ucd.rs` is their only
-# call site (`src:C`). `unicode-script` arrives beneath `unicode-security`
-# and is not named, because nothing here calls it directly.
+# The Unicode tables the four data-bound pedantic lints read
+# (`src/lint/pedantic:V58`): normalization (`not-nfc`, `nfkc-compat`) and
+# UTS #39 (`mixed-script`'s resolved script set, `confusable`'s skeleton).
+# Published tables, called rather than re-vendored: a private copy of a
+# decomposition or confusables table is a second definition that drifts.
+# `src/lint/pedantic/ucd.rs` is their only call site (`src:C`).
+# `unicode-script` arrives beneath `unicode-security` and is not named,
+# because nothing here calls it directly.
 #
 # `default-features = false`: `unicode-normalization` drops `std` (alloc is
 # enough); `unicode-security` has no default features, said anyway so a

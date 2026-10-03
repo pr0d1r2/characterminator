@@ -29,36 +29,39 @@
 //! lint: NFKC folds a no-break space and UTS #39 draws it as U+0020, and
 //! one space with three names would be one finding said three ways.
 
-use crate::lint::{Group, Lint, ucd};
+use super::ucd;
+use crate::lint::{Group, Lint};
 use crate::scan::{Hit, located};
 
 /// A space that is not U+0020.
-pub(super) const UNICODE_SPACE: Lint =
+pub(in crate::lint) const UNICODE_SPACE: Lint =
     Lint::new("unicode-space", Group::Pedantic);
 
 /// A line ended by CR LF rather than LF.
 pub(crate) const CRLF: Lint = Lint::new("crlf", Group::Pedantic);
 
 /// Whitespace between a line's last visible character and its end.
-pub(super) const TRAILING_WHITESPACE: Lint =
+pub(in crate::lint) const TRAILING_WHITESPACE: Lint =
     Lint::new("trailing-whitespace", Group::Pedantic);
 
 /// A non-empty file whose last character is not a line feed.
-pub(super) const FINAL_NEWLINE: Lint =
+pub(in crate::lint) const FINAL_NEWLINE: Lint =
     Lint::new("final-newline", Group::Pedantic);
 
 /// Text NFC would change.
-pub(super) const NOT_NFC: Lint = Lint::new("not-nfc", Group::Pedantic);
+pub(in crate::lint) const NOT_NFC: Lint = Lint::new("not-nfc", Group::Pedantic);
 
 /// A character NFKC folds and NFC keeps: fullwidth, ligature, superscript.
-pub(super) const NFKC_COMPAT: Lint = Lint::new("nfkc-compat", Group::Pedantic);
+pub(in crate::lint) const NFKC_COMPAT: Lint =
+    Lint::new("nfkc-compat", Group::Pedantic);
 
 /// One word written in two scripts.
-pub(super) const MIXED_SCRIPT: Lint =
+pub(in crate::lint) const MIXED_SCRIPT: Lint =
     Lint::new("mixed-script", Group::Pedantic);
 
 /// A non-ASCII character UTS #39 draws as ASCII.
-pub(super) const CONFUSABLE: Lint = Lint::new("confusable", Group::Pedantic);
+pub(in crate::lint) const CONFUSABLE: Lint =
+    Lint::new("confusable", Group::Pedantic);
 
 /// The lints [`text_hits`] can fire, for the same question as below.
 pub(crate) const TEXT_LINTS: [Lint; 2] = [NOT_NFC, MIXED_SCRIPT];
@@ -75,7 +78,7 @@ pub(crate) const LINE_LINTS: [Lint; 3] =
 /// Every pedantic lint in CLAIM order (V55, V58): when two point at one
 /// character, the earlier keeps it. The three walks each keep their own
 /// order; this is the one that holds across them.
-pub(super) const CLAIM_ORDER: [Lint; 8] = [
+pub(in crate::lint) const CLAIM_ORDER: [Lint; 8] = [
     UNICODE_SPACE,
     CRLF,
     TRAILING_WHITESPACE,

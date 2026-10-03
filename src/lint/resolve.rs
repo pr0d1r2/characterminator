@@ -91,8 +91,8 @@ mod tests {
     use crate::lint::{Group, Level, Lint, Target};
     use crate::scan::{Hit, Position};
 
-    /// A registered hazard lint (T36). The group is what forbids, so no
-    /// Unicode data is needed to test the floor.
+    /// A registered hazard lint (`src/lint/hazard:T36`). The group is what
+    /// forbids, so no Unicode data is needed to test the floor.
     fn hazard() -> Lint {
         Lint::new("invisible", Group::Hazard)
     }

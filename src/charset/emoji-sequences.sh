@@ -48,7 +48,7 @@ EOF
 # (two regional indicators), `tag` (a subdivision flag) and `zwj`. A
 # `presentation` line maps to nothing -- the builtin map deletes VS16
 # (`src/fix:V60`) -- and is listed so VS16 inside it is no hazard
-# (`src/lint:V63`, B15). LEFT OUT: single-code-point `Basic_Emoji` and
+# (`src/lint/hazard:V63`, B15). LEFT OUT: single-code-point `Basic_Emoji` and
 # `RGI_Emoji_Modifier_Sequence`, which hold no hazard to excuse. A flag or
 # a presentation carries no name: upstream spells some of those outside
 # ASCII (curly quotes), and the sequence itself identifies it.

@@ -1,10 +1,10 @@
-//! The judging, end to end through `check`: a real tree, a real `.ctrm`,
-//! and the report a reader sees. A child of the `check` tests, for their
-//! fixture. What a finding IS, without the tree, is tested beside the
-//! checker in `src/judge`; these hold the wiring between the two -- the
-//! hazards no configuration lowers (`src/lint:V36`), the joiners only a
-//! compiled-in preset excuses (`src/lint:V57`, B19), and the pedantic
-//! fixtures exempted per path (`src/lint:V37`, `src/lint:V58`, B20).
+//! The judging, end to end through `check`: a real tree, a real `.ctrm`, and
+//! the report a reader sees. A child of the `check` tests, for their fixture.
+//! What a finding IS, without the tree, is tested beside the checker in
+//! `src/judge`; these hold the wiring between the two -- the hazards no
+//! configuration lowers (`src/lint:V36`), the joiners only a compiled-in preset
+//! excuses (`src/lint/hazard:V57`, B19), and the pedantic fixtures exempted per
+//! path (`src/lint/pedantic:V37`, `src/lint/pedantic:V58`, B20).
 
 use super::super::run;
 use crate::cli::testkit::fixture;
@@ -51,7 +51,7 @@ fn no_configuration_talks_a_hazard_down() {
     assert!(report.text.contains("\"forbid\""), "{}", report.text);
 }
 
-/// `src/lint:V57`: a Persian word spelled with ZWNJ (mi-khaham, "I
+/// `src/lint/hazard:V57`: a Persian word spelled with ZWNJ (mi-khaham, "I
 /// want") is clean where the rule names `persian`, and the same bytes
 /// under `any` still fire -- granting everything excuses nothing.
 #[test]
@@ -81,7 +81,7 @@ fn a_script_preset_excuses_nothing_but_its_joiners() {
 }
 
 /// B19: a `.ctrm-sets` line NAMED `hindi` is not the preset, so the
-/// ZWNJ it grants is still a hazard (`src/lint:V57`).
+/// ZWNJ it grants is still a hazard (`src/lint/hazard:V57`).
 #[test]
 fn a_redeclared_preset_excuses_no_joiner() {
     let sets = (".ctrm-sets", "hindi ascii U+200C U+200D\n");
@@ -135,7 +135,7 @@ fn a_byte_exact_golden_file_ends_without_a_newline() {
     assert_eq!(report("ctrm-final-off", &ctrm, &files), rs);
 }
 
-/// B20: one claim per character across the walks (`src/lint:V55`). A
+/// B20: one claim per character across the walks (`src/lint/pedantic:V55`). A
 /// trailing space that is also the last character is one finding, and
 /// so is a last character that also mixes scripts.
 #[test]

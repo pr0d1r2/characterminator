@@ -122,7 +122,7 @@ number `itok` reports elsewhere, and two counters drift the moment either
 changes. `src/tokens` is its only call site, so the blast radius is one
 module.
 `unicode-normalization` and `unicode-security` carry the Unicode tables the
-pedantic lints read; `src/lint/ucd.rs` is their only call site.
+pedantic lints read; `src/lint/pedantic/ucd.rs` is their only call site.
 
 Flake inputs pin **tags**, bumped in their own reviewed commit (V44).
 Following a branch is rejected: what the gate enforces would move with no

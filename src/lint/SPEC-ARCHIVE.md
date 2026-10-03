@@ -10,6 +10,4 @@ correctly and uselessly. The verb that reads it is `mth tasks`.
 ## §T TASKS
 
 T35|x|[superseded by T38 & `src/cli:T55`] severity: `!<level>` in rules (T38), json lint & level (T38), `--strict` flag (`src/cli:T55`)|V33,`src/render:V11`
-T36|x|vendor Unicode Default_Ignorable & bidi data; `hazard` set; forbid enforcement|V34,V36,V49
 T38|x|lint registry: names, groups, levels, `!<lint>=<level>`, forbid enforcement|V36
-T39|x|pedantic lints per V37, each w/ legit-FP fixture. built: `crlf` `trailing-whitespace` `final-newline` `unicode-space` (V55) · `not-nfc` `nfkc-compat` `mixed-script` `confusable` (V58). `locale-literal` → T58|V37,V36,V55,V58

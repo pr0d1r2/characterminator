@@ -72,7 +72,7 @@ pub(crate) enum Format {
 /// the set it was judged against -- the set that did not contain it, for
 /// the ordinary `outside-set` finding.
 ///
-/// A PEDANTIC finding (`src/lint:V55`) fires inside the set, so `set`
+/// A PEDANTIC finding (`src/lint/pedantic:V55`) fires inside the set, so `set`
 /// carries the set in force, which is still true of the file, and the
 /// lint name says what is wrong. The human line prints that lint name in
 /// the set's place; the json keeps both, unchanged in shape (V11).

@@ -9,4 +9,4 @@ correctly and uselessly. The verb that reads it is `mth tasks`.
 
 ## §T TASKS
 
-T37|x|`guard` hook adapter: pre-read block, post-output taint decision, harness JSON fixtures|V35,V53,`src/lint/hazard:V34`
+T36|x|vendor Unicode Default_Ignorable & bidi data; `hazard` set; forbid enforcement|V34,`src/lint:V36`,V49

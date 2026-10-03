@@ -10,7 +10,7 @@ correctly and uselessly. The verb that reads it is `mth tasks`.
 ## §T TASKS
 
 T6|x|`.ctrm` parse & rule resolution, last match wins|V1,V2
-T15|x|[superseded by `src/lint:T58`; T39 closed w/o it] locale hint = the `locale-literal` pedantic lint|V17,`src/lint:V37`
+T15|x|[superseded by `src/lint/pedantic:T58`; T39 closed w/o it] locale hint = the `locale-literal` pedantic lint|V17,`src/lint/pedantic:V37`
 T18|x|one line parser per kind (rules, map, sets); flag twins feed same parser|V18,`.:I.flag`
 T19|x|property test: file ≡ `--no-files` + flag sequence, ∀ kinds|V18
 T20|x|config assembly: precedence chain, origin per entry, `explain` prints origin|V19,V20

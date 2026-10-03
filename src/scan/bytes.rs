@@ -61,7 +61,7 @@ pub fn scan_bytes(
 
 /// The text in raw bytes, or the NAMED reason there is none: the refusal
 /// half of [`scan_bytes`], for a caller that asks more than one question
-/// of the same text (`src/lint:V55` walks it a second time for line
+/// of the same text (`src/lint/pedantic:V55` walks it a second time for line
 /// endings) and should neither decode it twice nor refuse it two ways.
 ///
 /// # Errors

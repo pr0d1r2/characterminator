@@ -2,7 +2,13 @@
 
 ## §G GOAL
 
-How loud a finding is: lint names, groups, levels, hazard, pedantic.
+How loud a finding is: lint names, groups, levels, registry, resolution, findings & 1 claim per char. parent of the `hazard` & `pedantic` groups.
+
+## §F FEDERATION
+
+dir|owns|⊥owns|tokens
+hazard|hazard lints: classes, compiled-in detection, joiner, tag & VS16 exemptions|code points, levels|-
+pedantic|pedantic lints: walks, claim order, Unicode crates facade|levels, registry|-
 
 ## §N NAV
 
@@ -22,27 +28,10 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 ## §V INVARIANTS
 
 V33: severity ∈ `error` (default, exit 1) | `warn` (reported, exit 0); per rule suffix `!<severity>` (`docs/** caveman !warn`); last matching rule naming one wins; twin via `--rule` (`src/rules:V18`). `--strict` → warn counts as error (clippy `-D warnings` shape). json violation ! carry `severity`. [superseded by V36; `severity` key ⊥ shipped: json carries `lint` & `level`, `src/render:V95`]
-V34: `hazard` set, generated from UCD 18.0.0 properties (inputs hashed, ⊥ vendored, `src/charset:V97`): ∀ `Default_Ignorable_Code_Point` (ZWSP, word joiner, soft hyphen, VS outside declared emoji sequences, Hangul fillers, invisible math ops, tag chars U+E0000–U+E007F) ∪ bidi controls (Bidi_Control: U+061C, U+200E–U+200F, U+202A–U+202E, U+2066–U+2069) ∪ C0/C1 controls ∖ `\t` `\n` `\r` ∪ BOM ∉ file start. ZWJ ∈ declared emoji sequence (`src/fix:V31`) exempt; ZWJ/ZWNJ via CLDR language preset REJECTED: `forbid` ⊥ lowered by later rule | flag (V36) ∴ a preset-driven exemption contradicts it. hazard hit = forbid level ∀ rule (V36) ∴ `any` grants every char & a hazard STILL fires — the exclusion lives in the LEVEL, ⊥ in the set model, ∵ `src/charset:V3` forbids subtraction & "everything minus hazard" is ⊥ expressible. ⊥ lowered, ⊥ even by naming the `hazard` group or one of its lints (V36); joiners in a script that spells w/ them → V57. bidi controls ∉ builtin map, yet `fix` deletes them & every hazard that draws ⊥ text, granted or ⊥ (`src/fix:V104`); `control-character` ⊥ deleted w/o a map entry ∴ reported.
-V36: ∀ check = named lint in a group; levels rustc/clippy shape `allow` | `warn` | `deny` | `forbid` (`forbid` ⊥ lowered by later rule | flag). groups: `hazard` (forbid, V34) · `charset` (deny, `src/rules:V1`, `src/rules:V2`, `src/charset:V3`) · `pedantic` (allow). rule suffix `!<level>` → `charset`; `!<lint|group>=<level>` → named one. `--strict` → warn ⇒ deny. deny | forbid hit → exit 1. json ! carry lint name & level.
-V37: `pedantic` group = maximum purity, opt-in (`--pedantic` ≡ `--rule '* !pedantic=warn'`), clippy::pedantic philosophy: ? flags legit text ∴ ⊥ default. lints SHIPPED (group stays `allow` ∴ ⊥ fire until asked): `not-nfc` · `nfkc-compat` (fullwidth, ligatures, superscripts → ASCII-foldable) · `unicode-space` (Zs ∖ U+0020, V55) · `mixed-script` · `confusable` (UTS #39) · `crlf` · `trailing-whitespace` · `final-newline`. PENDING T58, ⊥ registered: `locale-literal` (non-ASCII string literal in a code file → move to a locale file, `src/rules:V17`). lint → default group only after near-zero false positives in dogfood waves.
-V49: hazard = 1 lint per class, first class holding the char wins: `bidi-control` (Bidi_Control) · `tag-character` · `stray-bom` · `control-character` (Cc ∖ `\t` `\n` `\r`) · `invisible` (rest of Default_Ignorable). char ∈ hazard ∧ ∉ set → 1 finding, the hazard; report names set `hazard`. classes read from COMPILED-IN data (`src/charset:V22`), ⊥ run's catalog ∴ `.ctrm-sets` | `--no-builtin-sets` ⊥ empty them. ZWJ & tag exemption (V34) = V63, landed w/ `src/fix:T33`: exact RGI match, ⊥ approximated.
-V55: pedantic, ⊥ vendored data (T39). `unicode-space` = Zs ∖ U+0020 (U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000). finding = 1 char IN the file ∴ `Hit`, json, SARIF unchanged: `crlf` → the CR of a CR LF · `trailing-whitespace` → 1st char of a line's trailing White_Space run · `final-newline` → last char of a non-empty file, ≠ LF. 1 char ≤ 1 claim ACROSS char, line & text walks: hazard > `outside-set` > `unicode-space` > `crlf` > `trailing-whitespace` > `final-newline` ∴ `ascii` (⊥ `cr`) reports CR LF as `outside-set`. human last column = lint name (`src/render:V94`). exemption: later rule `<glob> !<lint>=allow`; names ⊥ set ∴ grant untouched (`src/rules:V56`).
-V57: ZWNJ U+200C & ZWJ U+200D = SPELLING in fa & Devanagari ∴ a file whose rule names a COMPILED-IN preset granting a joiner & ⊥ other hazard (`persian`: ZWNJ; `hindi`: both) ⊥ fires on it. ⊥ level change (V36 holds): the char ⊥ hazard IN THAT FILE. presets read from builtin data ∴ `.ctrm-sets` redeclaring `persian` ⊥ widens it: excuse only where the run resolves the name EXACTLY as shipped (a name ⊥ provenance; redeclared | builtin-less → ⊥ excuse); `any` grants other hazards ∴ excuses ⊥. bidi, tag, control ⊥ excusable ∴ `persian` omits U+061C. tool output (guard) has ⊥ grant ∴ ⊥ excuse.
-V58: pedantic via `unicode-normalization` & `unicode-security`, call site `ucd.rs` only (`src:C`). 1 char IN file (V55 shape): `nfkc-compat` → NFKC(c) ≠ NFC(c) · `confusable` → non-ASCII c, UTS #39 skeleton non-empty ASCII · `not-nfc` → per NFC segment (UAX #15 boundary: ccc 0 ∧ NFC_QC=Yes) NFC changes, 1st char differing · `mixed-script` → per word (alnum ∪ marks), 1st char emptying UTS #39 resolved script set. Zs → `unicode-space` only. claim order: V55 then `nfkc-compat` > `confusable` > `not-nfc` > `mixed-script`. ⊥ asked → ⊥ lookup.
-V63: 2A exemption (V34): ZWJ U+200D inside an RGI ZWJ sequence, tag chars inside an RGI tag sequence (the 3 subdivision flags) & VS16 U+FE0F inside an RGI presentation (`Basic_Emoji` + VS16) | keycap | ZWJ sequence (B15) ⊥ hazard. EXACT match against the vendored list (`src/fix:V62`), longest first ∴ a joiner | tag ⊥ in a listed sequence still fires, & ⊥ "joiner between 2 emoji" heuristic (a 2nd, private definition of a sequence). the exempted char then = `outside-set` (`emoji` withholds it, `src/fix:V31`) ∴ `fix` compresses the sequence. guard: same list, same exemption on tool output. list read from compiled-in data ∴ config ⊥ widens it (V49).
+V36: ∀ check = named lint in a group; levels rustc/clippy shape `allow` | `warn` | `deny` | `forbid` (`forbid` ⊥ lowered by later rule | flag). groups: `hazard` (forbid, `src/lint/hazard:V34`) · `charset` (deny, `src/rules:V1`, `src/rules:V2`, `src/charset:V3`) · `pedantic` (allow). rule suffix `!<level>` → `charset`; `!<lint|group>=<level>` → named one. `--strict` → warn ⇒ deny. deny | forbid hit → exit 1. json ! carry lint name & level.
 
 ## §T TASKS
 
 id|status|task|cites
 T35|x|ARCHIVED to SPEC-ARCHIVE.md|V33,`src/render:V11`
-T36|x|ARCHIVED to SPEC-ARCHIVE.md|V34,V36,V49
 T38|x|ARCHIVED to SPEC-ARCHIVE.md|V36
-T39|x|ARCHIVED to SPEC-ARCHIVE.md|V37,V36,V55,V58
-T58|.|`locale-literal` (V37): needs code-file & string-literal notion ⊥ in tree; ⊥ registered til built|V37,`src/rules:V17`
-
-## §B BUGS
-
-id|date|cause|fix
-B15|2026-10-02|VS16 U+FE0F = Default_Ignorable ∴ hazard everywhere; V34 exempts it inside declared emoji sequences but ⊥ list held `Basic_Emoji` presentation sequences ∴ `U+2764+U+FE0F` (red heart) fired forbid under `ascii+emoji`. via 2A smoke run|V63
-B19|2026-10-02|V57 excuse matched the set NAME ∴ `.ctrm-sets` `hindi ascii U+200C U+200D` (or `--no-builtin-sets --set`) + `* hindi` excused ZWNJ. via release review|V57
-B20|2026-10-02|dedup ran per walk ∴ `a ` = `trailing-whitespace` + `final-newline` at 1:2, `a` U+03BB = `final-newline` + `mixed-script`. via release review|V55

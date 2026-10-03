@@ -1,7 +1,7 @@
-//! The ONE call site of the Unicode crates (`src:C`, `src/lint:V58`):
+//! The ONE call site of the Unicode crates (`src:C`, `src/lint/pedantic:V58`):
 //! `unicode-normalization` and `unicode-security`. Everything here is a
 //! question put to a published table; what a finding is and which lint
-//! it carries is `pedantic.rs`'s business.
+//! it carries is `lints.rs`'s business.
 //!
 //! WHICH CHARACTER EACH ANSWER POINTS AT, so a finding is one character
 //! really in the file and `Hit` stays as it is:

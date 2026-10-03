@@ -28,7 +28,7 @@ sib|tests|integration tests that drive the `ctrm` binary
 ## §C CONSTRAINTS
 
 - module = dir + `mod.rs`. `mod.rs` composes, ⊥ implements.
-- ∀ external dep ! ONE facade node: `itok` → `src/tokens` · `unicode-normalization` & `unicode-security` → `src/lint` (`ucd.rs` only).
+- ∀ external dep ! ONE facade node: `itok` → `src/tokens` · `unicode-normalization` & `unicode-security` → `src/lint/pedantic`.
 
 ## §V INVARIANTS
 

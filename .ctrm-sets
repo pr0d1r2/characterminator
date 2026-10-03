@@ -28,7 +28,7 @@ spec-mark U+2705 U+274C U+2713 U+2717 U+26A0 U+27A1
 # compresses.
 #
 # This set used to hold ZERO WIDTH JOINER and VARIATION SELECTOR-16 as
-# well. T36 made both hazards (`src/lint:V34`), and a hazard fires at
+# well. T36 made both hazards (`src/lint/hazard:V34`), and a hazard fires at
 # `forbid` whatever a set grants, so granting them here would have been a
 # line that says something and does nothing. The spec rows that printed
 # them now write the sequence in `U+XXXX` notation instead.

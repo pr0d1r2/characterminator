@@ -214,7 +214,7 @@ fn the_builtin_map_deletes_the_invisibles() {
     }
 }
 
-/// `src/lint:V34`: the builtin MAP has no entry for a bidi control.
+/// `src/lint/hazard:V34`: the builtin MAP has no entry for a bidi control.
 /// `fix` still deletes one, but as a hazard (V104), not as a mapping:
 /// a `.ctrm-map` line for it wins, and either way the deletion is a
 /// reported rewrite row -- the record that a Trojan Source override was

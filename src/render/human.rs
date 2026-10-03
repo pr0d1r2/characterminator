@@ -105,7 +105,7 @@ fn shown(path: &str) -> Cow<'_, str> {
 }
 
 /// The last word of the line: the set the character was judged against,
-/// or, for a PEDANTIC finding, the lint that fired (`src/lint:V55`).
+/// or, for a PEDANTIC finding, the lint that fired (`src/lint/pedantic:V55`).
 ///
 /// A charset or hazard finding is told apart by its code point plus the
 /// set column. A pedantic one is not: U+0020 is trailing whitespace on

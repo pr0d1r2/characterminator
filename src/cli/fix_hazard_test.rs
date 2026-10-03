@@ -50,8 +50,8 @@ fn a_control_character_is_rewritten_only_through_the_map() {
 }
 
 /// What `check` lets off is left alone: the joiners of an RGI ZWJ
-/// sequence (`src/lint:V63`) and the ZWNJ Persian spells with
-/// (`src/lint:V57`). Neither is a hazard IN THAT FILE.
+/// sequence (`src/lint/hazard:V63`) and the ZWNJ Persian spells with
+/// (`src/lint/hazard:V57`). Neither is a hazard IN THAT FILE.
 #[test]
 fn what_check_lets_off_is_left_alone() {
     let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\n";

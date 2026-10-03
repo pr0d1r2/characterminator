@@ -35,7 +35,7 @@ sib|src/render|human & json output, stable json contract
 - cmd: `ctrm --version` | `-V` → `characterminator <version>`, exit 0 (test `tests/surface.rs`). `--help` | `-h`: V101.
 - cmd: `ctrm guard` → hook adapter: harness hook JSON stdin → decision JSON stdout; fuse on hazard (`src/cli/guard:V35`).
 - flag: `--format human|json` ∀ verb ∖ `guard` (argv ignored, `src/cli/guard:V93`); `sarif` `check` only (`src/render:V50`); `explain --as` refuses any `--format`, exit 2 (`src/cli/explain:V32`) · `-C <dir>`.
-- flag (file twins, repeatable, `src/rules:V18`): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (`src/rules:V29`) · `--strict` (`src/lint:V36`) · `--pedantic` (`src/lint:V37`) · `--no-color` (∀ verb, no-op: output ⊥ ever coloured; accepted ∵ unknown flags exit 2) · env `NO_COLOR` honoured, same reason, ⊥ code (test `tests/surface.rs`).
+- flag (file twins, repeatable, `src/rules:V18`): `--rule <line>` · `--map <line>` · `--set <line>` · `--rules-file <f>` · `--map-file <f>` · `--sets-file <f>` · `--no-files` (skip discovered dotfiles) · `--no-builtin-map` · `--no-builtin-sets` · `--fidelity <family>` (`src/rules:V29`) · `--strict` (`src/lint:V36`) · `--pedantic` (`src/lint/pedantic:V37`) · `--no-color` (∀ verb, no-op: output ⊥ ever coloured; accepted ∵ unknown flags exit 2) · env `NO_COLOR` honoured, same reason, ⊥ code (test `tests/surface.rs`).
 - flag: unknown | another verb's (`check --bpe`) → exit 2 (∖ `guard`, `src/cli/guard:V93`) ∵ a typo'd flag silently ignored reads as one that worked. `--` ends flags.
 
 ## §V INVARIANTS

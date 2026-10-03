@@ -71,7 +71,7 @@ pub struct Rewrite {
 /// What `fix` asks of the file it rewrites (V6, V104): which characters
 /// its set grants, and where a text holds a HAZARD -- a character that is
 /// rewritten whatever the set grants, because a grant was never meant to
-/// let in what hides or reorders text (`src/lint:V34`).
+/// let in what hides or reorders text (`src/lint/hazard:V34`).
 ///
 /// Both arrive from outside: whether a character is allowed, or a hazard
 /// at that place in that file, is the judge's answer, not this node's

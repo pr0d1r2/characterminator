@@ -143,7 +143,7 @@ fn shapes(root: &Path, words: &[&str]) -> Vec<String> {
     rules.iter().map(shape).collect()
 }
 
-/// `src/lint:V37`: `--pedantic` IS `--rule '* !pedantic=warn'`, at its
+/// `src/lint/pedantic:V37`: `--pedantic` IS `--rule '* !pedantic=warn'`, at its
 /// own argv position, and it adds a level without revoking a grant.
 #[test]
 fn pedantic_is_the_rule_it_stands_for_and_revokes_nothing() {
