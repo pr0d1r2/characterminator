@@ -47,6 +47,7 @@ V73: path arity: `sets` 0, `explain` (any `--as`) ≤ 1, other verbs any. extra 
 V74: ∀ verb ⊥ `guard`: whole config (rules, sets, map) parsed & validated (`src/judge` `Config::validate`) before dispatch; any kind broken → exit 2, naming its origin ∵ a verb reading only its own kind reported on a config that ⊥ parsed (B29). ∀ rule: every set it names resolves, matched or ⊥ (B47). `--map` value = 1 line, as `--set` & `--rule` (`src/rules:V18`).
 V80: `fix` & `fix --check` judge what they LEAVE via `check`'s `Checker` (`src/judge:V99`) (levels, `--strict`, hazards), rows @ ORIGINAL pos (`src/fix/emoji:V65`) ∴ exit = drift (`--check`) ∨ `check`(output) ∨ not-UTF-8 skip.
 V101: `--help` | `-h`, bare or ∀ verb ∖ `guard` → usage on STDOUT, exit 0 ∵ asked-for help ⊥ error. read via flag table (`--rule --help` = value, `-- --help` = path) & BEFORE config loads ∴ broken `.ctrm` ⊥ hides it. unknown flag beside it → exit 2 (V74). bare `ctrm` → stderr, exit 2. `guard --help` ignored (`src/cli/guard:V93`) ∵ a hook printing usage ⊥ decides.
+V115: root w/o `-C` = 1st ancestor of cwd w/ `.git`, else cwd; `-C <dir>` = root as given. path & `--*-file` args typed in a subdir → prefixed w/ its place under root ∴ matched & shown root-relative. bare verb in a subdir judges the WHOLE repo, as `git status` ∵ same command, same verdict ∀ cwd. guard: `config::root_of`. runner `config_test.rs`.
 
 ## §T TASKS
 
@@ -71,3 +72,4 @@ B39|2026-10-02|`sets a.md` & `explain a.md b.txt` silently ignored the extra pat
 B41|2026-10-03|B22 fixed `check` only: `fix` & `fix --check` never read skips ∴ a not-UTF-8 file named & exit 0 while `check` exits 1. via release review|V7
 B42|2026-10-03|`fix` judged leftovers as `outside-set` @ `deny`, ⊥ hazard ∴ `fix --check` ≠ `check` under `=allow`/`=warn` & `* any` + U+202E; `ascii` U+202E labelled `outside-set`. via release review|V80
 B47|2026-10-03|rule sets resolved only when a file matched ∴ `check --rule '*.txt asci' --rule '* any'` exit 0, & a match's refusal ⊥ named `argv[n]`. via release review|V74
+B67|2026-10-03|run root = cwd ∴ `cd docs; ctrm check` read ⊥ the repo's `.ctrm`: wrong verdicts, & `fix` rewrote chars the repo grants. via DX review|V115

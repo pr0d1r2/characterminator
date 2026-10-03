@@ -108,13 +108,23 @@ fn prepared(
     verb: &str,
     argv: &[String],
 ) -> Result<(Args, Config, Format), String> {
-    let parsed = args::parse(argv)?;
+    prepared_at(&cwd(), verb, argv)
+}
+
+/// [`prepared`] for a caller standing at `cwd`, which a test can choose.
+fn prepared_at(
+    cwd: &std::path::Path,
+    verb: &str,
+    argv: &[String],
+) -> Result<(Args, Config, Format), String> {
+    let mut parsed = args::parse(argv)?;
     arity(verb, &parsed.paths)?;
     let format = format_of(&parsed)?;
     if sarif_misused(verb, format) {
         return Err(sarif_refused(verb));
     }
-    let config = config::load(&cwd(), &parsed)?;
+    let base = config::situated(cwd, &mut parsed);
+    let config = config::load(&base, &parsed)?;
     config.validate()?;
     Ok((parsed, config, format))
 }

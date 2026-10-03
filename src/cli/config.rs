@@ -67,6 +67,47 @@ pub(super) fn load(cwd: &Path, args: &Args) -> Result<Config, String> {
     Ok(config)
 }
 
+/// The run root for a caller standing at `cwd` with no `-C`: the git work
+/// tree holding it, else `cwd` itself (`src/rules:V45`).
+///
+/// Shared with `guard`, whose payload names the cwd of the tool call: a
+/// hook fired in `docs/` reads the same `.ctrm` as a run at the top.
+/// Found LEXICALLY, as `src/tokens` finds the work tree: the first
+/// ancestor holding `.git` (a directory, or a linked worktree's file), so
+/// no git process is spawned to ask.
+#[must_use]
+pub(crate) fn root_of(cwd: &Path) -> PathBuf {
+    let top = cwd.ancestors().find(|dir| dir.join(".git").exists());
+    top.map_or_else(|| cwd.to_owned(), Path::to_path_buf)
+}
+
+/// Where a run stands (`src/cli:V115`): the base `load` resolves `-C`
+/// against, with every path in argv moved from the caller's directory to
+/// the root.
+///
+/// `-C` IS the root, as given, and its paths are already relative to it.
+/// Without it the root is [`root_of`] the cwd, and a path typed in
+/// `docs/` -- a named file or a `--*-file` -- is prefixed with `docs/`,
+/// so what is matched and shown stays relative to the root.
+#[must_use]
+pub(super) fn situated(cwd: &Path, args: &mut Args) -> PathBuf {
+    if args.has("-C") {
+        return cwd.to_owned();
+    }
+    let root = root_of(cwd);
+    let within = cwd.strip_prefix(&root).unwrap_or_else(|_| Path::new(""));
+    if within.as_os_str().is_empty() {
+        return root;
+    }
+    let moved = |word: &str| within.join(word).to_string_lossy().into_owned();
+    args.paths = args.paths.iter().map(|path| moved(path)).collect();
+    let files = args.flags.iter_mut().filter(|f| f.name.ends_with("-file"));
+    for flag in files {
+        flag.value = flag.value.as_deref().map(moved);
+    }
+    root
+}
+
 /// The configuration of a run given no flags: builtins and the dotfiles
 /// at `root`, which is what every verb read before T55.
 #[must_use]

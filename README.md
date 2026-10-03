@@ -249,7 +249,7 @@ flags in the order given. Later wins.
 | `--pedantic` | the same as `--rule '* !pedantic=warn'` |
 | `--strict` | a warning fails the run, as clippy's `-D warnings` does |
 | `--no-color` | accepted on every verb and changes nothing: ctrm never prints colour, and `NO_COLOR` is honoured the same way |
-| `-C <dir>` | run as if started in `<dir>` |
+| `-C <dir>` | use `<dir>` as the root; without it the root is the top of the git work tree, from any subdirectory |
 
 `--no-files` followed by one flag per line of a dotfile is the same run as
 the dotfile itself, and that is tested. A flag's origin is its position in

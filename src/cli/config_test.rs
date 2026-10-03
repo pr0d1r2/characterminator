@@ -263,3 +263,45 @@ fn a_rule_naming_an_undeclared_set_is_refused_at_its_origin() {
     let why = config.and_then(|c| c.validate()).err().unwrap_or_default();
     assert!(why.contains("argv[4]") && why.contains("asci"), "{why}");
 }
+
+/// A tree that is a git work tree to `root_of` (a `.git` directory is
+/// all it asks), granting `typography` under `docs/` only.
+fn work_tree(name: &str) -> Option<PathBuf> {
+    let root = fixture(name, &[(RULES, "docs/** typography\n")])?;
+    std::fs::create_dir_all(root.join(".git")).ok()?;
+    std::fs::create_dir_all(root.join("docs")).ok()?;
+    std::fs::write(root.join("docs/a.md"), "a\u{2014}b\n").ok()?;
+    Some(root)
+}
+
+/// B67 / V115: a run started in a subdirectory reads the `.ctrm` at the
+/// work tree's root, and the path it names is matched and shown from
+/// there. Rooted at the cwd it read no `.ctrm` and judged `ascii`.
+#[test]
+fn a_run_from_a_subdirectory_reads_the_config_at_the_work_tree_root() {
+    let Some(root) = work_tree("ctrm-subdir-fixture") else {
+        return;
+    };
+    let docs = root.join("docs");
+    let mut read = args::parse(&argv(&["check", "a.md"])).unwrap_or_default();
+    assert_eq!(super::root_of(&docs), root);
+    assert_eq!(super::situated(&docs, &mut read), root);
+    assert_eq!(read.paths, vec!["docs/a.md"]);
+    let config = super::load(&root, &read).unwrap_or_default();
+    let report = check::run(&config, &read.paths, Format::Human);
+    assert_eq!(report.map(|r| r.code), Ok(0));
+}
+
+/// `-C` IS the root: no walk upward, and its paths are left as typed.
+#[test]
+fn a_directory_flag_is_the_root_and_moves_no_path() {
+    let Some(root) = work_tree("ctrm-subdir-dash-c-fixture") else {
+        return;
+    };
+    let words = argv(&["check", "-C", "docs", "a.md"]);
+    let mut read = args::parse(&words).unwrap_or_default();
+    assert_eq!(super::situated(&root, &mut read), root);
+    assert_eq!(read.paths, vec!["a.md"]);
+    let config = super::load(&root, &read).unwrap_or_default();
+    assert_eq!(config.root, root.join("docs"));
+}
