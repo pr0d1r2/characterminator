@@ -18,6 +18,7 @@ sib|src/cli/init|`init` verb: survey tracked files by type, greedy preset cover,
 ## §V INVARIANTS
 
 V119: verb = 1st argv word that is ⊥ a flag & ⊥ a flag's value ∴ flags before it work (`ctrm -C .. check`), origins stay process-argv positions. unknown verb → stderr `ctrm: unknown verb '<w>'` + ` (did you mean '<v>'?)` at edit distance ≤ 2, then 1 line pointing at `ctrm --help`, exit 2, ⊥ the whole usage ∵ a usage dump hides the one line that says what was wrong. flags & ⊥ verb → named, exit 2. `--help` & `--version` = flag-table entries ∴ `ctrm --help --bogus` exit 2, as `check --help --bogus` (`src/cli:V101`). `ctrm guard --help` | `-h` as the ONLY word → guard help, exit 0 (`src/cli/guard:V93`). runner `dispatch_test.rs`, `args.rs`, `tests/surface.rs`.
+V120: global help: ∀ verb & ∀ flag w/ a 1-line meaning, exit codes (0 clean, 1 violation, 2 usage | config; guard ⊥ 2), docs URL. `<verb> --help`: purpose, the flags that verb reads w/ meanings, exit codes, 1 example. ∀ flag of the table named in the global help (test `args.rs`). lines ≤ 80 cols ∵ scannable in a terminal. runner `help.rs`, `tests/surface.rs`.
 
 ## §T TASKS
 

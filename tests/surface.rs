@@ -61,8 +61,17 @@ fn help_is_printed_to_stdout_and_exits_zero() {
         let text = got.map(|o| o.stdout).unwrap_or_default();
         assert_eq!(code, Some(0), "{words:?}");
         let text = String::from_utf8_lossy(&text);
-        assert!(text.contains("ctrm check"), "{words:?}: {text}");
+        assert!(is_page_for(words, &text), "{words:?}: {text}");
     }
+}
+
+/// The global page lists the verbs; after a verb, it is that verb's page
+/// (`src/cli/usage:V120`). Either way it gives the exit codes.
+fn is_page_for(words: &[&str], text: &str) -> bool {
+    let verb = words.first().filter(|w| !w.starts_with('-'));
+    let page =
+        verb.map_or_else(|| "verbs:".to_owned(), |v| format!("ctrm {v}"));
+    text.contains(&page) && text.contains("exit codes")
 }
 
 /// No arguments is still a usage ERROR: stderr, exit 2. And `--help`

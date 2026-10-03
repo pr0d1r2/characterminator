@@ -111,7 +111,7 @@ fn routed(read: &Args, argv: &[String]) -> Outcome {
         Some(verb) if !usage::VERBS.contains(&verb) => {
             failed(&usage::unknown_verb(verb))
         }
-        _ if asks_help(read) => help(),
+        _ if asks_help(read) => help(read.verb.as_deref()),
         Some("guard") => guarded(),
         Some(verb) => invoked(verb, argv),
         None => failed(&usage::missing_verb()),
@@ -426,9 +426,11 @@ fn version() -> Outcome {
 
 /// Asked for, the usage is the ANSWER: stdout, exit 0 (V101), so
 /// `ctrm --help | less` pages it and a script probing for the tool does
-/// not read a usage error.
-fn help() -> Outcome {
-    out::shown(usage::USAGE, Outcome::Ok)
+/// not read a usage error. After a verb, that verb's page
+/// (`src/cli/usage:V120`).
+fn help(verb: Option<&str>) -> Outcome {
+    let page = verb.and_then(usage::verb_help).unwrap_or(usage::USAGE);
+    out::shown(page, Outcome::Ok)
 }
 
 /// Bare `ctrm`: exit 2 names the surface rather than pretending to offer

@@ -3,7 +3,10 @@
 //! See `src/cli/usage/SPEC.md`. Dispatch decides WHEN to show these and
 //! with which exit code; this node owns the words.
 
+mod help;
+
 use crate::judge::nearest;
+pub(in crate::cli) use help::{USAGE, verb_help};
 
 /// Every verb, in the order the usage lists them.
 pub(in crate::cli) const VERBS: &[&str] =
@@ -38,35 +41,7 @@ reads one hook payload (JSON) on stdin and writes the hook decision on
 stdout; the rules come from the dotfiles at the payload's cwd. Takes no
 flags: any other word is ignored, so a hook line can never exit 2.
 
-example: a PreToolUse or PostToolUse hook whose command is `ctrm guard`
 exit codes: 0 decided (the decision is in the JSON), 1 the adapter
-failed; never 2, which a harness reads as \"block\"";
+failed; never 2, which a harness reads as \"block\"
 
-/// The surface, in one place so a test can hold it to the flag table.
-pub(in crate::cli) const USAGE: &str =
-    "ctrm -- eliminate characters outside an allowed set
-
-  ctrm check [<path>...]         report characters outside the set
-    [--summary] [--max <n>]      one row per file and code point; at most n
-  ctrm explain [<path>]          the set in force, and the rule behind it
-    [--as args|lines|prompt]     or the config as flags, files, a prompt
-  ctrm sets [<name>...]          the presets, what each is for, members
-    [--locales]                  the CLDR locale sets instead
-    [--containing <c>]           only the sets holding c (or U+XXXX)
-  ctrm fix [--check] [<path>...] rewrite them, or report the drift
-  ctrm stats [--bpe] [<path>...] what they cost now, and after a fix
-  ctrm init [--print]            draft a .ctrm from the tracked files
-  ctrm guard                     agent hook: hook JSON in, decision out
-  ctrm --help | -h               this text; also after any verb
-  ctrm --version | -V            the version
-
-configuration, any verb, repeatable, later wins:
-  --rule <line>     one .ctrm line       --rules-file <f>
-  --map <line>      one .ctrm-map line   --map-file <f>
-  --set <line>      one .ctrm-sets line  --sets-file <f>
-  --no-files  --no-builtin-map  --no-builtin-sets
-  --fidelity <family>  --strict  --pedantic  --no-color  -C <dir>
-
-any verb but guard takes --format json; check also takes --format sarif;
-an unknown flag is refused; `--` ends the flags; guard reads no flags;
-ctrm never prints colour: --no-color and NO_COLOR are accepted, no-ops";
+example: ctrm guard < payload.json   (as a PreToolUse/PostToolUse hook)";
