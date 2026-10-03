@@ -71,18 +71,67 @@ fn read_of_sparse(name: &str, head: &str, at: u64, tail: &str) -> String {
     answer_in(&read_payload(&root, &full.to_string_lossy()), &root)
 }
 
+/// A TEXT file: `head`, then `a` up to byte `to`, then `tail`, judged
+/// under `* any` -- so the only findings are hazards.
+fn read_of_long(name: &str, head: &str, to: u64, tail: &str) -> String {
+    use std::io::Write;
+    let Some(root) = tree(name, &[(".ctrm", "* any\n")]) else {
+        return String::from("(disk refused)");
+    };
+    let full = root.join("long.txt");
+    let fill = usize::try_from(to).unwrap_or(0).saturating_sub(head.len());
+    let written = std::fs::File::create(&full).and_then(|mut f| {
+        f.write_all(head.as_bytes())?;
+        f.write_all(&vec![b'a'; fill])?;
+        f.write_all(tail.as_bytes())
+    });
+    if written.is_err() {
+        return String::from("(disk refused)");
+    }
+    answer_in(&read_payload(&root, &full.to_string_lossy()), &root)
+}
+
 /// V102: past the 16 MiB cap only a prefix is judged. A hazard OUTSIDE
-/// it is not found -- read whole, the NUL gap and the U+202E would deny
-/// -- so the read passes, never in silence: the note says the rest was
-/// not judged.
+/// it is not found, so the read passes, never in silence: the note says
+/// the rest was not judged.
 #[test]
 fn a_file_over_the_cap_is_judged_by_its_prefix_and_says_so() {
     let past = super::super::CAP.saturating_add(10);
-    let got =
-        read_of_sparse("ctrm-guard-cap-tail", "plain\n", past, "\u{202E}\n");
+    let got = read_of_long("ctrm-guard-cap-tail", "plain\n", past, "\u{202E}");
     assert!(!got.contains("permissionDecision"), "{got}");
     assert!(got.contains("16 MiB cap"), "{got}");
     assert!(got.contains("the rest was NOT"), "{got}");
+}
+
+/// B64: an early newline, then one line running past the cap. The cut
+/// used to land after that newline and judge `x\n` alone; the whole
+/// prefix is judged now, so the override on line 2 denies.
+#[test]
+fn an_override_after_the_last_newline_in_the_prefix_still_denies() {
+    let past = super::super::CAP.saturating_add(10);
+    let got = read_of_long("ctrm-guard-cap-b64", "x\n\u{202E}", past, "");
+    assert!(got.contains(r#""permissionDecision":"deny""#), "{got}");
+    assert!(got.contains("long.txt:2:1 U+202E"), "{got}");
+}
+
+/// B64: no newline at all, and the cap lands inside an emoji sequence --
+/// after a family's joiner, or inside a flag's tags. The cut backs off
+/// the unfinished sequence, so it makes no hazard: no denial for size,
+/// no joiner noted, only the "rest was not judged" note.
+#[test]
+fn a_cap_inside_an_emoji_sequence_makes_no_hazard() {
+    let cap = super::super::CAP;
+    let family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+    let flag =
+        "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
+    // 14 bytes: the man, a joiner, the woman, a joiner. 12: flag + 2 tags.
+    for (name, tail, inside) in [("zwj", family, 14), ("tag", flag, 12)] {
+        let to = cap.saturating_sub(inside);
+        let got = read_of_long(&format!("ctrm-guard-cap-{name}"), "", to, tail);
+        assert!(!got.contains("permissionDecision"), "{got}");
+        assert!(!got.contains("invisible"), "{got}");
+        assert!(got.contains("the rest was NOT"), "{got}");
+    }
 }
 
 /// V112: a binary over the cap passes in silence too; the "rest was not
@@ -105,13 +154,14 @@ fn a_hazard_in_the_prefix_of_a_capped_file_still_denies() {
     assert!(got.contains("big.log:1:2 U+202E"), "{got}");
 }
 
-/// The cut lands after the last newline inside the cap, else after the
-/// last whole UTF-8 character, so it never splits one; a file within
-/// the cap is read whole.
+/// The cut lands after the last whole UTF-8 character inside the cap,
+/// never at a newline before it (B64), so it never splits one; a file
+/// within the cap is read whole.
 #[test]
-fn the_prefix_is_cut_at_a_line_or_a_whole_character() {
+fn the_prefix_is_cut_at_a_whole_character() {
     use super::super::cut;
-    assert_eq!(cut(b"ab\ncd\nef", 7), 6);
+    assert_eq!(cut(b"ab\ncd\nef", 7), 7);
+    assert_eq!(cut("x\n\u{202E}aaaa".as_bytes(), 8), 8);
     // U+2014 is 3 bytes at 1..4; a cap of 3 would split it.
     assert_eq!(cut("a\u{2014}b".as_bytes(), 3), 1);
     assert_eq!(cut(b"abcdef", 4), 4);
@@ -120,5 +170,5 @@ fn the_prefix_is_cut_at_a_line_or_a_whole_character() {
     let whole = super::super::loaded(&file, 6).map(|(b, w)| (b.len(), w));
     assert_eq!(whole, Some((6, true)));
     let capped = super::super::loaded(&file, 5).map(|(b, w)| (b.len(), w));
-    assert_eq!(capped, Some((3, false)));
+    assert_eq!(capped, Some((5, false)));
 }

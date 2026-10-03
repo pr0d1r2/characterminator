@@ -17,6 +17,7 @@
 //! (`src/lint/hazard:V49`), so a `.ctrm` that cannot be read or applied still
 //! leaves every hazard judged; only the note about it changes.
 
+use super::cap::settled;
 use super::hook::{self, Call, Event, Verdict};
 use super::reason::{denied, denied_binary, file_note, output_note, tainted};
 use super::tier::blocks;
@@ -132,10 +133,7 @@ fn read(cwd: &Path, path: &str, hazards: &Hazards) -> Verdict {
 const CAP: u64 = 16 * 1024 * 1024;
 
 /// The file's first `cap` bytes, and whether that is all of it. A file
-/// longer than that is cut back to its last newline inside the cap: a
-/// line break is never inside a UTF-8 character, an emoji sequence, or a
-/// bidi pair, so the cut cannot MAKE a hazard (a joiner whose partner
-/// was cut off) or a decode error that would deny for size alone.
+/// longer than that is cut back as [`cut`] says.
 fn loaded(full: &Path, cap: u64) -> Option<(Vec<u8>, bool)> {
     let file = std::fs::File::open(full).ok()?;
     let mut bytes = Vec::new();
@@ -149,18 +147,20 @@ fn loaded(full: &Path, cap: u64) -> Option<(Vec<u8>, bool)> {
     Some((bytes, whole))
 }
 
-/// Where a capped prefix ends: after its last newline, else after its
-/// last whole UTF-8 character.
+/// Where a capped prefix ends (V102): after its last WHOLE character, so
+/// no decode error denies for size alone, less a trailing unfinished
+/// emoji sequence, so the cut cannot make a hazard (`cap::settled`).
+///
+/// Not at the last newline (B64): that dropped a whole last line, so
+/// `x\n` + U+202E + 16 MiB with no newline was judged as `x\n`.
 fn cut(bytes: &[u8], cap: u64) -> usize {
     let cap = usize::try_from(cap).map_or(bytes.len(), |c| c.min(bytes.len()));
     let head = bytes.get(..cap).unwrap_or(bytes);
-    match head.iter().rposition(|b| *b == b'\n') {
-        Some(at) => at.saturating_add(1),
-        None => match std::str::from_utf8(head) {
-            Err(e) if e.error_len().is_none() => e.valid_up_to(),
-            _ => head.len(),
-        },
-    }
+    let whole = match std::str::from_utf8(head) {
+        Err(e) if e.error_len().is_none() => e.valid_up_to(),
+        _ => head.len(),
+    };
+    settled(head.get(..whole).unwrap_or(head))
 }
 
 /// A prefix judged in place of the whole file (V102). A hazard in it
