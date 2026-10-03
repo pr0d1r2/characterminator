@@ -33,6 +33,7 @@ R4|fleet extension|227 repos, 73,114 text files: 95.1% pure ASCII. of 3,604 non-
 R5|uncovered & pairs|Rust: `Σ` `≡` `⟺` `≪` `⊇` `⋃`, superscripts, CJK (wenyan-style caveman). fleet: `©` `®` `™`, Cyrillic, Arabic, `−` U+2212. top pair both corpora: `caveman`+`box` (Rust 8, fleet 42)|R1 scan + R4 scan
 R6|CLDR letters|766 locales in `cldr-misc-full`. `exemplarCharacters` = letters in normal use (pl: 32, 9 non-ASCII); `auxiliary` = loan letters; `punctuation` incl. locale quotes (pl `„”`). Unicode License v3|github.com/unicode-org/cldr-json
 R15|CLDR full cost|`locales.ctrm-sets` 12,876 → 176,760 B: 1,563 lines = 481 sets + 1,082 alias lines (766 locales + default-content codes). release binary 7,212,864 → 7,364,064 B (+151,200, +2.1%). `ctrm check` on this repo, 5 rounds × 30 runs: before 19.7–23.8 ms/run, after 20.4–23.2 ∴ delta within noise: lazy parse (V64) costs a run naming ⊥ locale nothing measurable|2026-10-02, macOS arm64, release build, loop timer (hyperfine ∉ dev shell)
+R16|perf hotspots (V86, `src/rules:V87`, V88)|`contains`: 10 MB text of `zh` letters under `* zh` 0.970 → 0.084 s (`* any` 0.069); 10 MB ASCII under `* zh` 0.188 → 0.096. glob: 10k paths × 400 `dX/**/*qN*.txt` rules 0.862 → 0.415 s; `*a*a*a*a*a*a*b` vs 80×`a` 6.358 → 0.006 s. locale index: `adopt_all` release 35.6 → 6.3 ms, debug 188 → 51 ms; `ctrm sets` 0.052 → 0.023 s, output byte-identical|2026-10-03, macOS arm64, release build, min cpu of 5–7 runs, generated fixtures, loop timer
 
 ## §V INVARIANTS
 
