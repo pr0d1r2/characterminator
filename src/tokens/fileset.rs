@@ -135,7 +135,7 @@ fn named(root: &Path, shown: &str) -> Result<Vec<PathBuf>, Error> {
 /// `d/e/../e` is no prefix of `d/e/x.md`, so the directory was refused
 /// as holding nothing tracked (B45).
 fn under(root: &Path, full: PathBuf) -> Result<Vec<PathBuf>, Error> {
-    let dir = lexical(&full);
+    let dir = within(root, &full)?;
     let inside: Vec<PathBuf> = tracked(root)
         .into_iter()
         .filter(|path| lexical(path).starts_with(&dir))
@@ -148,6 +148,32 @@ fn under(root: &Path, full: PathBuf) -> Result<Vec<PathBuf>, Error> {
     }
     Ok(inside)
 }
+
+/// A named directory as a prefix over the tracked set, spelled from
+/// `root` the way [`tracked`] spells it (V84).
+///
+/// A named LINK to a directory is followed, as a named link to a file
+/// is (V9): both sides are resolved, and the link expands to the tracked
+/// files of its target, under the target's own paths. Compared raw, the
+/// link's name prefixed nothing git tracks and was refused as empty
+/// (B46). A target outside the root holds nothing this root tracks, and
+/// says so rather than calling itself empty.
+fn within(root: &Path, full: &Path) -> Result<PathBuf, Error> {
+    let refused = |reason: String| Error {
+        path: full.to_owned(),
+        reason,
+    };
+    let base = root.canonicalize().map_err(|e| refused(e.to_string()))?;
+    let real = full.canonicalize().map_err(|e| refused(e.to_string()))?;
+    let rel = real
+        .strip_prefix(&base)
+        .map_err(|_| refused(OUTSIDE.to_owned()))?;
+    Ok(lexical(&root.join(rel)))
+}
+
+/// A named directory whose real path leaves the run root (V84).
+const OUTSIDE: &str = "resolves outside the run root, where nothing is \
+                       git-tracked -- name the files inside it";
 
 /// `path` with every `.` dropped and every `..` folded into the name
 /// before it. A `..` with no name before it is kept: it leaves the tree.

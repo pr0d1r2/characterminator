@@ -213,6 +213,41 @@ fn a_directory_spelled_with_dot_dot_still_expands() {
     assert!(set.iter().all(|p| p.ends_with("x.md")), "{set:?}");
 }
 
+/// B46: a named link to a directory is followed (V84), as a named link
+/// to a file is (V9): it expands to its target's tracked files, and
+/// naming both is still one set.
+#[cfg(unix)]
+#[test]
+fn a_named_link_to_a_directory_is_followed() {
+    let Some(root) = spelled("dirlink") else {
+        return;
+    };
+    if std::os::unix::fs::symlink("d", root.join("dl")).is_err() {
+        return;
+    }
+    let want = Ok(vec![root.join("d/e/x.md")]);
+    assert_eq!(select(&root, &["dl".to_owned()]), want);
+    assert_eq!(select(&root, &["d".to_owned(), "dl/e".to_owned()]), want);
+}
+
+/// V84: a link to a directory outside the root says so by name, not
+/// that the directory holds nothing.
+#[cfg(unix)]
+#[test]
+fn a_named_link_leaving_the_root_says_so() {
+    let Some(root) = spelled("outlink") else {
+        return;
+    };
+    let away = root.with_file_name("ctrm-spelling-away");
+    let made = std::fs::create_dir_all(&away)
+        .and_then(|()| std::os::unix::fs::symlink(&away, root.join("out")));
+    if made.is_err() {
+        return;
+    }
+    let said = select(&root, &["out".to_owned()]).err().map(|e| e.reason);
+    assert_eq!(said.as_deref(), Some(OUTSIDE));
+}
+
 /// A repository under `target/` tracking `a.md`, `sub/b.md` and
 /// `d/e/x.md`, one per test so parallel tests never share one. `None`
 /// without git.

@@ -42,6 +42,8 @@ V70: tracked path ⊥ on disk (deleted, deletion unstaged) ⊥ in V9 fileset nor
 
 V83: named paths folded LEXICALLY (`lexical`, owned here; `src/cli:V71` form) before dedup & before V43 prefix test ∴ `sub/../a.md a.md` = 1 file, `d/e/../e` expands as `d/e`.
 
+V84: named LINK to a dir followed, as a named file link (V9): both sides resolved, expands to target's tracked files under target's paths ∴ `d dl` = 1 set. target outside root → error saying so, exit 2.
+
 ## §T TASKS
 
 id|status|task|cites
@@ -55,3 +57,4 @@ B4|2026-09-27|V9 fileset took `itok::walk::tracked` as-is, symlinks incl. ∴ tr
 B25|2026-10-02|tracked file deleted from the tree stayed in V9 fileset ∴ read failed → exit 2, WHOLE run aborted, & bare `fix` had already written the files before it. via review|V70,`src/cli:V72`
 B27|2026-10-02|`-C /nonexistent`, `-C <file>` & a bare run outside git → V9 fileset empty ∴ clean report, exit 0, about ⊥ file. via review|V69
 B45|2026-10-03|dedup & V43 prefix test on raw `root.join(path)` ∴ `check sub/../a.md a.md` judged it twice (`stats`, `fix --check` too) & `check d/e/../e` → "holds no git-tracked file", exit 2. via release review|V83
+B46|2026-10-03|V43 prefix test on the link's own name ∴ `ln -s d dl; check dl` → "holds no git-tracked file", exit 2, while a named file link was followed. via release review|V84
