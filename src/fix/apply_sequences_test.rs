@@ -208,3 +208,24 @@ fn every_listed_sequence_settles_and_is_idempotent() {
         assert_eq!(fixed(&once, grant), once, "{text:?}");
     }
 }
+
+/// The rows of a multi-pass fix are relocated in ONE walk of the
+/// original, sorted by byte, not one walk per row (a large file went
+/// quadratic). Many lines, each needing a second pass: every row still
+/// lands on its own line, at a byte, line and column the file has.
+#[test]
+fn many_multi_pass_rows_each_resolve_on_their_own_line() {
+    let line = "a\u{2014} \u{1F469}\u{FE0F}\u{200D}\u{1F4BB} \u{2261}\n";
+    let text = line.repeat(40);
+    let done = fix(&text, &MAP, &|c: char| c.is_ascii()).unwrap_or_default();
+    let rows = done.report.rewrites.iter().map(|r| r.hit);
+    let hits: Vec<Hit> = rows.chain(done.report.unmapped).collect();
+    let truth: Vec<Hit> = crate::scan::located(&text).collect();
+    for hit in &hits {
+        assert!(truth.contains(hit), "{hit:?} is not in the file");
+    }
+    for at in 1..=40 {
+        let here = hits.iter().filter(|h| h.position.line == at).count();
+        assert!(here >= 3, "line {at}: {here} rows in {hits:?}");
+    }
+}

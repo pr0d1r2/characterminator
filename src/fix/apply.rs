@@ -75,7 +75,7 @@ pub fn fix(
 struct History<'t> {
     original: &'t str,
     report: Report,
-    layers: Vec<Vec<Span>>,
+    layers: Vec<Layer>,
 }
 
 impl<'t> History<'t> {
@@ -93,20 +93,18 @@ impl<'t> History<'t> {
     /// A pass that changed its input: its rewrites join the report, and
     /// its spans become the layer later positions are mapped through.
     fn record(&mut self, pass: Pass) {
-        let rewrites: Vec<Rewrite> = pass
-            .spans
-            .iter()
-            .map(|span| span.rewrite_at(self.origin(span.hit)))
-            .collect();
-        self.report.rewrites.extend(rewrites);
-        self.layers.push(pass.spans);
+        let hits: Vec<Hit> = pass.spans.iter().map(|span| span.hit).collect();
+        let found = self.origins(&hits);
+        let rewrites = pass.spans.iter().zip(found);
+        let rows = rewrites.map(|(span, hit)| span.rewrite_at(hit));
+        self.report.rewrites.extend(rows.collect::<Vec<_>>());
+        self.layers.push(Layer::of(&pass.spans));
     }
 
     /// The pass whose output is the fixed point. Its unmapped characters
     /// are the ones left, located where they sit in the original.
     fn settled(mut self, pass: Pass) -> Fixed {
-        let unmapped = pass.unmapped.iter().map(|hit| self.origin(*hit));
-        self.report.unmapped = unmapped.collect();
+        self.report.unmapped = self.origins(&pass.unmapped);
         let output = pass.output.clone();
         self.record(pass);
         self.report.rewrites.sort_by_key(|r| r.hit.position.byte);
@@ -116,42 +114,101 @@ impl<'t> History<'t> {
         }
     }
 
-    /// Where a hit read by the NEXT pass sits in the original: back through
-    /// every recorded layer, newest first, then re-located in the original
-    /// so line and column agree with the byte.
-    fn origin(&self, hit: Hit) -> Hit {
+    /// Where each hit read by the NEXT pass sits in the original: back
+    /// through every recorded layer, newest first, then re-located in the
+    /// original so line and column agree with the byte.
+    ///
+    /// ONE forward walk of the original for all of them, in byte order:
+    /// a walk per hit made a large file with a second pass quadratic.
+    fn origins(&self, hits: &[Hit]) -> Vec<Hit> {
+        let mut out = hits.to_vec();
         if self.layers.is_empty() {
-            return hit;
+            return out;
         }
-        let byte = self
-            .layers
+        let mut order: Vec<(usize, usize)> = hits
+            .iter()
+            .enumerate()
+            .map(|(at, hit)| (self.back(hit.position.byte), at))
+            .collect();
+        order.sort_unstable();
+        relocate(self.original, &order, &mut out);
+        out
+    }
+
+    /// A byte of the newest pass's output, as a byte of the original.
+    fn back(&self, byte: usize) -> usize {
+        self.layers
             .iter()
             .rev()
-            .fold(hit.position.byte, |at, layer| back(at, layer));
-        let position = located(self.original)
-            .find(|at| at.position.byte == byte)
-            .map_or(hit.position, |at| at.position);
-        Hit { position, ..hit }
+            .fold(byte, |at, layer| layer.back(at))
     }
 }
 
-/// A byte of one pass's OUTPUT, as a byte of that pass's input. Outside
-/// every span, the offset shifts by what the spans before it changed; in a
-/// span's replacement, it is that span's start, the nearest place in the
-/// input the text came from.
-fn back(byte: usize, layer: &[Span]) -> usize {
-    let mut cut = Cut::default();
-    for span in layer {
-        let start = cut.start_of(span);
-        if byte < start {
-            break;
+/// Give each `(byte, index)` -- sorted by byte -- the position that byte
+/// has in `original`, in one walk. A byte that starts no character keeps
+/// the position it came with.
+fn relocate(original: &str, order: &[(usize, usize)], out: &mut [Hit]) {
+    let mut walk = located(original).peekable();
+    for &(byte, at) in order {
+        while walk.next_if(|seen| seen.position.byte < byte).is_some() {}
+        let here = walk.peek().filter(|seen| seen.position.byte == byte);
+        if let (Some(slot), Some(seen)) = (out.get_mut(at), here) {
+            slot.position = seen.position;
         }
-        if byte < start.saturating_add(span.to.len()) {
-            return span.hit.position.byte;
-        }
-        cut.skip(span);
     }
-    cut.input.saturating_add(byte.saturating_sub(cut.output))
+}
+
+/// One pass's spans, each with where its replacement sits in that pass's
+/// output, so mapping a byte back is a binary search, not a walk.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct Layer {
+    marks: Vec<Mark>,
+}
+
+/// One span: where it started and ended in the input, and where its
+/// replacement starts and ends in the output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Mark {
+    input: usize,
+    input_end: usize,
+    output: usize,
+    output_end: usize,
+}
+
+impl Layer {
+    fn of(spans: &[Span]) -> Self {
+        let mut cut = Cut::default();
+        let mark = |span: &Span| {
+            let output = cut.start_of(span);
+            cut.skip(span);
+            Mark {
+                input: span.hit.position.byte,
+                input_end: cut.input,
+                output,
+                output_end: cut.output,
+            }
+        };
+        Self {
+            marks: spans.iter().map(mark).collect(),
+        }
+    }
+
+    /// A byte of this pass's OUTPUT, as a byte of its input. Outside every
+    /// span, the offset shifts by what the spans before it changed; in a
+    /// span's replacement, it is that span's start, the nearest place in
+    /// the input the text came from.
+    fn back(&self, byte: usize) -> usize {
+        let after = self.marks.partition_point(|mark| mark.output <= byte);
+        let last = after.checked_sub(1).and_then(|at| self.marks.get(at));
+        let Some(mark) = last else {
+            return byte;
+        };
+        if byte < mark.output_end {
+            return mark.input;
+        }
+        mark.input_end
+            .saturating_add(byte.saturating_sub(mark.output_end))
+    }
 }
 
 /// How many passes past the first `fix` may take to settle (V65). One

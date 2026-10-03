@@ -254,6 +254,34 @@ fn the_cut_reads_both_sides_in_step() {
     assert!(cut.tail_matches("abc", "abCC"));
 }
 
+/// `Layer::back` is a binary search over the spans; this is the walk it
+/// replaced, asked of every output byte of a layer that grows, shrinks
+/// and deletes, back to back.
+#[test]
+fn a_layer_maps_every_output_byte_back_as_the_walk_did() {
+    let spans = vec![span(1, 3, "--"), span(4, 3, ""), span(7, 2, "xyz")];
+    let layer = super::Layer::of(&spans);
+    for byte in 0..16 {
+        assert_eq!(layer.back(byte), walked(byte, &spans), "byte {byte}");
+    }
+}
+
+/// The per-span walk `Layer::back` replaced, kept as its oracle.
+fn walked(byte: usize, layer: &[Span]) -> usize {
+    let mut cut = Cut::default();
+    for span in layer {
+        let start = cut.start_of(span);
+        if byte < start {
+            break;
+        }
+        if byte < start.saturating_add(span.to.len()) {
+            return span.hit.position.byte;
+        }
+        cut.skip(span);
+    }
+    cut.input.saturating_add(byte.saturating_sub(cut.output))
+}
+
 impl Fixed {
     fn default_with(text: &str) -> Self {
         Self {
