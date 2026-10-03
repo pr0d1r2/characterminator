@@ -119,11 +119,12 @@ fn a_batch_file_needs_crlf_and_says_so_per_path() {
     let files = [("build.bat", "@echo off\r\n"), ("notes.txt", "hi\r\n")];
     let base = "* ascii+cr !pedantic=warn\n";
     let on = report("ctrm-crlf-on", base, &files);
-    let both = "build.bat:1:10 U+000D crlf\nnotes.txt:1:3 U+000D crlf";
+    let both =
+        "build.bat:1:10 U+000D crlf (warn)\nnotes.txt:1:3 U+000D crlf (warn)";
     assert_eq!(on, both);
     let ctrm = format!("{base}*.bat !crlf=allow\n");
     let off = report("ctrm-crlf-off", &ctrm, &files);
-    assert_eq!(off, "notes.txt:1:3 U+000D crlf");
+    assert_eq!(off, "notes.txt:1:3 U+000D crlf (warn)");
 }
 
 /// V37 fixture, `trailing-whitespace`: two trailing spaces are a
@@ -133,8 +134,11 @@ fn a_markdown_hard_break_is_trailing_whitespace_on_purpose() {
     let files = [("a.md", "one  \ntwo\n"), ("a.rs", "fn f() {} \n")];
     let base = "* ascii !pedantic=warn\n";
     let on = report("ctrm-trailing-on", base, &files);
-    let rs = "a.rs:1:10 U+0020 trailing-whitespace";
-    assert_eq!(on, format!("a.md:1:4 U+0020 trailing-whitespace\n{rs}"));
+    let rs = "a.rs:1:10 U+0020 trailing-whitespace (warn)";
+    assert_eq!(
+        on,
+        format!("a.md:1:4 U+0020 trailing-whitespace (warn)\n{rs}")
+    );
     let ctrm = format!("{base}*.md ascii !trailing-whitespace=allow\n");
     assert_eq!(report("ctrm-trailing-off", &ctrm, &files), rs);
 }
@@ -148,8 +152,11 @@ fn a_byte_exact_golden_file_ends_without_a_newline() {
     let files = [golden, ("lib.rs", "fn f() {}"), ("empty.txt", "")];
     let base = "* ascii !pedantic=warn\n";
     let on = report("ctrm-final-on", base, &files);
-    let rs = "lib.rs:1:9 U+007D final-newline";
-    assert_eq!(on, format!("{rs}\nwant.out:1:21 U+0069 final-newline"));
+    let rs = "lib.rs:1:9 U+007D final-newline (warn)";
+    assert_eq!(
+        on,
+        format!("{rs}\nwant.out:1:21 U+0069 final-newline (warn)")
+    );
     let ctrm = format!("{base}*.out ascii !final-newline=allow\n");
     assert_eq!(report("ctrm-final-off", &ctrm, &files), rs);
 }
@@ -161,10 +168,10 @@ fn a_byte_exact_golden_file_ends_without_a_newline() {
 fn a_character_two_walks_point_at_is_claimed_once() {
     let trailing = [("f.txt", "a ")];
     let got = report("ctrm-claim-trail", "* ascii !pedantic=warn\n", &trailing);
-    assert_eq!(got, "f.txt:1:2 U+0020 trailing-whitespace");
+    assert_eq!(got, "f.txt:1:2 U+0020 trailing-whitespace (warn)");
     let mixed = [("f.txt", "a\u{03BB}")];
     let got = report("ctrm-claim-mixed", "* any !pedantic=warn\n", &mixed);
-    assert_eq!(got, "f.txt:1:2 U+03BB final-newline");
+    assert_eq!(got, "f.txt:1:2 U+03BB final-newline (warn)");
 }
 
 /// V37 fixture, `unicode-space`: French typography puts a no-break
@@ -176,7 +183,7 @@ fn french_spacing_is_a_unicode_space_on_purpose() {
     let sets = (".ctrm-sets", "french U+00A0 U+202F\n");
     let files = [sets, fr, ("a.md", "a\u{a0}b\n")];
     let base = "* ascii+french !pedantic=warn\n";
-    let one = "a.md:1:2 U+00A0 unicode-space";
+    let one = "a.md:1:2 U+00A0 unicode-space (warn)";
     let on = report("ctrm-space-on", base, &files);
     assert!(
         on.starts_with(one) && on.contains("fr.md:2:4 U+202F"),
@@ -202,8 +209,8 @@ fn exempted(name: &str, files: &[(&str, &str)], exempt: &str) -> [String; 2] {
 fn a_macos_listing_is_decomposed_on_purpose() {
     let files = [("ls.out", "cafe\u{301}.txt\n"), ("a.md", "cafe\u{301}\n")];
     let [on, off] = exempted("ctrm-nfc", &files, "*.out !not-nfc=allow");
-    let md = "a.md:1:4 U+0065 not-nfc";
-    assert_eq!(on, format!("{md}\nls.out:1:4 U+0065 not-nfc"));
+    let md = "a.md:1:4 U+0065 not-nfc (warn)";
+    assert_eq!(on, format!("{md}\nls.out:1:4 U+0065 not-nfc (warn)"));
     assert_eq!(off, md);
 }
 
@@ -214,8 +221,8 @@ fn a_unit_superscript_is_compatibility_on_purpose() {
     let files = [("area.md", "50 m\u{b2}\n"), ("a.md", "x\u{fb01}\n")];
     let exempt = "area.md !nfkc-compat=allow";
     let [on, off] = exempted("ctrm-nfkc", &files, exempt);
-    let md = "a.md:1:2 U+FB01 nfkc-compat";
-    assert_eq!(on, format!("{md}\narea.md:1:5 U+00B2 nfkc-compat"));
+    let md = "a.md:1:2 U+FB01 nfkc-compat (warn)";
+    assert_eq!(on, format!("{md}\narea.md:1:5 U+00B2 nfkc-compat (warn)"));
     assert_eq!(off, md);
 }
 
@@ -227,8 +234,8 @@ fn a_micrometre_mixes_scripts_on_purpose() {
     let files = [("lab.md", "5 \u{3bc}m\n"), ("a.md", "p\u{3bb}y\n")];
     let exempt = "lab.md !mixed-script=allow";
     let [on, off] = exempted("ctrm-mixed", &files, exempt);
-    let md = "a.md:1:2 U+03BB mixed-script";
-    assert_eq!(on, format!("{md}\nlab.md:1:4 U+006D mixed-script"));
+    let md = "a.md:1:2 U+03BB mixed-script (warn)";
+    assert_eq!(on, format!("{md}\nlab.md:1:4 U+006D mixed-script (warn)"));
     assert_eq!(off, md);
 }
 
@@ -241,7 +248,7 @@ fn russian_prose_is_confusable_on_purpose() {
     let files = [("ru.md", mir), ("a.md", "\u{440}\n")];
     let exempt = "ru.md !confusable=allow";
     let [on, off] = exempted("ctrm-confusable", &files, exempt);
-    let md = "a.md:1:1 U+0440 confusable";
-    assert_eq!(on, format!("{md}\nru.md:1:3 U+0440 confusable"));
+    let md = "a.md:1:1 U+0440 confusable (warn)";
+    assert_eq!(on, format!("{md}\nru.md:1:3 U+0440 confusable (warn)"));
     assert_eq!(off, md);
 }

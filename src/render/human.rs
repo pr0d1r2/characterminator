@@ -14,7 +14,7 @@
 //! the empty string, so the caller owns its own line endings.
 
 use crate::charset::{CharRange, CharSet};
-use crate::lint::Group;
+use crate::lint::{Group, Level};
 #[cfg(test)]
 use crate::render::Violation;
 use crate::render::line::{Line, Spelled};
@@ -70,7 +70,8 @@ fn next_line(out: &mut String) {
     }
 }
 
-/// `path:line:col U+XXXX <set>`, the interface section's shape verbatim.
+/// `path:line:col U+XXXX <set>`, the interface section's shape verbatim,
+/// plus ` (<level>)` when the level is not `deny` (V94).
 /// Writing into a `String` cannot fail.
 fn violation(out: &mut String, path: &str, item: Line<'_>) {
     let hit = item.finding.hit;
@@ -78,6 +79,17 @@ fn violation(out: &mut String, path: &str, item: Line<'_>) {
     let last = verdict(item);
     let _infallible =
         write!(out, "{path}:{}:{} {code} {last}", at.line, at.column);
+    level_note(out, item.finding.level);
+}
+
+/// A `warn` row read exactly like a `deny` row, so a reader could not tell
+/// which findings fail the run. Only `warn` is named: `deny` and `forbid`
+/// both fail, and `forbid` is every hazard's default, so naming it would
+/// put a word on the commonest failing rows that tells a reader nothing.
+fn level_note(out: &mut String, level: Level) {
+    if level == Level::Warn {
+        let _infallible = write!(out, " ({})", level_name(level));
+    }
 }
 
 /// A path as a terminal may safely print it (V11): every character outside
@@ -435,6 +447,21 @@ mod tests {
         item.finding.hit.character = ' ';
         let expected = "src/a.rs:2:5 U+0020 trailing-whitespace";
         assert_eq!(check(&[item], &[]), expected);
+    }
+
+    /// V94: a `warn` finding names its level; a failing row is unchanged.
+    #[test]
+    fn a_warn_finding_names_its_level() {
+        let mut warn = em_dash();
+        warn.finding.level = Level::Warn;
+        let mut forbid = em_dash();
+        forbid.finding.hit.position.line = 3;
+        forbid.finding.level = Level::Forbid;
+        let expected = concat!(
+            "src/a.rs:2:5 U+2014 ascii (warn)\n",
+            "src/a.rs:3:5 U+2014 ascii"
+        );
+        assert_eq!(check(&[warn, forbid], &[]), expected);
     }
 
     #[test]
