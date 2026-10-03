@@ -57,7 +57,7 @@ fn answer(stdin: &str) -> String {
 }
 
 fn answer_in(stdin: &str, root: &Path) -> String {
-    let got = run(stdin, root);
+    let got = run(stdin.as_bytes(), root);
     assert!(got.is_ok(), "{got:?}");
     got.unwrap_or_default()
 }
@@ -190,7 +190,9 @@ fn a_payload_without_cwd_resolves_against_the_root() {
 #[test]
 fn malformed_input_is_a_named_error() {
     for bad in ["", "{", "not json", r#"{"tool_name":"Read"}"#] {
-        let why = run(bad, Path::new(".")).err().unwrap_or_default();
+        let why = run(bad.as_bytes(), Path::new("."))
+            .err()
+            .unwrap_or_default();
         assert!(why.starts_with("hook input"), "{bad:?} -> {why}");
     }
 }

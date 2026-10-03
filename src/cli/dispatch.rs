@@ -255,8 +255,8 @@ fn counted(run: &Run<'_>) -> Outcome {
 /// (`src/cli/guard:V35`). Arguments are ignored, so a flag added by
 /// mistake cannot turn a hook into an exit 2.
 fn guarded() -> Outcome {
-    let mut stdin = String::new();
-    let read = std::io::stdin().read_to_string(&mut stdin);
+    let mut stdin = Vec::new();
+    let read = std::io::stdin().read_to_end(&mut stdin);
     adapted(match read {
         Ok(_) => guard::run(&stdin, &cwd()),
         Err(e) => Err(format!("stdin: {e}")),

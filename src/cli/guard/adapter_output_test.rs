@@ -146,9 +146,25 @@ fn a_hazard_too_deep_to_parse_is_still_tainted() {
         let got = answer(&too_deep(&format!("\"x{hazard}\"")));
         assert!(got.starts_with(r#"{"decision":"block""#), "{got}");
     }
-    let got = run(&too_deep("1"), Path::new("."));
+    let got = run(too_deep("1").as_bytes(), Path::new("."));
     let why = got.err().unwrap_or_default();
     assert!(why.contains("nested too deep"), "{why}");
+}
+
+/// B65: one byte that is not UTF-8 made stdin unreadable, exit 1, and so
+/// a pass for the override beside it. It is decoded lossily and judged
+/// raw now (V67); without a hazard it is still a named error.
+#[test]
+fn a_hazard_beside_invalid_utf8_is_still_tainted() {
+    let payload = output_payload("WebFetch", "\"x\u{202E}y\"");
+    let mut bytes = payload.into_bytes();
+    bytes.push(0xFF);
+    let got = run(&bytes, Path::new("."));
+    let got = got.unwrap_or_default();
+    assert!(got.starts_with(r#"{"decision":"block""#), "{got}");
+    let clean = run(b"{\"a\":\"\xff\"}", Path::new("."));
+    let why = clean.err().unwrap_or_default();
+    assert!(why.contains("not UTF-8"), "{why}");
 }
 
 /// A PostToolUse payload with `inner` 300 arrays down.

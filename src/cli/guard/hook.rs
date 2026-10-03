@@ -90,15 +90,23 @@ pub(super) enum Verdict {
 ///
 /// JSON that names no hook event. Input that is not JSON is
 /// [`Call::Unparsed`], its escapes decoded, for `guard` to judge raw.
-pub(super) fn call(stdin: &str) -> Result<Call, String> {
-    json::parse(stdin)
-        .map_or_else(|why| Ok(unparsed(stdin, &why)), |p| mapped(&p))
+/// So is input that is not UTF-8 (V67, B65): decoded LOSSILY first, so
+/// one bad byte cannot turn a hazard beside it into an adapter error.
+pub(super) fn call(stdin: &[u8]) -> Result<Call, String> {
+    let Ok(text) = std::str::from_utf8(stdin) else {
+        let lossy = String::from_utf8_lossy(stdin);
+        return Ok(unparsed(&lossy, "hook input is not UTF-8"));
+    };
+    json::parse(text).map_or_else(
+        |why| Ok(unparsed(text, &format!("hook input is not JSON: {why}"))),
+        |p| mapped(&p),
+    )
 }
 
 fn unparsed(stdin: &str, why: &str) -> Call {
     Call::Unparsed {
         text: json::unescaped(stdin),
-        why: format!("hook input is not JSON: {why}"),
+        why: why.to_owned(),
     }
 }
 
@@ -189,7 +197,7 @@ mod tests {
     use super::{Call, Event, Verdict, call, response};
 
     fn mapped(stdin: &str) -> Call {
-        let got = call(stdin);
+        let got = call(stdin.as_bytes());
         assert!(got.is_ok(), "{got:?}");
         got.unwrap_or(Call::Other)
     }
@@ -251,9 +259,9 @@ mod tests {
 
     #[test]
     fn a_payload_with_no_event_or_no_json_is_refused_by_name() {
-        let why = call(r#"{"tool_name":"Read"}"#).err().unwrap_or_default();
+        let why = call(br#"{"tool_name":"Read"}"#).err().unwrap_or_default();
         assert!(why.contains("hook_event_name"), "{why}");
-        let got = call("not json");
+        let got = call(b"not json");
         let refused = matches!(&got, Ok(Call::Unparsed { why, .. })
             if why.starts_with("hook input is not JSON"));
         assert!(refused, "{got:?}");

@@ -37,7 +37,7 @@ use std::path::{Path, PathBuf};
 /// # Errors
 ///
 /// Input that is not a hook payload.
-pub(crate) fn run(stdin: &str, root: &Path) -> Result<String, String> {
+pub(crate) fn run(stdin: &[u8], root: &Path) -> Result<String, String> {
     let hazards = Hazards::builtin();
     Ok(match hook::call(stdin)? {
         Call::Read { cwd, path } => {
