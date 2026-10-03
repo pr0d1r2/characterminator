@@ -191,7 +191,12 @@ src/lint/pedantic/SPEC.md 1115
 # rule was cut from ~150 tokens to ~95 before this moved; the help and
 # message rules of the same review go to a `usage` sub-node instead of
 # here. 3000 is ~12% over the measured 2674.
-src/cli/SPEC.md      3000
+#
+# 2540 -> 2930 on 2026-10-03: B71 (bare `fix` named leftovers at
+# pre-rewrite columns) and the V80 clause that fixes it, plus `check`'s
+# `--summary` / `--max` on the interface line. ~12% over the measured 2616.
+# Both landed: 3000 -> 3100, ~12% over the combined measurement.
+src/cli/SPEC.md      3100
 # Set 2026-10-02 with the split, ~12% over each measured spec: the hook
 # adapter (four invariants, four bug rows) and the explain verbs (V32).
 # guard 1350 -> 1910 on 2026-10-03 for the guard DX wave, built together
@@ -225,7 +230,13 @@ src/tokens/SPEC.md   1310
 # looked at first and buys nothing: the node's only finished rows are T9,
 # its one-line origin, and T43, which lands in the same wave. 630 is ~12%
 # over the new measured 559.
-src/render/SPEC.md   1680
+# 1680 -> 2460 on 2026-10-03 for the DX wave: V122 (json `schema`, what
+# `fix` would write, the json error document), V123 (the `fix` tally) and
+# V124 (the `check` tally, `--summary`, `--max`), each with its runner, and
+# V95 rewritten to point at `docs/JSON.md` rather than grow. Nothing left to
+# archive: the node's finished rows are already stubs. ~12% over the
+# measured 2200.
+src/render/SPEC.md   2460
 
 # CHAIN ceilings, read by `sherd budget` (T14, V16). These rows are keyed
 # by node DIRECTORY, not by file: sherd costs a node as its whole chain --
@@ -275,6 +286,10 @@ src/render/SPEC.md   1680
 # 2026-10-03, with the file rows above (V110-V113, B64-B66): ~12% over
 # the measured 4793 and 3718. guard now sits ~130 under the V103 cap of
 # 5500, so the next guard rule that needs room is a split, not a raise.
+#
+# src/render 3450 -> 4200 on 2026-10-03 for the DX wave (V122-V124 in
+# the render spec, B71 in the cli spec is not in this chain): ~12% over
+# the measured 3751.
 src                  2390
 src/charset          4210
 src/charset/locale   5180
@@ -287,7 +302,7 @@ src/fix/words        3840
 src/lint             2790
 src/lint/hazard      4160
 src/lint/pedantic    3660
-src/render           3450
+src/render           4200
 src/rules            3650
 src/scan             2580
 src/tokens           2970
