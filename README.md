@@ -18,8 +18,11 @@
 
 Read [LLM-DISCLAIMER](docs/LLM-DISCLAIMER.md) first.
 
-**Status: pre-release, 0.1.0.** Every verb below runs and is tested, the
-tool gates its own tree, and nothing is published yet. See
+**Status: 0.1.0, functional but not yet for production.** Every verb below
+runs and is tested, and the tool gates its own tree. An odd minor version
+is that promise and no more ([the version ladder](CHANGELOG.md#version-ladder)):
+the json contract and the library surface may still move before 0.2. Linux
+and macOS are tested in CI; Windows is not. See
 [what is not done](#what-is-not-done).
 
 Find and eliminate characters outside an allowed set, per file type and per
@@ -63,11 +66,15 @@ than what would sell the tool.
 
 ## Install
 
-Not on crates.io yet. From a clone:
+```bash
+cargo install characterminator   # installs the `ctrm` binary
+```
+
+From a clone:
 
 ```bash
-cargo install --path .        # or
-nix develop                   # the dev shell, with the gate's tooling
+cargo install --path .           # or
+nix develop                      # the dev shell, with the gate's tooling
 ```
 
 ### As a pre-commit hook
@@ -79,7 +86,7 @@ is held to change when the pin changes and at no other time.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/pr0d1r2/characterminator
-    rev: <tag or commit>
+    rev: v0.1.0
     hooks:
       - id: ctrm-check    # refuse; writes nothing
       # - id: ctrm-fix    # rewrite what the map can, strip hazards, refuse the rest
@@ -98,7 +105,7 @@ permissions:
   security-events: write
 steps:
   - uses: actions/checkout@v7
-  - uses: pr0d1r2/characterminator@<tag or commit>
+  - uses: pr0d1r2/characterminator@v0.1.0
     with:
       args: check --format sarif
       output: ctrm.sarif
@@ -499,9 +506,8 @@ list goes stale and that one does not.
 - **Dogfooding has one wave.** The presets were sized from a scan of many
   repositories, but `ctrm` gates only this one; rolling it out across the
   rest is T28 in `SPEC.md`.
-- **Nothing published**: no crates.io release, no tag. CI
-  (`.github/workflows/ci.yml`) runs the gate on three platforms and the
-  action on one, and has not yet run on GitHub.
+- **Windows is untested.** CI (`.github/workflows/ci.yml`) runs the gate on
+  Linux (x86 and arm) and macOS, and the action on Linux.
 
 ## Security
 
