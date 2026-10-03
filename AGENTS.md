@@ -51,6 +51,7 @@ The steps, and what each is for:
 | `mth`, `mth-check` | every `SPEC.md` is well formed and still correct, and no closed option recorded in a `.spec-records` (the root's, or one beside a node's spec) has gone missing |
 | `context-limits` | no spec is over the token ceiling it declared |
 | `sherd-check`, `sherd-sync`, `sherd-budget` | the node tree resolves, `NAV` is not stale, and no node chain is over its ceiling |
+| `ceiling-cap` | no chain ceiling over 5500 tokens and no spec file ceiling over 3500 (V103): outgrow it and the node splits |
 | `flake-tags` | every flake input pins a `vX.Y.Z` tag, not a branch (V44) |
 | `hook-guard` | a `flake.nix` shellHook that installs a hook before both of its guards (V40) |
 | `emoji-seq-map` | an emoji sequence map that is not what its generator writes from the vendored data (`src/charset:V97`) |

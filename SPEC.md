@@ -57,6 +57,8 @@ V52: adoption surfaces (pre-commit, Action) WRAP the `ctrm` binary, built from t
 
 V92: crate `characterminator`, bin `ctrm` (`rg`/`mth` shape: crate carries meaning, bin carries muscle memory). `ctr` REJECTED ∵ containerd ships `cmd/ctr`. `ctrm` free on crates.io, ⊥ found on PATH. runner: hk step `ctrm` = `cargo run --bin ctrm` ∴ a rename fails the gate; the record → `.spec-records`.
 
+V103: a ceiling has a CAP: chain (dir row) ≤ 5500 tok, `SPEC.md` file ≤ 3500 tok. below the cap a ceiling rises by the ~12% band; a node that would pass it SPLITS (`sherd split`), ⊥ raises ∵ a chain = what 1 worker loads every turn & raising was the only move ever made (10 raises in 1 wave). cap moves only in its own reviewed commit. runner: hk `ceiling-cap`.
+
 ## §T TASKS
 
 id|status|task|cites

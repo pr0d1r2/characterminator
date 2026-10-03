@@ -140,6 +140,24 @@ local fast = new Mapping<String, Step> {
       sherd budget >/dev/null || { sherd budget >&2; echo 'hk: a node chain is over its ceiling in .context-limits (the directory rows). Compacting the chain is the fix -- `mth archive` the finished rows; raising a ceiling is a reviewed decision and belongs in its own commit.' >&2; exit 1; }
       """
   }
+  // THE CAP ON CEILINGS (V103). A ceiling below the cap rises by the ~12%
+  // band like any other; a ceiling that would pass the cap means the node
+  // has outgrown what one worker should hold, and the fix is a split, not
+  // a bigger number. Directory rows are chain ceilings, `SPEC.md` rows are
+  // file ceilings. Moving a cap is a change to V103 and to this step, in
+  // its own reviewed commit.
+  ["ceiling-cap"] {
+    glob = List(".context-limits")
+    check = """
+      awk '
+        /^#/ || NF < 2 { next }
+        { seen++ }
+        $1 ~ /SPEC[.]md$/ && $2 > 3500 { print ".context-limits: " $1 " " $2 " is over the 3500 file cap"; bad++ }
+        $1 !~ /[.]md$/ && $2 > 5500 { print ".context-limits: " $1 " " $2 " is over the 5500 chain cap"; bad++ }
+        END { if (seen == 0) { print ".context-limits: no row examined"; bad++ } exit bad > 0 }
+      ' .context-limits >&2 || { echo 'hk: a ceiling is over its cap (V103). Split the node -- `sherd split <dir>` proposes one -- rather than raising the ceiling; moving the cap is its own reviewed change.' >&2; exit 1; }
+      """
+  }
   // The NAV section is GENERATED from the FEDERATION section above it, and
   // a generated section that had
   // to change means the committed tree was stale, so this reports rather
