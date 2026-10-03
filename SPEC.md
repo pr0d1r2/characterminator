@@ -8,6 +8,8 @@
 
 dir|owns|⊥owns|tokens
 src|the tool: charset presets, rule resolution, scan, fix, lint levels, token facade, render, CLI|repo gate, dogfood waves, release|-
+docs|human reference: memory, LLM disclaimer, third-party notices|rules (the specs are the law)|-
+tests|integration tests that drive the `ctrm` binary|unit tests (beside their module)|-
 
 ## §N NAV
 

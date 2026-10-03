@@ -22,6 +22,8 @@ cli|arg dispatch, verbs, exit codes, `guard` hook adapter|every verb's logic|-
 rel|path|lens
 up|.|-
 self|src|the tool: charset presets, rule resolution, scan, fix, lint levels, token facade, render, CLI
+sib|docs|human reference: memory, LLM disclaimer, third-party notices
+sib|tests|integration tests that drive the `ctrm` binary
 
 ## §C CONSTRAINTS
 
