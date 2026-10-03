@@ -11,7 +11,7 @@
 //! a declared prefix of it (`src/fix/emoji:V31`).
 //!
 //! Two more line kinds serve `src/fix/words:V51`. `word <from> <to>` is an
-//! entry whose replacement is a WORD, which `apply` keeps apart from a
+//! entry whose replacement is a WORD, which `walk` keeps apart from a
 //! neighbouring letter. `use <name>` reads a named builtin map at that line, so
 //! an opt-in map is one line of the grammar every source already speaks -- a
 //! `.ctrm-map` line or a `--map` flag alike (`src/rules:V18`).
@@ -42,7 +42,7 @@ pub(crate) const BUILTIN: &str = concat!(
 );
 
 /// A declared source matched at the current position. `word` says the
-/// replacement is a word, which `apply` keeps off a neighbouring letter.
+/// replacement is a word, which `walk` keeps off a neighbouring letter.
 pub(crate) struct Match {
     pub(crate) len: usize,
     pub(crate) to: String,

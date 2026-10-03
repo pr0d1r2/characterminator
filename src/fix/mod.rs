@@ -12,6 +12,7 @@ mod emoji;
 mod error;
 mod family;
 mod map;
+mod walk;
 mod words;
 
 pub(crate) use apply::fix_under;
