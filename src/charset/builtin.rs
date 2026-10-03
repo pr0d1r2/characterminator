@@ -105,7 +105,7 @@ pub(crate) const SETS: &str = concat!(
 pub(crate) const HAZARD: &str = include_str!("hazard.ctrm-sets");
 
 /// The RGI emoji sequences, vendored from Unicode emoji data
-/// (`src/fix:V62`): one `<kind> <sequence> [name]` line each. Not a set
+/// (`src/fix/emoji:V62`): one `<kind> <sequence> [name]` line each. Not a set
 /// file -- a set holds code points and a sequence is not one -- so it is
 /// read through [`emoji_sequences`], by the lint node for its exemption
 /// (`src/lint/hazard:V63`), compiled in so no configuration can widen it.

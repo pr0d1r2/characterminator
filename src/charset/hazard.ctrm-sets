@@ -67,7 +67,7 @@ hazard-control U+0000-U+0008 U+000B-U+000C U+000E-U+001F U+007F-U+009F
 # invisible math operators, and the reserved ranges Unicode promises will
 # stay invisible. It includes ZERO WIDTH JOINER, which V34 exempts inside
 # a declared emoji sequence -- an exemption that needs sequences, so it
-# arrives with `src/fix:T33` and is not approximated here.
+# arrives with `src/fix/emoji:T33` and is not approximated here.
 hazard-invisible U+00AD U+034F U+061C U+115F-U+1160 U+17B4-U+17B5 U+180B-U+180D U+180E U+180F U+200B-U+200F U+202A-U+202E U+2060-U+2064 U+2065 U+2066-U+206F U+3164 U+FE00-U+FE0F U+FEFF U+FFA0 U+FFF0-U+FFF8 U+1BCA0-U+1BCA3 U+1D173-U+1D17A U+E0000 U+E0001 U+E0002-U+E001F U+E0020-U+E007F U+E0080-U+E00FF U+E0100-U+E01EF U+E01F0-U+E0FFF
 
 # The union V34 names `hazard`. Listed in the sets table like any preset,

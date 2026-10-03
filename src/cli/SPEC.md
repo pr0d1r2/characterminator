@@ -45,7 +45,7 @@ V47: stdout closed by reader (EPIPE, `ctrm check | head`) → stop writing, keep
 V72: bare `fix` = 2 phases: judge ∀ file, THEN write ∴ a refusal (`src/fix:V5`, `src/fix:V6`) or read error writes ⊥ file.
 V73: path arity: `sets` 0, `explain` (any `--as`) ≤ 1, other verbs any. extra path → exit 2 naming it ∵ `explain a.md b.txt` answered for `a.md` only & `sets a.md` ignored it, each read as an answer about what was asked.
 V74: ∀ verb ⊥ `guard`: whole config (rules, sets, map) parsed & validated (`src/judge` `Config::validate`) before dispatch; any kind broken → exit 2, naming its origin ∵ a verb reading only its own kind reported on a config that ⊥ parsed (B29). ∀ rule: every set it names resolves, matched or ⊥ (B47). `--map` value = 1 line, as `--set` & `--rule` (`src/rules:V18`).
-V80: `fix` & `fix --check` judge what they LEAVE via `check`'s `Checker` (`src/judge:V99`) (levels, `--strict`, hazards), rows @ ORIGINAL pos (`src/fix:V65`) ∴ exit = drift (`--check`) ∨ `check`(output) ∨ not-UTF-8 skip.
+V80: `fix` & `fix --check` judge what they LEAVE via `check`'s `Checker` (`src/judge:V99`) (levels, `--strict`, hazards), rows @ ORIGINAL pos (`src/fix/emoji:V65`) ∴ exit = drift (`--check`) ∨ `check`(output) ∨ not-UTF-8 skip.
 V101: `--help` | `-h`, bare or ∀ verb ∖ `guard` → usage on STDOUT, exit 0 ∵ asked-for help ⊥ error. read via flag table (`--rule --help` = value, `-- --help` = path) & BEFORE config loads ∴ broken `.ctrm` ⊥ hides it. unknown flag beside it → exit 2 (V74). bare `ctrm` → stderr, exit 2. `guard --help` ignored (`src/cli/guard:V93`) ∵ a hook printing usage ⊥ decides.
 
 ## §T TASKS

@@ -8,14 +8,16 @@
 //! the map before it is emitted, so a chain (skin tone to thumbs up to `+1`)
 //! lands on its fixed point in one pass and a second run changes nothing
 //! (V5) -- unless a rewrite revealed a sequence the scan had passed, and
-//! then the passes repeat until one changes nothing (V65).
+//! then the passes repeat until one changes nothing (`src/fix/emoji:V65`).
 //!
 //! Whether a character is ALLOWED is not decided here. It arrives as a
 //! predicate, because that answer belongs to the charset and rules nodes.
 
+use crate::fix::emoji::{Extent, Layer, Pairing, SETTLE, Trail, itself};
 use crate::fix::map::{Map, Match, violates};
+use crate::fix::words::Gap;
 use crate::fix::{Error, Hazard, Law, Rewrite};
-use crate::scan::{Hit, Position, located};
+use crate::scan::{Hit, Position};
 
 /// What `fix` found, with no text to write: the `fix --check` answer.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -45,9 +47,9 @@ pub struct Fixed {
 }
 
 impl Fixed {
-    /// Where each hit IN `output` sits in `original`, the text this was
-    /// fixed from: byte, line and column. A hit inside a replacement is
-    /// placed at the start of the span it replaced (V65). This is how a
+    /// Where each hit IN `output` sits in `original`, the text this was fixed
+    /// from: byte, line and column. A hit inside a replacement is placed at the
+    /// start of the span it replaced (`src/fix/emoji:V65`). This is how a
     /// caller that judges what is LEFT reports it in the file on disk.
     #[must_use]
     pub fn origins(&self, original: &str, hits: &[Hit]) -> Vec<Hit> {
@@ -72,12 +74,12 @@ impl Fixed {
 /// The V6 and V5 guards run BEFORE this returns, so a caller that writes
 /// what it gets back cannot write a file that failed either.
 ///
-/// Passes repeat until one changes nothing (V65), each guarded by V6 on
-/// its own input. Every row is reported in the ORIGINAL text's
-/// coordinates: a later pass read text an earlier one rewrote, so its
-/// positions are mapped back through each earlier pass (B24). A text that
-/// settles in one pass -- every text before the sequence map -- maps
-/// through nothing and is reported exactly as before.
+/// Passes repeat until one changes nothing (`src/fix/emoji:V65`), each guarded
+/// by V6 on its own input. Every row is reported in the ORIGINAL text's
+/// coordinates: a later pass read text an earlier one rewrote, so its positions
+/// are mapped back through each earlier pass (`src/fix/emoji:B24`). A text that
+/// settles in one pass -- every text before the sequence map -- maps through
+/// nothing and is reported exactly as before.
 ///
 /// ```
 /// use characterminator::{Map, fix};
@@ -147,7 +149,7 @@ impl<'t> History<'t> {
                 rewrites: Vec::new(),
                 unmapped: Vec::new(),
             },
-            trail: Trail { layers: Vec::new() },
+            trail: Trail::new(),
         }
     }
 
@@ -159,7 +161,7 @@ impl<'t> History<'t> {
         if spans.is_empty() {
             return;
         }
-        let layer = Layer::of(&spans);
+        let layer = Layer::of(spans.iter().map(Span::extent));
         let mut rows: Vec<Rewrite> =
             spans.into_iter().map(Span::into_rewrite).collect();
         self.trail.place(self.original, &mut rows, rewrite_hit);
@@ -168,7 +170,7 @@ impl<'t> History<'t> {
         } else {
             self.report.rewrites.append(&mut rows);
         }
-        self.trail.layers.push(layer);
+        self.trail.push(layer);
     }
 
     /// The pass whose output is the fixed point. Its unmapped characters
@@ -190,134 +192,6 @@ impl<'t> History<'t> {
         }
     }
 }
-
-/// The layers of the passes that changed their input, oldest first.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct Trail {
-    layers: Vec<Layer>,
-}
-
-impl Trail {
-    /// Where each hit read AFTER these layers sits in `original`: back
-    /// through every layer, newest first, then re-located in the original
-    /// so line and column agree with the byte.
-    ///
-    /// ONE forward walk of the original for all of them, in byte order:
-    /// a walk per hit made a large file with a second pass quadratic.
-    fn origins(&self, original: &str, hits: &[Hit]) -> Vec<Hit> {
-        let mut out = hits.to_vec();
-        self.place(original, &mut out, itself);
-        out
-    }
-
-    /// [`Trail::origins`] IN PLACE, over anything that holds a hit: a
-    /// caller with millions of rows moves each one's hit where it sits
-    /// rather than holding a second list of them (R18).
-    fn place<T>(&self, original: &str, items: &mut [T], hit: HitOf<T>) {
-        if self.layers.is_empty() {
-            return;
-        }
-        let mut order: Vec<(usize, usize)> = items
-            .iter_mut()
-            .enumerate()
-            .map(|(at, item)| (self.back(hit(item).position.byte), at))
-            .collect();
-        order.sort_unstable();
-        relocate(original, &order, items, hit);
-    }
-
-    /// A byte of the newest layer's output, as a byte of the original.
-    fn back(&self, byte: usize) -> usize {
-        self.layers
-            .iter()
-            .rev()
-            .fold(byte, |at, layer| layer.back(at))
-    }
-}
-
-/// Give each `(byte, index)` -- sorted by byte -- the position that byte
-/// has in `original`, in one walk. A byte that starts no character keeps
-/// the position it came with.
-fn relocate<T>(
-    original: &str,
-    order: &[(usize, usize)],
-    out: &mut [T],
-    hit: HitOf<T>,
-) {
-    let mut walk = located(original).peekable();
-    for &(byte, at) in order {
-        while walk.next_if(|seen| seen.position.byte < byte).is_some() {}
-        let here = walk.peek().filter(|seen| seen.position.byte == byte);
-        if let (Some(slot), Some(seen)) = (out.get_mut(at), here) {
-            hit(slot).position = seen.position;
-        }
-    }
-}
-
-/// How [`Trail::place`] reaches the hit inside a row.
-type HitOf<T> = fn(&mut T) -> &mut Hit;
-
-/// One pass's spans, each with where its replacement sits in that pass's
-/// output, so mapping a byte back is a binary search, not a walk.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct Layer {
-    marks: Vec<Mark>,
-}
-
-/// One span: where it started and ended in the input, and where its
-/// replacement starts and ends in the output.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Mark {
-    input: usize,
-    input_end: usize,
-    output: usize,
-    output_end: usize,
-}
-
-impl Layer {
-    fn of(spans: &[Span]) -> Self {
-        let mut cut = Cut::default();
-        let mark = |span: &Span| {
-            let output = cut.start_of(span);
-            cut.skip(span);
-            Mark {
-                input: span.hit.position.byte,
-                input_end: cut.input,
-                output,
-                output_end: cut.output,
-            }
-        };
-        Self {
-            marks: spans.iter().map(mark).collect(),
-        }
-    }
-
-    /// A byte of this pass's OUTPUT, as a byte of its input. Outside every
-    /// span, the offset shifts by what the spans before it changed; in a
-    /// span's replacement, it is that span's start, the nearest place in
-    /// the input the text came from.
-    fn back(&self, byte: usize) -> usize {
-        let after = self.marks.partition_point(|mark| mark.output <= byte);
-        let last = after.checked_sub(1).and_then(|at| self.marks.get(at));
-        let Some(mark) = last else {
-            return byte;
-        };
-        if byte < mark.output_end {
-            return mark.input;
-        }
-        mark.input_end
-            .saturating_add(byte.saturating_sub(mark.output_end))
-    }
-}
-
-/// How many passes past the first `fix` may take to settle (V65). One
-/// rewrite can REVEAL a sequence: deleting a stray VS16 or skin tone out
-/// of `woman U+FE0F ZWJ laptop` leaves the RGI `woman ZWJ laptop`, which
-/// the scan had already walked past (B14). Each later pass only ever
-/// shortens what the last one revealed, so two settle anything the
-/// builtin map can produce; the bound is what turns a map that never
-/// settles into a refusal rather than a loop.
-const SETTLE: usize = 3;
 
 /// One pass, refused if it touched a byte outside a violation (V6).
 fn guarded(text: &str, map: &Map, law: Law<'_>) -> Result<Pass, Error> {
@@ -363,6 +237,15 @@ struct Span {
 }
 
 impl Span {
+    /// What the trail needs of this span (`src/fix/emoji:V65`).
+    fn extent(&self) -> Extent {
+        Extent {
+            byte: self.hit.position.byte,
+            len: self.len,
+            to: self.to.len(),
+        }
+    }
+
     /// This span as the public row, its replacement MOVED rather than
     /// copied: a pass's spans are spent once its layer is built (R18).
     fn into_rewrite(self) -> Rewrite {
@@ -376,11 +259,6 @@ impl Span {
 /// A rewrite's hit, for [`Trail::place`].
 fn rewrite_hit(rewrite: &mut Rewrite) -> &mut Hit {
     &mut rewrite.hit
-}
-
-/// A hit, for [`Trail::place`].
-const fn itself(hit: &mut Hit) -> &mut Hit {
-    hit
 }
 
 /// What a walk reads besides its text: the map, the set's predicate, and
@@ -406,8 +284,8 @@ fn run(
         next: 0,
         at: Cursor::start(),
         pass: Pass::default(),
-        gap: false,
-        paired: false,
+        gap: Gap::default(),
+        pairing: Pairing::default(),
     };
     walk.walk()?;
     Ok(walk.pass)
@@ -427,13 +305,12 @@ struct Run<'a> {
     next: usize,
     at: Cursor,
     pass: Pass,
-    /// The last thing written was a word ending in a letter or a digit, so
-    /// the next thing to open with one is kept apart from it (V51).
-    gap: bool,
-    /// The last character kept opened a pair of regional indicators, so
-    /// the next one, if it is one, closes that pair and starts no flag of
-    /// its own (V76): a run pairs from its start, as UAX #29 reads it.
-    paired: bool,
+    /// Whether a word just written is kept off what follows
+    /// (`src/fix/words:V51`).
+    gap: Gap,
+    /// Where the walk stands in a run of regional indicators, which pair
+    /// from its start (`src/fix/emoji:V76`).
+    pairing: Pairing,
 }
 
 impl Run<'_> {
@@ -442,7 +319,7 @@ impl Run<'_> {
             let Some(ch) = rest.chars().next() else { break };
             let hazard = self.hazard_here();
             let found = self.matched(rest, hazard)?;
-            self.paired = found.is_none() && !self.paired && regional(ch);
+            self.pairing.step(found.is_none(), ch);
             match found {
                 Some((source, found)) => self.rewrite(source, ch, found)?,
                 None => self.keep(ch),
@@ -467,7 +344,7 @@ impl Run<'_> {
     /// The span to rewrite here, if any: what the map makes of it, else,
     /// for a hazard that carries no visible text, its deletion (V104).
     fn matched<'b>(&self, rest: &'b str, hazard: Option<Hazard>) -> Found<'b> {
-        if self.paired && rest.chars().next().is_some_and(regional) {
+        if self.pairing.closes(rest) {
             return Ok(None);
         }
         if let Some(found) = self.mapped(rest, hazard)? {
@@ -507,14 +384,14 @@ impl Run<'_> {
         ch: char,
         found: Match,
     ) -> Result<(), Error> {
-        let to = self.spaced(found.to, found.word);
+        let to = Gap::spaced(&self.pass.output, found.to, found.word);
         let hit = Hit {
             position: self.at.position(),
             character: ch,
         };
         self.emit(&to);
         if found.word {
-            self.gap = to.chars().next_back().is_some_and(joins);
+            self.gap.written(&to);
         }
         for c in source.chars() {
             self.at.advance(c);
@@ -524,34 +401,17 @@ impl Run<'_> {
         Ok(())
     }
 
-    /// A word that would land against a letter or a digit already written
-    /// gets a space in front (V51). The space is part of the REPLACEMENT,
-    /// so the V6 guard counts it inside this span and never as a changed
-    /// byte of the text around it.
-    fn spaced(&self, to: String, word: bool) -> String {
-        let after = self.pass.output.chars().next_back().is_some_and(joins);
-        if word && after && to.chars().next().is_some_and(joins) {
-            return format!(" {to}");
-        }
-        to
-    }
-
-    /// Write `text`, first closing a pending gap (V51): the word before it
-    /// ended in a letter or a digit, and `text` opens with one. The space
-    /// belongs to the span that left the gap open -- the last one pushed,
-    /// since nothing has been written after it -- so the V6 guard still
-    /// finds every untouched byte where it was.
-    ///
-    /// Writing nothing keeps the gap open: a delete between a word and a
-    /// letter must not fuse them either.
+    /// Write `text`, first closing a pending gap (`src/fix/words:V51`).
+    /// The space belongs to the span that left the gap open -- the last
+    /// one pushed, since nothing has been written after it -- so the V6
+    /// guard still finds every untouched byte where it was.
     fn emit(&mut self, text: &str) {
-        if self.gap && text.chars().next().is_some_and(joins) {
+        if self.gap.close(text) {
             self.pass.output.push(' ');
             if let Some(last) = self.pass.spans.last_mut() {
                 last.to.push(' ');
             }
         }
-        self.gap = self.gap && text.is_empty();
         self.pass.output.push_str(text);
     }
 
@@ -593,19 +453,6 @@ fn deleted(rest: &str) -> Option<(&str, Match)> {
         word: false,
     };
     Some((source, found))
-}
-
-/// Whether a character on one side of a word boundary would read as part
-/// of ONE word with its neighbour: a letter, a digit or the underscore,
-/// the `\w` a reader's `grep '\bnot\b'` uses -- in any script, since a
-/// symbol before a Polish word fuses as badly as before an English one.
-fn joins(ch: char) -> bool {
-    ch.is_alphanumeric() || ch == '_'
-}
-
-/// A regional indicator, U+1F1E6 to U+1F1FF: half of a flag (V76).
-fn regional(ch: char) -> bool {
-    ('\u{1F1E6}'..='\u{1F1FF}').contains(&ch)
 }
 
 /// Where the walk is, in the three units `Position` reports.
@@ -672,7 +519,9 @@ impl Cut {
         before.is_some() && before == after
     }
 
-    /// Where `span`'s replacement begins in the output.
+    /// Where `span`'s replacement begins in the output: the oracle the
+    /// trail's layer is tested against.
+    #[cfg(test)]
     fn start_of(&self, span: &Span) -> usize {
         let gap = span.hit.position.byte.saturating_sub(self.input);
         self.output.saturating_add(gap)

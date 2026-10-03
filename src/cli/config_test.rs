@@ -172,7 +172,7 @@ fn fidelity_is_the_rule_it_stands_for_and_revokes_nothing() {
     assert!(verdict(&root, &words).is_ok_and(|(_, code)| code == 0));
 }
 
-/// `src/fix:V51` through the flag: the notation is left alone until
+/// `src/fix/words:V51` through the flag: the notation is left alone until
 /// `--map 'use words'` opts in, and then it becomes a word.
 #[test]
 fn the_words_map_works_through_the_map_flag() {

@@ -1,8 +1,10 @@
 //! The builtin map's emoji sequences (V62), run through the engine,
-//! and the multi-pass fix they need (V65). A child of the `apply` tests.
+//! and the multi-pass fix they need (V65). The tests of this node.
 
-use super::{Hit, Map, Origin, fix};
 use crate::charset::{CharSet, builtin};
+use crate::fix::{Map, fix};
+use crate::rules::Origin;
+use crate::scan::Hit;
 use std::sync::LazyLock;
 
 /// Built once: every test here asks the same map and preset.
@@ -103,9 +105,9 @@ const FLAGS: [(&str, &str); 5] = [
     ("x \u{1F1F5}\u{1F1F1}.", "x PL."),
 ];
 
-/// Each under `ascii` and under `emoji`: `fix` returns, so V6
+/// Each under `ascii` and under `emoji`: `fix` returns, so `src/fix:V6`
 /// held, the bytes around the flag are as they were, and a second
-/// fix changes nothing (V5).
+/// fix changes nothing (`src/fix:V5`).
 #[test]
 fn flags_pair_from_the_run_start_and_stay_apart() {
     let runs = FLAGS.iter().flat_map(|c| [(c, false), (c, true)]);
@@ -124,9 +126,9 @@ fn holding_hands_lands_on_its_grouping() {
     assert_eq!(fixed("\u{1F46C}\u{1F3FB}", true), "\u{1F46C}");
 }
 
-/// Under `ascii` a ZWJ sequence is KEPT, every code point reported: its
-/// target is an emoji `ascii` does not grant, and writing it would
-/// write a violation and report none (V4, B40). It used to compress.
+/// Under `ascii` a ZWJ sequence is KEPT, every code point reported: its target
+/// is an emoji `ascii` does not grant, and writing it would write a violation
+/// and report none (`src/fix:V4`, `src/fix:B40`). It used to compress.
 #[test]
 fn under_ascii_a_zwj_sequence_is_kept_and_reported() {
     assert_eq!(fixed(FAMILY, false), FAMILY);
@@ -136,7 +138,7 @@ fn under_ascii_a_zwj_sequence_is_kept_and_reported() {
 }
 
 /// A joiner in no RGI sequence is not a sequence: it stays, and
-/// is reported (V4), while the emoji around it are left alone.
+/// is reported (`src/fix:V4`), while the emoji around it are left alone.
 #[test]
 fn a_joiner_outside_any_listed_sequence_stays_reported() {
     let set = emoji();
@@ -148,7 +150,7 @@ fn a_joiner_outside_any_listed_sequence_stays_reported() {
     assert_eq!(unmapped, Some('\u{200D}'));
 }
 
-/// A file granting every code point of a sequence keeps it (V6).
+/// A file granting every code point of a sequence keeps it (`src/fix:V6`).
 #[test]
 fn a_granted_sequence_is_left_alone() {
     let text = format!("x{COUPLE}y");
@@ -167,7 +169,7 @@ fn the_single_code_point_entries_are_unchanged() {
 
 /// B14: a deletion that REVEALS a sequence the scan walked past
 /// settles in a later pass (V65) instead of being refused as
-/// unsettled (V5).
+/// unsettled (`src/fix:V5`).
 #[test]
 fn a_sequence_revealed_by_a_deletion_still_settles() {
     let stray = "\u{1F469}\u{FE0F}\u{200D}\u{1F4BB}";
@@ -198,8 +200,8 @@ fn every_row_of_a_multi_pass_fix_resolves_in_the_original() {
     }
 }
 
-/// Every listed sequence, under `ascii` and under `emoji`: `fix`
-/// returns, so V6 and V5 held, and a second fix changes nothing.
+/// Every listed sequence, under `ascii` and under `emoji`: `fix` returns, so
+/// `src/fix:V6` and `src/fix:V5` held, and a second fix changes nothing.
 #[test]
 fn every_listed_sequence_settles_and_is_idempotent() {
     let map = &*MAP;

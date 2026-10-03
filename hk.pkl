@@ -179,11 +179,11 @@ local fast = new Mapping<String, Step> {
   // that was not rerun, fails here. The online steps (`fetch`) are not
   // gated -- the gate runs offline (`.:C`).
   ["emoji-seq-map"] {
-    glob = List("src/charset/emoji-sequences.sh", "src/charset/emoji-sequences.txt", "src/fix/emoji-seq.ctrm-map")
+    glob = List("src/charset/emoji-sequences.sh", "src/charset/emoji-sequences.txt", "src/fix/emoji/emoji-seq.ctrm-map")
     check = """
       mkdir -p target
       sh src/charset/emoji-sequences.sh map > target/emoji-seq.ctrm-map || { echo 'hk: `sh src/charset/emoji-sequences.sh map` failed, so the emoji sequence map was NOT checked. Examined nothing; this is not a pass.' >&2; exit 1; }
-      diff -u src/fix/emoji-seq.ctrm-map target/emoji-seq.ctrm-map >&2 || { echo 'hk: src/fix/emoji-seq.ctrm-map is not what `sh src/charset/emoji-sequences.sh map > src/fix/emoji-seq.ctrm-map` writes from the vendored sequences. Regenerate it; never edit it by hand (src/charset:V97).' >&2; exit 1; }
+      diff -u src/fix/emoji/emoji-seq.ctrm-map target/emoji-seq.ctrm-map >&2 || { echo 'hk: src/fix/emoji/emoji-seq.ctrm-map is not what `sh src/charset/emoji-sequences.sh map > src/fix/emoji/emoji-seq.ctrm-map` writes from the vendored sequences. Regenerate it; never edit it by hand (src/charset:V97).' >&2; exit 1; }
       """
   }
   // THE HOOK INSTALL IS GUARDED (V40, B1). The dev shell may be entered

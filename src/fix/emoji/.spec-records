@@ -1,0 +1,9 @@
+# Closed options in src/fix/emoji/SPEC.md that must SURVIVE a later edit.
+# Read by `mth check --records src/fix/emoji/.spec-records
+# src/fix/emoji/SPEC.md` (hk step `mth-check`); format and rationale as in
+# the root `.spec-records`. Moved here from `src/fix/.spec-records` with V31.
+
+# A preset for emoji SEQUENCES. Without this, a later reader proposes it --
+# it reads like the obvious twin of `emoji` -- and nothing would say it was
+# tried: a set holds code points, and a sequence is not one.
+V31  `emoji-seq` preset REJECTED

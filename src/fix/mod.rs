@@ -8,9 +8,11 @@
 mod apply;
 mod class;
 mod codepoint;
+mod emoji;
 mod error;
 mod family;
 mod map;
+mod words;
 
 pub(crate) use apply::fix_under;
 pub use apply::{Fixed, Report, fix};
@@ -49,9 +51,10 @@ pub(crate) struct Class {
 /// A plain transliteration entry. An empty `to` is an explicit delete,
 /// which is the only way a character is ever removed.
 ///
-/// `word` marks an entry a `word` line declared (V51): its replacement is
-/// a word, so where it would land against a letter or a digit `fix` puts
-/// a space between the two rather than fusing them into one (`notowns`).
+/// `word` marks an entry a `word` line declared (`src/fix/words:V51`): its
+/// replacement is a word, so where it would land against a letter or a digit
+/// `fix` puts a space between the two rather than fusing them into one
+/// (`notowns`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MapEntry {
     pub from: String,
@@ -73,10 +76,10 @@ pub struct Rewrite {
 /// rewritten whatever the set grants, because a grant was never meant to
 /// let in what hides or reorders text (`src/lint/hazard:V34`).
 ///
-/// Both arrive from outside: whether a character is allowed, or a hazard
-/// at that place in that file, is the judge's answer, not this node's
-/// (`src:V39`). `hazards` is asked once per pass, of the text that pass
-/// reads, so a later pass (V65) sees the hazards where they now sit.
+/// Both arrive from outside: whether a character is allowed, or a hazard at
+/// that place in that file, is the judge's answer, not this node's (`src:V39`).
+/// `hazards` is asked once per pass, of the text that pass reads, so a later
+/// pass (`src/fix/emoji:V65`) sees the hazards where they now sit.
 #[derive(Clone, Copy)]
 pub(crate) struct Law<'a> {
     pub allowed: &'a dyn Fn(char) -> bool,

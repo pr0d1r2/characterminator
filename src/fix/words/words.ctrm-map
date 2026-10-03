@@ -6,15 +6,15 @@
 # rewrites what a writer never chose (an editor's curly quote), so taking
 # it away costs nothing. These symbols were typed ON PURPOSE and carry
 # meaning, so rewriting them is a decision a project makes, never one this
-# crate makes for it (V26 stays as it is).
+# crate makes for it (`src/fix:V26` stays as it is).
 #
-# WHY IT EXISTS AT ALL, measured rather than assumed (`src/fix:R9`, `src/fix:R11`):
-# o200k spends two or three tokens on each of the first few symbols below
-# and one on the word, which makes this the one rewrite in the crate that
-# buys tokens. Only o200k was measured; the Claude tokenizer was not.
+# WHY IT EXISTS AT ALL, measured rather than assumed (`src/fix/words:R9`,
+# `src/fix/words:R11`): o200k spends two or three tokens on each of the first
+# few symbols below and one on the word, which makes this the one rewrite in the
+# crate that buys tokens. Only o200k was measured; the Claude tokenizer was not.
 #
-# HOW AN ENTRY GOT IN: it costs no MORE tokens than the symbol, measured
-# on 112 caveman `SPEC*.md` files (`src/fix:R11`). Saved over that corpus, and
+# HOW AN ENTRY GOT IN: it costs no MORE tokens than the symbol, measured on 112
+# caveman `SPEC*.md` files (`src/fix/words:R11`). Saved over that corpus, and
 # the number of uses it was saved over, are on each line's comment.
 #
 # A `word` line keeps its word apart from a neighbouring letter or digit
@@ -45,10 +45,10 @@ word U+2203 exists
 # NOT EQUAL TO. 28 over 28.
 U+2260 !=
 
-# RIGHTWARDS ARROW and RIGHTWARDS DOUBLE ARROW, at PARITY: 0 saved over
-# 1167 and 75 uses. Kept because they cost nothing and finish the job --
-# a file that opted into this map wants its notation in ASCII, and an
-# arrow left behind would fail the same check. A project that wants its
-# arrows grants them, and `fix` never touches a granted character (V6).
+# RIGHTWARDS ARROW and RIGHTWARDS DOUBLE ARROW, at PARITY: 0 saved over 1167 and
+# 75 uses. Kept because they cost nothing and finish the job -- a file that
+# opted into this map wants its notation in ASCII, and an arrow left behind
+# would fail the same check. A project that wants its arrows grants them, and
+# `fix` never touches a granted character (`src/fix:V6`).
 U+2192 ->
 U+21D2 =>

@@ -207,7 +207,7 @@ fn a_declared_map_entry_beats_the_builtin() {
     assert_eq!(read(&root), "a - b\n", "{text}");
 }
 
-/// `src/fix:V51` through the verb: the notation is left alone until a
+/// `src/fix/words:V51` through the verb: the notation is left alone until a
 /// `.ctrm-map` line opts in, and then it becomes words that do not
 /// fuse with the letter beside them.
 #[test]

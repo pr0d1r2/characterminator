@@ -8,17 +8,18 @@
 //! declare a space.
 //!
 //! Sources are held longest first, because a declared sequence must win over
-//! a declared prefix of it (V31).
+//! a declared prefix of it (`src/fix/emoji:V31`).
 //!
-//! Two more line kinds serve V51. `word <from> <to>` is an entry whose
-//! replacement is a WORD, which `apply` keeps apart from a neighbouring
-//! letter. `use <name>` reads a named builtin map at that line, so an
-//! opt-in map is one line of the grammar every source already speaks --
-//! a `.ctrm-map` line or a `--map` flag alike (`src/rules:V18`).
+//! Two more line kinds serve `src/fix/words:V51`. `word <from> <to>` is an
+//! entry whose replacement is a WORD, which `apply` keeps apart from a
+//! neighbouring letter. `use <name>` reads a named builtin map at that line, so
+//! an opt-in map is one line of the grammar every source already speaks -- a
+//! `.ctrm-map` line or a `--map` flag alike (`src/rules:V18`).
 
 use crate::fix::class;
 use crate::fix::codepoint::decode;
 use crate::fix::family::{ROOT, Tree};
+use crate::fix::words::NAMED;
 use crate::fix::{Class, Error, Family, MapEntry};
 use crate::rules::Origin;
 use std::cmp::Reverse;
@@ -32,24 +33,13 @@ use std::collections::{BTreeMap, HashSet};
 /// one parser, and an entry a user overrides by declaring it again.
 ///
 /// Two files joined at compile time, as the sets are: the hand-written
-/// typography and modifier map (V26, V60), then the GENERATED emoji
-/// sequence map (V62), which a regeneration rewrites whole. A builtin
-/// line number counts from the top of the joined text.
+/// typography and modifier map (V26, `src/fix/emoji:V60`), then the GENERATED
+/// emoji sequence map (`src/fix/emoji:V62`), which a regeneration rewrites
+/// whole. A builtin line number counts from the top of the joined text.
 pub(crate) const BUILTIN: &str = concat!(
     include_str!("map.ctrm-map"),
-    include_str!("emoji-seq.ctrm-map")
+    include_str!("emoji/emoji-seq.ctrm-map")
 );
-
-/// The opt-in `words` map (V51): notation to the English it abbreviates.
-///
-/// NOT layered by default, which is the whole of V26's promise: the
-/// builtin rewrites only what a writer never chose, and these symbols
-/// carry meaning somebody typed on purpose. A `use words` line asks.
-const WORDS: &str = include_str!("words.ctrm-map");
-
-/// Every map a `use` line may name. A table rather than a match, so the
-/// test that each one parses walks the same list the parser reads.
-const NAMED: &[(&str, &str)] = &[("words", WORDS)];
 
 /// A declared source matched at the current position. `word` says the
 /// replacement is a word, which `apply` keeps off a neighbouring letter.
@@ -90,9 +80,9 @@ pub struct Map {
     tree: Tree,
     fidelity: Option<String>,
     candidates: Vec<Candidate>,
-    /// Each first character, and the candidates opening with it, in
-    /// candidate order: the scan asks at EVERY position, and two thousand
-    /// emoji sequences (V62) tried in turn cost seconds on a large file.
+    /// Each first character, and the candidates opening with it, in candidate
+    /// order: the scan asks at EVERY position, and two thousand emoji sequences
+    /// (`src/fix/emoji:V62`) tried in turn cost seconds on a large file.
     starts: BTreeMap<char, Vec<usize>>,
 }
 
@@ -434,8 +424,9 @@ fn entry(body: &str, origin: Origin, word: bool) -> Option<MapEntry> {
     })
 }
 
-/// One `word <from> <to>` line (V51). The replacement is required: a
-/// word that deletes is a delete, and the plain line already says that.
+/// One `word <from> <to>` line (`src/fix/words:V51`). The replacement is
+/// required: a word that deletes is a delete, and the plain line already says
+/// that.
 fn word(rest: &str, origin: Origin) -> Option<MapEntry> {
     entry(rest, origin, true).filter(|held| !held.to.is_empty())
 }

@@ -208,7 +208,7 @@ fn replacement(
         .then(|| format!("{} -> {:?}", points(source), fixed.output)))
 }
 
-/// The builtin emoji sequences (`src/fix:V62`), said as ONE line rather
+/// The builtin emoji sequences (`src/fix/emoji:V62`), said as ONE line rather
 /// than listed: they run to nearly two thousand, and most targets are
 /// emoji, which a prompt kept to ASCII could only spell as code points.
 const EMOJI_SEQUENCES: &str = "Emoji sequences (keycap, flag, ZWJ) become \

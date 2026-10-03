@@ -131,7 +131,7 @@ is compiled in, so it travels inside every copy of the binary.
 
 | file | generated from | Unicode version |
 |---|---|---|
-| [`src/charset/emoji-sequences.txt`](../src/charset/emoji-sequences.txt), and [`src/fix/emoji-seq.ctrm-map`](../src/fix/emoji-seq.ctrm-map) built from it | Unicode emoji `emoji-sequences.txt` (presentation, keycap, flag and tag sequences) and `emoji-zwj-sequences.txt` (ZWJ sequences): the five kinds `presentation`, `keycap`, `flag`, `tag` and `zwj` | emoji 18.0 |
+| [`src/charset/emoji-sequences.txt`](../src/charset/emoji-sequences.txt), and [`src/fix/emoji/emoji-seq.ctrm-map`](../src/fix/emoji/emoji-seq.ctrm-map) built from it | Unicode emoji `emoji-sequences.txt` (presentation, keycap, flag and tag sequences) and `emoji-zwj-sequences.txt` (ZWJ sequences): the five kinds `presentation`, `keycap`, `flag`, `tag` and `zwj` | emoji 18.0 |
 | [`src/charset/hazard.ctrm-sets`](../src/charset/hazard.ctrm-sets) | `DerivedCoreProperties.txt` (`Default_Ignorable_Code_Point`), `PropList.txt` (`Bidi_Control`), `extracted/DerivedGeneralCategory.txt` (`Cc`) | 18.0.0 |
 | [`src/charset/locale/locales.ctrm-sets`](../src/charset/locale/locales.ctrm-sets) | CLDR `cldr-json` tag 48.2.3, every locale's `cldr-misc-full/main/<code>/characters.json` (exemplar characters), `cldr-core` `availableLocales.json`, `defaultContent.json`, `parentLocales.json` and `likelySubtags.json` (the locale list and parent chain), with `UnicodeData.txt` for uppercase forms | CLDR 48, UCD 18.0.0 |
 

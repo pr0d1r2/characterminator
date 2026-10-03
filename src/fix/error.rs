@@ -16,7 +16,7 @@ pub enum Error {
     MapCycle,
     /// A family was named that nothing declares.
     UnknownFamily { name: String },
-    /// A `use` line named a map this crate does not ship (V51).
+    /// A `use` line named a map this crate does not ship (`src/fix/words:V51`).
     UnknownMap { name: String },
     /// A parent chain comes back to a family it already visited (V27).
     FamilyCycle { name: String },

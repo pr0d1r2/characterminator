@@ -171,9 +171,8 @@ fn rewrites(map: &Map, from: char, to: &str) {
     assert_eq!(found.map(|e| e.to.as_str()), Some(to), "{from:?}");
 }
 
-/// V60: the presentation selectors and skin tones are deleted, so an
-/// emoji with a modifier compresses to its base without a sequence
-/// scan.
+/// `src/fix/emoji:V60`: the presentation selectors and skin tones are deleted,
+/// so an emoji with a modifier compresses to its base without a sequence scan.
 #[test]
 fn the_builtin_map_deletes_the_emoji_modifiers() {
     let map = parsed(super::BUILTIN);
@@ -238,10 +237,10 @@ fn the_builtin_map_leaves_every_bidi_control_alone() {
 /// rather than solve it, and `fix` would report the result as a
 /// violation of the same rule (V4).
 ///
-/// The ONE exception is V62's: a ZWJ sequence compresses to a single
-/// emoji, which has no ASCII form. It is still ONE code point the
-/// `emoji` preset grants, so a file under `emoji` is settled by it,
-/// and a file under `ascii` is left one finding instead of several.
+/// The ONE exception is `src/fix/emoji:V62`'s: a ZWJ sequence compresses to a
+/// single emoji, which has no ASCII form. It is still ONE code point the
+/// `emoji` preset grants, so a file under `emoji` is settled by it, and a file
+/// under `ascii` is left one finding instead of several.
 #[test]
 fn every_builtin_replacement_is_ascii_or_one_emoji() {
     let emoji = crate::charset::builtin::catalog()
@@ -281,8 +280,8 @@ fn a_word_line_needs_a_word() {
     assert_eq!(parse("word a b c\n"), Err(Error::Syntax { line: 1 }));
 }
 
-/// V51: `use words` reads the named map at that line, and each entry
-/// it brings answers "why" with the line that opted in (V20).
+/// `src/fix/words:V51`: `use words` reads the named map at that line, and each
+/// entry it brings answers "why" with the line that opted in (V20).
 #[test]
 fn a_use_line_pulls_in_a_named_map_under_its_own_origin() {
     let map = parsed("# opt in\nuse words\n");
@@ -355,11 +354,11 @@ fn every_named_map_is_well_formed_data() {
     }
 }
 
-/// V51 names what the `words` map targets. Written out, for the
+/// `src/fix/words:V51` names what the `words` map targets. Written out, for the
 /// reason `the_builtin_map_targets_what_v26_names` states.
 #[test]
 fn the_words_map_targets_what_v51_names() {
-    let map = parsed(super::WORDS);
+    let map = parsed(crate::fix::words::WORDS);
     let word = |from, to: &str| {
         let held = found(&map, from).map(|e| (e.to, e.word));
         assert_eq!(held, Some((to.to_owned(), true)), "{from:?}");
@@ -381,7 +380,7 @@ fn the_words_map_targets_what_v51_names() {
 #[test]
 fn the_builtin_map_leaves_the_notation_alone() {
     let builtin = parsed(super::BUILTIN);
-    for entry in parsed(super::WORDS).entries() {
+    for entry in parsed(crate::fix::words::WORDS).entries() {
         let from = entry.from.chars().next().unwrap_or_default();
         assert_eq!(found(&builtin, from), None, "{from:?}");
     }

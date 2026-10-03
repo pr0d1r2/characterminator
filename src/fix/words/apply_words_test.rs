@@ -1,10 +1,35 @@
 //! The `words` map (V51): a word is spaced off the letters beside it,
-//! and nothing else is. A child of the `apply` tests, for their
-//! fixtures and predicates.
+//! and nothing else is. The tests of this node, run through the
+//! parent's engine by its public surface.
 
-use super::{PREDICATES, anything, ascii, check, fix};
-use crate::fix::map::Map;
+use crate::fix::{Error, Map, Report, fix};
 use crate::rules::Origin;
+
+fn ascii(ch: char) -> bool {
+    ch.is_ascii()
+}
+
+fn ascii_or_em_dash(ch: char) -> bool {
+    ch.is_ascii() || ch == '\u{2014}'
+}
+
+fn anything(_: char) -> bool {
+    true
+}
+
+type Predicate = fn(char) -> bool;
+
+/// The predicates the engine's own tests hold every input to.
+const PREDICATES: &[Predicate] = &[ascii, ascii_or_em_dash, anything];
+
+/// What `fix --check` reports, as the engine's tests ask it.
+fn check(
+    text: &str,
+    map: &Map,
+    allowed: &dyn Fn(char) -> bool,
+) -> Result<Report, Error> {
+    Ok(fix(text, map, allowed)?.report)
+}
 
 /// A map in the shape of the `words` map (V51), plus the explicit
 /// delete, so a delete between a word and a letter is exercised.
@@ -67,9 +92,9 @@ fn a_word_is_kept_apart_from_its_neighbours() {
     }
 }
 
-/// V5 and V6 over the word inputs, under every predicate: `fix` runs
-/// both guards before it returns, so an `Ok` is the V6 half and the
-/// second run is the V5 half.
+/// `src/fix:V5` and `src/fix:V6` over the word inputs, under every predicate:
+/// `fix` runs both guards before it returns, so an `Ok` is the `src/fix:V6`
+/// half and the second run is the `src/fix:V5` half.
 #[test]
 fn a_spaced_word_is_idempotent_and_touches_nothing_else() {
     for input in WORD_INPUTS {

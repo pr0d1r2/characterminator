@@ -24,7 +24,7 @@ spec-symbol U+03A3 U+2261 U+226A U+2287 U+22C3 U+27FA U+2216 U+201E U+2714
 spec-mark U+2705 U+274C U+2713 U+2717 U+26A0 U+27A1
 
 # The skin tone modifiers, which the `emoji` preset withholds BY DESIGN
-# (`src/fix:V31`) and `src/fix/SPEC.md` has to print to state what it
+# (`src/fix/emoji:V31`) and `src/fix/SPEC.md` has to print to state what it
 # compresses.
 #
 # This set used to hold ZERO WIDTH JOINER and VARIATION SELECTOR-16 as

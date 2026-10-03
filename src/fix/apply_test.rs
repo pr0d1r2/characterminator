@@ -2,14 +2,15 @@
 //! reads as code (sherd V50). Still its child: `super` is `apply`.
 //!
 //! This file holds the shared fixtures, the properties every input is
-//! held to (V5, V6), and the guards. Three subjects are child modules
-//! of this one, each in its own file and reaching these fixtures as
-//! `super`: rewriting through classes and families, the `words` map's
-//! spacing (V51), and the builtin emoji sequences with the multi-pass
-//! fix they need (V62, V65).
+//! held to (V5, V6), and the guards. Two subjects are child modules of
+//! this one, each in its own file and reaching these fixtures as
+//! `super`: rewriting through classes and families, and hazards (V104).
+//! The `words` map's spacing and the emoji sequences are tested in their
+//! own nodes, `src/fix/words` and `src/fix/emoji`.
 
 use super::{Cut, Fixed, Pass, Span, check, fix, untouched_bytes_match};
 use crate::fix::Error;
+use crate::fix::emoji::Layer;
 use crate::fix::map::Map;
 use crate::rules::Origin;
 use crate::scan::{Hit, Position};
@@ -18,14 +19,10 @@ use crate::scan::{Hit, Position};
 mod classes;
 #[path = "apply_hazards_test.rs"]
 mod hazards;
-#[path = "apply_sequences_test.rs"]
-mod sequences;
-#[path = "apply_words_test.rs"]
-mod words;
 
-/// A map in the shape the builtin will have (V26, V31): typography to
-/// ASCII, one explicit delete, and one declared sequence whose prefix is
-/// also declared.
+/// A map in the shape the builtin will have (V26, `src/fix/emoji:V31`):
+/// typography to ASCII, one explicit delete, and one declared sequence whose
+/// prefix is also declared.
 const MAP: &str = "\
         # em dash, en dash, ellipsis, no-break space, zero width space.\n\
         U+2014 --\n\
@@ -286,7 +283,7 @@ fn the_cut_reads_both_sides_in_step() {
 #[test]
 fn a_layer_maps_every_output_byte_back_as_the_walk_did() {
     let spans = vec![span(1, 3, "--"), span(4, 3, ""), span(7, 2, "xyz")];
-    let layer = super::Layer::of(&spans);
+    let layer = Layer::of(spans.iter().map(Span::extent));
     for byte in 0..16 {
         assert_eq!(layer.back(byte), walked(byte, &spans), "byte {byte}");
     }

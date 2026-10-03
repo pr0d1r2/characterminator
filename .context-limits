@@ -66,7 +66,7 @@ src/SPEC.md          580
 src/charset/SPEC.md  3160
 src/charset/locale/SPEC.md 1570
 # RAISED 1240 -> 1600, reviewed. The node gains V51, the opt-in `words`
-# map: the one rewrite in the crate that measurably saves tokens (`.:R11`),
+# map: the one rewrite in the crate that measurably saves tokens (`src/fix/words:R11`),
 # and a rule with three parts nothing else states -- how it is switched on,
 # what it targets, and how a word is kept off a neighbouring letter without
 # breaking V5 or V6. Compaction ran FIRST: `mth archive` moved the four
@@ -88,7 +88,7 @@ src/rules/SPEC.md    1920
 # RAISED 1100 -> 1420, reviewed. T36 built the hazard set, and the node
 # gained V49: which lint each hazard class reports under, that the classes
 # are read from compiled-in data rather than the run's catalog, and that the
-# emoji-sequence exemption waits for `src/fix:T33` instead of being guessed.
+# emoji-sequence exemption waits for `src/fix/emoji:T33` instead of being guessed.
 # That is a rule WITH its runner, which is the pairing this repo requires.
 # Compaction ran first: `mth archive` folded T36 out, worth 10 tokens against
 # the 168 needed. 1420 is ~12% over the new measured 1268.

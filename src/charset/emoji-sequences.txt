@@ -1,4 +1,4 @@
-# THE RGI EMOJI SEQUENCES (`src/fix:V62`), GENERATED from Unicode emoji
+# THE RGI EMOJI SEQUENCES (`src/fix/emoji:V62`), GENERATED from Unicode emoji
 # data and compiled in (V22). Do not edit a line by hand: regenerate with
 # `src/charset/emoji-sequences.sh`, which says how.
 #
@@ -15,7 +15,7 @@
 # `presentation` (a `Basic_Emoji` code point plus VS16), `keycap`, `flag`
 # (two regional indicators), `tag` (a subdivision flag) and `zwj`. A
 # `presentation` line maps to nothing -- the builtin map deletes VS16
-# (`src/fix:V60`) -- and is listed so VS16 inside it is no hazard
+# (`src/fix/emoji:V60`) -- and is listed so VS16 inside it is no hazard
 # (`src/lint/hazard:V63`, B15). LEFT OUT: single-code-point `Basic_Emoji` and
 # `RGI_Emoji_Modifier_Sequence`, which hold no hazard to excuse. A flag or
 # a presentation carries no name: upstream spells some of those outside

@@ -4,7 +4,7 @@
 //! its emoji presentation selector fired a forbid hazard under `emoji`.
 //!
 //! The list is the vendored one the charset node compiles in
-//! (`src/fix:V62`), never the run's map or sets, so no configuration can
+//! (`src/fix/emoji:V62`), never the run's map or sets, so no configuration can
 //! widen it. A match is EXACT and longest first: a joiner or a tag that
 //! does not sit inside a listed sequence still fires, which is what keeps
 //! a payload smuggled in tag characters after U+1F3F4 a hazard. "A joiner
