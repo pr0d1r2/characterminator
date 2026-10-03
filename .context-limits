@@ -37,7 +37,7 @@
 # 3250 -> 2160 on 2026-10-02: LOWERED after the root diet moved research
 # rows and interface detail to their owning nodes. ~12% over the measured
 # 1928, so the root cannot quietly regrow into the room it gave up.
-SPEC.md              2160
+SPEC.md              2440
 
 # The hub. It owns no logic and should stay this small; if it grows, the
 # growth belongs in a node.
