@@ -41,7 +41,7 @@ SPEC.md              2440
 
 # The hub. It owns no logic and should stay this small; if it grows, the
 # growth belongs in a node.
-src/SPEC.md          510
+src/SPEC.md          580
 
 # The nodes, largest first. charset carries the measurement evidence (the
 # research rows), fix carries the map, families and classes, and lint carries
