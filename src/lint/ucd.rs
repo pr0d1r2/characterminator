@@ -87,10 +87,10 @@ pub fn mixed(hits: &[Hit]) -> Vec<Hit> {
     mixed_in(hits.iter().copied())
 }
 
-/// [`mixed`], STREAMED (R17): one pass, holding one word's script set and
-/// no list of hits. A word is what `chunk_by` over the hits makes of it
-/// -- a run in which every neighbouring pair is in-word -- so a lone
-/// character that is not in a word is a word of its own, as it was.
+/// [`mixed`], STREAMED (`src/render:R17`): one pass, holding one word's script
+/// set and no list of hits. A word is what `chunk_by` over the hits makes of it
+/// -- a run in which every neighbouring pair is in-word -- so a lone character
+/// that is not in a word is a word of its own, as it was.
 pub fn mixed_in(hits: impl IntoIterator<Item = Hit>) -> Vec<Hit> {
     let mut words = Words::default();
     hits.into_iter().filter_map(|hit| words.step(hit)).collect()
@@ -128,8 +128,8 @@ fn in_word(character: char) -> bool {
     character.is_alphanumeric() || is_combining_mark(character)
 }
 
-/// [`denormal`] over a whole text, collecting its hits only when the
-/// quick check cannot clear it -- which nearly every text it can (R17).
+/// [`denormal`] over a whole text, collecting its hits only when the quick
+/// check cannot clear it -- which nearly every text it can (`src/render:R17`).
 pub fn denormal_in(text: &str) -> Vec<Hit> {
     if is_nfc_quick(text.chars()) == IsNormalized::Yes {
         return Vec::new();
@@ -215,8 +215,8 @@ mod tests {
     }
 }
 
-/// R17: the streamed walks answer what the slice walks they replaced
-/// answered, and pure ASCII answers nothing either way.
+/// `src/render:R17`: the streamed walks answer what the slice walks they
+/// replaced answered, and pure ASCII answers nothing either way.
 #[cfg(test)]
 mod streamed {
     use super::{denormal, denormal_in, in_word, mixed_in};

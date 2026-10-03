@@ -265,10 +265,10 @@ fn report(name: &str, ctrm: &str, files: &[(&str, &str)]) -> String {
     found.map(|r| r.text).unwrap_or_else(|why| why)
 }
 
-/// R17: the lints one hit could fire, strongest first, are the same
-/// whether the pedantic tail is asked eagerly or, as now, only when
-/// nothing before it spoke. FULLWIDTH LATIN CAPITAL A is outside `ascii`,
-/// NFKC folds it, and UTS #39 draws it as `A`.
+/// `src/render:R17`: the lints one hit could fire, strongest first, are the
+/// same whether the pedantic tail is asked eagerly or, as now, only when
+/// nothing before it spoke. FULLWIDTH LATIN CAPITAL A is outside `ascii`, NFKC
+/// folds it, and UTS #39 draws it as `A`.
 #[test]
 fn every_lint_a_hit_could_fire_is_listed_strongest_first() {
     let (set, hazards) = (builtin::ascii(), hazards());
@@ -287,8 +287,8 @@ fn every_lint_a_hit_could_fire_is_listed_strongest_first() {
     assert_eq!(names, ["outside-set", "nfkc-compat", "confusable"]);
 }
 
-/// R17: one union per sets-and-family, kept for every path that asks for
-/// it, and the kept answer is the one a fresh checker resolves.
+/// `src/render:R17`: one union per sets-and-family, kept for every path that
+/// asks for it, and the kept answer is the one a fresh checker resolves.
 #[test]
 fn a_union_is_resolved_once_and_shared_by_every_path_it_governs() {
     let ctrm = "*.md ascii+caveman\n*.txt ascii\n";

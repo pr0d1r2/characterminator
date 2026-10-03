@@ -116,8 +116,8 @@ impl Judge<'_> {
     /// byte 0 in a file whose set grants it: no hazard (V34), and not
     /// outside the set either.
     ///
-    /// LAZY in the pedantic tail (R17): the caller takes the first lint
-    /// that speaks, and under the default that is `outside-set`, so the
+    /// LAZY in the pedantic tail (`src/render:R17`): the caller takes the first
+    /// lint that speaks, and under the default that is `outside-set`, so the
     /// Unicode tables are asked only when nothing stronger claimed the
     /// character.
     fn lints_for(&self, hit: Hit) -> impl Iterator<Item = Lint> {
@@ -186,9 +186,9 @@ impl Checker {
         Ok((CharSet::clone(&*set), levels))
     }
 
-    /// What one path may contain, and how loudly a stray character there
-    /// is reported. The set is SHARED: its union is resolved once per run
-    /// for each sets-and-family a rule grants, not once per file (R17).
+    /// What one path may contain, and how loudly a stray character there is
+    /// reported. The set is SHARED: its union is resolved once per run for each
+    /// sets-and-family a rule grants, not once per file (`src/render:R17`).
     pub(super) fn shared_law(
         &self,
         shown: &str,
@@ -258,8 +258,8 @@ impl Checker {
     /// tell a reader nothing, while `ascii+caveman` says what the file
     /// was judged against and which rule to look for.
     ///
-    /// Resolved once per sets-and-family and kept (R17): every file one
-    /// rule governs asks the same question, and under a locale set the
+    /// Resolved once per sets-and-family and kept (`src/render:R17`): every
+    /// file one rule governs asks the same question, and under a locale set the
     /// union is the costliest thing a small file asks for. Looked up by
     /// borrowed key, so a file whose answer is kept allocates nothing.
     fn granted(&self, found: &Resolution<'_>) -> Result<Rc<CharSet>, String> {

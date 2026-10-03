@@ -18,6 +18,11 @@ sib|src/lint|lint names, groups, levels, hazard, pedantic
 sib|src/tokens|`itok` facade: counts w/ method label, git-tracked fileset
 sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 
+## §R RESEARCH
+
+id|topic|finding|src
+R17|cost at scale|11 MB, 1.82 M findings, `ascii`: human 1.1 s 753 MB → 0.3 s 238 MB; json 4.8 s 2.2 GB → 0.53 s 448 MB; sarif 11 s 2.8 GB → 1.0 s 578 MB. cause: `String` per field & path char, 3 copies per finding, UCD lookups unasked. floor = findings 64 B + `Report.text`. `--pedantic` 10 MB ASCII 0.5 s 320 MB → 0.19 s 13 MB. 1 ZWJ in 13 MB: 0.45 → 0.14 s. 5k files `zh`: 0.13 → 0.09 s. startup 4.3 → 3.9 ms. output byte-identical|2026-10-03 macOS arm64 release, `time -l`, noisy host
+
 ## §V INVARIANTS
 
 V11: `--format json` = stable contract; human output cosmetic, but its paths ⊥ raw: ∀ char ∉ printable ASCII → `<U+XXXX>` (as `src/cli/guard:V53`) ∵ a file name w/ ESC or bidi controls injected into the terminal (B31). json escapes ∴ unchanged.

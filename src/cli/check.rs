@@ -17,9 +17,9 @@ use crate::scan::Unreadable;
 use crate::tokens::{self, lexical};
 use std::path::Path;
 
-/// One file's findings with the strings they are reported against, owned
-/// so the borrowed `render` batches can point at them. The path and set
-/// are held ONCE per file, not copied into every finding (R17).
+/// One file's findings with the strings they are reported against, owned so the
+/// borrowed `render` batches can point at them. The path and set are held ONCE
+/// per file, not copied into every finding (`src/render:R17`).
 struct Row {
     path: String,
     set: String,
@@ -147,8 +147,8 @@ pub fn run(
     })
 }
 
-/// The findings' exit code, read in place: a run of millions need not
-/// copy every finding just to ask whether one of them fails (R17).
+/// The findings' exit code, read in place: a run of millions need not copy
+/// every finding just to ask whether one of them fails (`src/render:R17`).
 fn found_code(rows: &[Row]) -> u8 {
     rows.iter()
         .map(|row| exit_code(&row.findings))

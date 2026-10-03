@@ -121,12 +121,12 @@ pub fn char_lints(character: char) -> [Option<Lint>; 3] {
 /// Every finding that needs the characters around it to decide, in byte
 /// order, `not-nfc` before `mixed-script` on the same character.
 ///
-/// Pure ASCII answers NOTHING, at once (R17): it is NFC by definition
-/// (no ASCII character decomposes or composes, and each passes the quick
-/// check), and its words are Latin letters and Common digits, whose
-/// script sets never intersect to empty. Otherwise the text is walked,
-/// not copied into a list of hits: `mixed-script` streams, and `not-nfc`
-/// lays the hits out only for a text the quick check cannot clear.
+/// Pure ASCII answers NOTHING, at once (`src/render:R17`): it is NFC by
+/// definition (no ASCII character decomposes or composes, and each passes the
+/// quick check), and its words are Latin letters and Common digits, whose
+/// script sets never intersect to empty. Otherwise the text is walked, not
+/// copied into a list of hits: `mixed-script` streams, and `not-nfc` lays the
+/// hits out only for a text the quick check cannot clear.
 pub fn text_hits(text: &str) -> Vec<(Lint, Hit)> {
     if text.is_ascii() {
         return Vec::new();

@@ -32,9 +32,9 @@ pub struct Sequences {
     /// The longest listed sequence, in bytes: how far before a joinable
     /// character a sequence holding it can start.
     widest: usize,
-    /// Whether this stands for the compiled-in list NOT YET READ: the
-    /// list is parsed on the first text that holds a joinable character,
-    /// once per process, and never for a run whose text holds none (R17).
+    /// Whether this stands for the compiled-in list NOT YET READ: the list is
+    /// parsed on the first text that holds a joinable character, once per
+    /// process, and never for a run whose text holds none (`src/render:R17`).
     deferred: bool,
 }
 
@@ -70,13 +70,12 @@ impl Sequences {
     /// costs one pass and no lookup.
     ///
     /// Matching is tried only in a WINDOW before each joinable character
-    /// (R17). Every listed sequence holds one (a test holds the list to
-    /// that), so a sequence starting more than [`Sequences::widest`]
-    /// bytes before the next one cannot reach it and cannot match at
-    /// all. Every position skipped is one the walk would have stepped
-    /// past one character at a time, so the matches -- longest first,
-    /// left to right, a match consuming what it covers -- are exactly
-    /// those of trying every position.
+    /// (`src/render:R17`). Every listed sequence holds one (a test holds the
+    /// list to that), so a sequence starting more than [`Sequences::widest`]
+    /// bytes before the next one cannot reach it and cannot match at all. Every
+    /// position skipped is one the walk would have stepped past one character
+    /// at a time, so the matches -- longest first, left to right, a match
+    /// consuming what it covers -- are exactly those of trying every position.
     pub fn exempt(&self, text: &str) -> Vec<usize> {
         if self.deferred {
             let wanted = next_joined(text, 0).is_some();
@@ -255,9 +254,9 @@ mod tests {
     }
 }
 
-/// R17: the windowed walk against the walk it replaced, which tried every
-/// position once any joinable character was present. Kept here, as the
-/// reference, and nowhere else.
+/// `src/render:R17`: the windowed walk against the walk it replaced, which
+/// tried every position once any joinable character was present. Kept here, as
+/// the reference, and nowhere else.
 #[cfg(test)]
 mod windowed {
     use super::{Sequences, joined};
