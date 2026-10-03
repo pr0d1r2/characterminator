@@ -10,6 +10,7 @@ mod answer;
 mod export;
 mod listing;
 mod prompt;
+mod prompt_lines;
 
 pub(super) use answer::{exported, run};
 pub(super) use listing::{Asked, sets};
