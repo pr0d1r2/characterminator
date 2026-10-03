@@ -1,0 +1,9 @@
+# Closed options in src/rules/SPEC.md that must SURVIVE a later edit. Read
+# by `mth check --records src/rules/.spec-records src/rules/SPEC.md` (hk
+# step `mth-check`); format and rationale as in the root `.spec-records`.
+
+# A level-only line competing for the set grant. Without this, a later
+# reader "simplifies" resolution back to last-match-wins for every field;
+# that is B5, where a line written to RELAX a lint narrowed the grant back
+# to `ascii` and made more characters fail.
+V56  a level line that won the grant REJECTED

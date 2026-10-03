@@ -81,13 +81,21 @@ local fast = new Mapping<String, Step> {
   // The other half: the STRUCTURAL rules. `mth fmt` says the file is shaped
   // right; this says it is still correct -- sections in order, ids unique,
   // citations resolving.
+  //
+  // A node's closed options are checked too: `mth` keys records by id and
+  // ids repeat across specs, so each node keeps its own `.spec-records`
+  // BESIDE its SPEC.md, and the loop passes it when it is there. A node
+  // with nothing recorded has no file. Deleting one is a visible diff, the
+  // same review a deleted line in the root file gets.
   ["mth-check"] {
-    glob = List("SPEC.md", "src/**/SPEC.md")
+    glob = List("SPEC.md", "src/**/SPEC.md", ".spec-records", "src/**/.spec-records")
     depends = List("mth")
     check = """
       mth check --records .spec-records SPEC.md || { echo "hk: SPEC.md failed its structural rules, or a decision .spec-records requires has gone missing. Each line above names the rule, the line, why it matters, and a ranked fix." >&2; exit 1; }
       for f in $(find src -name SPEC.md | sort); do
-        mth check "$f" || { echo "hk: $f failed its structural rules. Each line above names the rule, the line, why it matters, and a ranked fix." >&2; exit 1; }
+        records="$(dirname "$f")/.spec-records"
+        if [ -f "$records" ]; then set -- --records "$records"; else set --; fi
+        mth check "$@" "$f" || { echo "hk: $f failed its structural rules, or a decision its .spec-records requires has gone missing. Each line above names the rule, the line, why it matters, and a ranked fix." >&2; exit 1; }
       done
       """
   }

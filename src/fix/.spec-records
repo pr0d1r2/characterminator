@@ -1,0 +1,13 @@
+# Closed options in src/fix/SPEC.md that must SURVIVE a later edit. Read by
+# `mth check --records src/fix/.spec-records src/fix/SPEC.md` (hk step
+# `mth-check`); format and rationale as in the root `.spec-records`.
+
+# A preset for emoji SEQUENCES. Without this, a later reader proposes it --
+# it reads like the obvious twin of `emoji` -- and nothing would say it was
+# tried: a set holds code points, and a sequence is not one.
+V31  `emoji-seq` preset REJECTED
+
+# A `--words` switch. Without this, a later reader adds one for
+# convenience; the map line `use words` already is the switch, and a
+# second one is a second place for the two to disagree.
+V51  `--words` flag REJECTED

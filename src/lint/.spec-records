@@ -1,0 +1,9 @@
+# Closed options in src/lint/SPEC.md that must SURVIVE a later edit. Read by
+# `mth check --records src/lint/.spec-records src/lint/SPEC.md` (hk step
+# `mth-check`); format and rationale as in the root `.spec-records`.
+
+# Exempting ZWJ/ZWNJ through a CLDR language preset. Without this, a later
+# reader proposes it as the general fix for scripts that spell with
+# joiners; it contradicts `forbid`, which no later rule may lower. V57 is
+# the narrow, compiled-in excuse that replaced it.
+V34  ZWJ/ZWNJ via CLDR language preset REJECTED

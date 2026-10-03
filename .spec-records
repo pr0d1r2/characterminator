@@ -18,8 +18,14 @@
 # oversight: this repo keeps its rejected options in COMMIT MESSAGES -- every
 # decision commit carries what was chosen, what was rejected, why, and what
 # would reopen it. Only options recorded in the SPEC TEXT can be checked here,
-# and so far one is. The open questions marked `?` are not records: they are
-# decisions not yet made, and nothing is lost if they change.
+# and so far two at the root are. The open questions marked `?` are not
+# records: they are decisions not yet made, and nothing is lost if they
+# change.
+#
+# THIS FILE IS THE ROOT'S ONLY. Records key by id and ids repeat across
+# specs, so a node keeps its own `.spec-records` beside its SPEC.md; the
+# `mth-check` step passes it when it is there. Today: src/fix, src/lint,
+# src/rules.
 #
 # Adding a line here is how a newly closed option becomes load-bearing.
 # Removing one is a reviewed decision: it says the option is no longer worth
