@@ -59,7 +59,7 @@ src/SPEC.md           420
 # 2240 -> 2760: V61 and T60 specify option 1A (every CLDR locale, lazy
 # parse) for the next build. `mth archive` folded T23 and T46 first.
 # 2760 is ~12% over the measured 2465.
-src/charset/SPEC.md  3590
+src/charset/SPEC.md  4250
 # RAISED 1240 -> 1600, reviewed. The node gains V51, the opt-in `words`
 # map: the one rewrite in the crate that measurably saves tokens (`.:R11`),
 # and a rule with three parts nothing else states -- how it is switched on,
@@ -110,7 +110,7 @@ src/rules/SPEC.md    1700
 # 2110 -> 2440: B15 (VS16 in emoji sequences) and its V63 clause, the
 # node's first bug row since 2A. Nothing left to archive. 2440 is ~12% over
 # the measured 2186.
-src/lint/SPEC.md     2440
+src/lint/SPEC.md     2740
 # RAISED 740 -> 860, reviewed. The node gained a task row for the `fix`
 # verbs, which had NO row at all: the root spec's interface section named
 # `ctrm fix`, `src/fix` built the engine under T10, and nothing in any §T
@@ -210,7 +210,7 @@ src/render/SPEC.md   1420
 # own row it would inherit the parent's 3510 by longest prefix, which
 # guard's chain is over.
 src                2490
-src/charset          4330
+src/charset          5010
 src/cli              3510
 src/cli/explain      3740
 src/cli/guard        4240
