@@ -690,6 +690,12 @@ list every open task, and the issue tracker is the place to ask about one.
   rest is planned.
 - **Windows is untested.** CI (`.github/workflows/ci.yml`) runs the gate on
   Linux (x86 and arm) and macOS, and the action on Linux.
+- **No standard input.** Every verb but `guard` reads named or tracked
+  files; `ctrm check -` is refused.
+- **No prebuilt binaries, shell completions or man page.** Every install
+  compiles, and `--help` with a page per verb is the reference. The
+  argument parser is hand-written, so completions are their own piece of
+  work.
 
 ## Compared with other tools
 
