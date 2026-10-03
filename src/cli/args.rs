@@ -223,7 +223,7 @@ mod tests {
     #[test]
     fn the_usage_names_every_flag() {
         for flag in super::VALUED.iter().chain(super::SWITCHES) {
-            assert!(crate::cli::USAGE.contains(flag), "{flag}");
+            assert!(crate::cli::dispatch::USAGE.contains(flag), "{flag}");
         }
     }
 
