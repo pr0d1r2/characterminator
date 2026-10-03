@@ -63,7 +63,7 @@ installs the hooks.
 
 ```bash
 hk check --all        # everything
-cargo test            # the fast inner loop
+cargo test --workspace # the fast inner loop
 ```
 
 The steps, and what each is for. `hk.pkl` is the source of truth -- each
@@ -81,7 +81,7 @@ it; if they disagree, `hk.pkl` is right and this table is the bug.
 | `flake-tags` | every flake input pins a `vX.Y.Z` tag, not a branch (V44) |
 | `hook-guard` | a `flake.nix` shellHook that installs a hook before both of its guards (V40) |
 | `emoji-seq-map` | an emoji sequence map that is not what its generator writes from the vendored data (`src/charset:V97`) |
-| `coverage-badge` | the README coverage badge says what `.coverage` claims, copied rather than typed |
+| `dev-generated`, `dev-generated-full` | a README badge or the notices closure that is not what `characterminator-dev` writes from the files that own each number (`dev:V131`); scoped to the changed files at pre-commit, every block at pre-push |
 | `coverage` | line coverage under the floor, or a `.coverage` claim this run does not reproduce (V46); `hk check` and pre-push, not pre-commit |
 | `no-commit-to-branch` | a commit to `main`; pre-commit only |
 

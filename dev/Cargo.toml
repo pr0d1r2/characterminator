@@ -1,0 +1,22 @@
+[package]
+name = "characterminator-dev"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+description = "development-only tooling for the characterminator repository -- never published"
+# THE POINT OF THIS CRATE (`dev:C`). It maintains files in THIS repository and
+# means nothing to anyone who installs `characterminator`, so it is never
+# published and never released: cargo-release would otherwise tag and push it
+# along with the product, because a workspace release walks every member.
+publish = false
+
+[package.metadata.release]
+release = false
+
+# Zero dependencies. Cargo.toml, `.coverage` and `cargo tree`'s output are
+# read with line readers (`dev:C`): a TOML parser would be a dependency
+# bigger than everything it parses here.
+
+[lints]
+workspace = true

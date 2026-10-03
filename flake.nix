@@ -125,9 +125,18 @@
               ./src
               ./Cargo.toml
               ./Cargo.lock
+              # The workspace member, so cargo can load the workspace the
+              # root manifest declares. It is never built: see the flags.
+              ./dev/Cargo.toml
+              ./dev/src
+              ./dev/tests
             ];
           };
           cargoLock.lockFile = ./Cargo.lock;
+          # The product only. Without `-p` the workspace's dev tooling
+          # (`dev:C`) would land in the package's `bin/` beside `ctrm`.
+          cargoBuildFlags = [ "-p" "characterminator" ];
+          cargoTestFlags = [ "-p" "characterminator" ];
           meta = {
             description = "find and eliminate characters outside an allowed set";
             homepage = "https://github.com/pr0d1r2/characterminator";

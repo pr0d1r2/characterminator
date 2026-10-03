@@ -5,7 +5,7 @@ file**, and compiles in **data generated from the Unicode Character
 Database**. This document says what each is, why it is there, and what you
 owe whom if you distribute a binary.
 
-Every figure below is the *runtime* closure -- `cargo tree -e normal`,
+Every figure below is the *runtime* closure -- `cargo tree -e normal --target all`,
 measured rather than asserted. Dev-dependencies are excluded: they are not
 distributed in anything you run.
 
@@ -57,10 +57,10 @@ Unicode Character Database -- version 17.0.0 for normalization and script,
 16.0.0 for the UTS #39 confusables -- so the Unicode License below applies
 to that data as well.
 
-## The closure: 26 packages
+<!-- BEGIN closure -->
+## The closure: 29 packages
 
-Three direct, twenty-three transitive. Twenty sit beneath `tiktoken-rs`,
-which is what a real tokenizer costs; the Unicode tables cost four.
+3 direct, 26 transitive, on every target platform (`cargo tree -e normal --target all`).
 
 | package | version | licence |
 |---|---|---|
@@ -69,6 +69,7 @@ which is what a real tokenizer costs; the Unicode tables cost four.
 | `base64` | 0.21.7 | MIT OR Apache-2.0 |
 | `bit-set` | 0.5.3 | MIT/Apache-2.0 |
 | `bit-vec` | 0.6.3 | MIT/Apache-2.0 |
+| `bitflags` | 2.13.2 | MIT OR Apache-2.0 |
 | `bstr` | 1.13.1 | MIT OR Apache-2.0 |
 | `cfg-if` | 1.0.5 | MIT OR Apache-2.0 |
 | `fancy-regex` | 0.13.0 | MIT |
@@ -79,6 +80,7 @@ which is what a real tokenizer costs; the Unicode tables cost four.
 | `memchr` | 2.8.3 | Unlicense OR MIT |
 | `parking_lot` | 0.12.5 | MIT OR Apache-2.0 |
 | `parking_lot_core` | 0.9.12 | MIT OR Apache-2.0 |
+| `redox_syscall` | 0.5.18 | MIT |
 | `regex` | 1.13.1 | MIT OR Apache-2.0 |
 | `regex-automata` | 0.4.18 | MIT OR Apache-2.0 |
 | `regex-syntax` | 0.8.11 | MIT OR Apache-2.0 |
@@ -90,26 +92,35 @@ which is what a real tokenizer costs; the Unicode tables cost four.
 | `unicode-normalization` | 0.1.25 | MIT OR Apache-2.0 |
 | `unicode-script` | 0.5.8 | MIT OR Apache-2.0 |
 | `unicode-security` | 0.1.2 | MIT/Apache-2.0 |
+| `windows-link` | 0.2.1 | MIT OR Apache-2.0 |
 
-The versions are what `Cargo.lock` resolves today. The lock file is tracked
-and is the authority; this table is a readable copy of it, regenerated
-rather than edited.
+Licence expressions, by how many packages carry each:
 
-Six licence expressions appear, all permissive:
-
-- `MIT OR Apache-2.0` (16 packages)
-- `MIT` (3)
+- `MIT OR Apache-2.0` (18)
+- `MIT` (4)
+- `MIT/Apache-2.0` (3)
 - `Unlicense OR MIT` (2)
-- `MIT/Apache-2.0` (3) -- older syntax, same meaning
-- `Apache-2.0/MIT` (1) -- likewise
+- `Apache-2.0/MIT` (1)
 - `Zlib OR Apache-2.0 OR MIT` (1)
+<!-- END closure -->
 
-Where an expression offers a choice, `characterminator` is distributed
+The block above is generated, never edited: `cargo run -q -p
+characterminator-dev -- notices` writes it from `cargo tree`, which reads
+`Cargo.lock`, and the gate fails when the two disagree. The lock file is
+tracked and is the authority; this is a readable copy of it.
+
+Most of the closure sits beneath `tiktoken-rs`, which is what a real
+tokenizer costs; the Unicode tables cost a handful.
+
+It is every target's closure, not one machine's. `windows-link` resolves
+only on Windows, and `redox_syscall` with the `bitflags` beneath it only on
+Redox; they are listed anyway, because a per-host list is a different
+number on every runner that checks it.
+
+`MIT/Apache-2.0` and `Apache-2.0/MIT` are the older syntax for
+`MIT OR Apache-2.0`. Every expression is permissive and every one offers
+MIT: where an expression offers a choice, `characterminator` is distributed
 under MIT and takes the MIT option.
-
-`Cargo.lock` carries three packages this table does not: `bitflags`,
-`redox_syscall` and `windows-link`. They resolve only on platforms other
-than the one measured here, and they are permissive on the same terms.
 
 ## The vendored file: `pkl/Config.pkl`
 
@@ -223,7 +234,7 @@ Nothing here is hand-maintained, and you should not trust it because it is
 written down:
 
 ```bash
-cargo tree -e normal                    # the closure in the table above
+cargo tree -e normal --target all       # the closure in the table above
 cargo tree -e normal --no-default-features
 cargo deny check licenses               # if you have cargo-deny
 ```

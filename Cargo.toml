@@ -1,5 +1,12 @@
-# Self-specified, not workspace-inherited: this crate is born standalone and
-# carries its own package metadata and lints from commit one.
+# One workspace, two crates: the product, and `dev/` (`characterminator-dev`),
+# the unpublished tooling that maintains this repository's generated docs
+# (`dev:V131`). A second `[[bin]]` here would have shipped in the tarball and
+# landed on a consumer's PATH; a separate, `publish = false` member cannot.
+# Cargo leaves a member's directory out of the root package on its own, and
+# `include` below would refuse it anyway.
+[workspace]
+members = ["dev"]
+
 [package]
 # The CRATE carries the meaning, the BINARY carries the muscle memory --
 # `ripgrep`/`rg` and `microlith`/`mth` are the established Rust CLI shape.
@@ -76,7 +83,12 @@ itok = { version = "0.3", default-features = false, features = ["bpe"] }
 unicode-normalization = { version = "0.1.25", default-features = false }
 unicode-security = { version = "0.1.2", default-features = false }
 
-[lints.rust]
+# ONE lint table for the workspace, so the dev tooling meets exactly the
+# denials the product does (`dev:C`) rather than a laxer copy.
+[lints]
+workspace = true
+
+[workspace.lints.rust]
 unsafe_code = "forbid"
 # The library surface is the root re-export list and nothing else
 # (`src:V98`). A `pub` inside a private node is a promise nobody can
@@ -86,7 +98,7 @@ unreachable_pub = "deny"
 # Deny rather than warn: a warning in a gate that runs with `-D warnings` is
 # a denial with extra steps, and spelling it here keeps `cargo clippy` honest
 # outside the gate too.
-[lints.clippy]
+[workspace.lints.clippy]
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"

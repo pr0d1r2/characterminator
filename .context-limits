@@ -325,6 +325,11 @@ src/judge            3300
 # measured 1248 and the 3338 chain.
 src/judge/SPEC.md    1400
 
+# The `dev` node (the unpublished `characterminator-dev` crate), new
+# 2026-10-03: ~12% over its measured 1097-token spec and 2920-token chain.
+dev/SPEC.md          1230
+dev                  3270
+
 # The `usage` sub-node (help text, verb detection, did-you-mean), new
 # 2026-10-03: ~12% over its measured 569-token spec and 4094-token chain.
 src/cli/usage/SPEC.md 980
