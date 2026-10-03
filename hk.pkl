@@ -164,6 +164,20 @@ local fast = new Mapping<String, Step> {
       ' flake.nix >&2 || { echo 'hk: a flake input is not pinned to a tag (V44). Pin `github:owner/repo/vX.Y.Z` and bump it in its own reviewed commit; following a branch is rejected.' >&2; exit 1; }
       """
   }
+  // GENERATED DATA STAYS GENERATED (`src/charset:V97`). The emoji sequence
+  // map is the one generated file whose input is vendored, so it is the one
+  // this gate can regenerate with no network: run the generator, diff its
+  // output against the committed file. A hand edit, or a generator change
+  // that was not rerun, fails here. The online steps (`fetch`) are not
+  // gated -- the gate runs offline (`.:C`).
+  ["emoji-seq-map"] {
+    glob = List("src/charset/emoji-sequences.sh", "src/charset/emoji-sequences.txt", "src/fix/emoji-seq.ctrm-map")
+    check = """
+      mkdir -p target
+      sh src/charset/emoji-sequences.sh map > target/emoji-seq.ctrm-map || { echo 'hk: `sh src/charset/emoji-sequences.sh map` failed, so the emoji sequence map was NOT checked. Examined nothing; this is not a pass.' >&2; exit 1; }
+      diff -u src/fix/emoji-seq.ctrm-map target/emoji-seq.ctrm-map >&2 || { echo 'hk: src/fix/emoji-seq.ctrm-map is not what `sh src/charset/emoji-sequences.sh map > src/fix/emoji-seq.ctrm-map` writes from the vendored sequences. Regenerate it; never edit it by hand (src/charset:V97).' >&2; exit 1; }
+      """
+  }
   // THE BADGE READS THE CLAIM (V46). The coverage figure in README.md is
   // copied from `.coverage`, never typed, so a badge cannot say one number
   // while the file the gate keeps honest says another.

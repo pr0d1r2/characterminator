@@ -51,6 +51,7 @@ V64: LAZY (V61) = `locales.ctrm-sets` ∉ eager builtin text (`SETS`), own compi
 V77: ∀ generator here (`cldr-letters.sh`, `emoji-sequences.sh`): `fetch <dir>` creates `<dir>` (`mkdir -p`) before writing; failed download → curl's message (`-sS`), ⊥ bare exit code. ∀ tool a step needs (`jq`, `curl`, `sha256sum`, `xargs`) ∈ dev shell. test reads both scripts.
 V86: `CharSet::contains` = binary search (`partition_point`) over canonical `ranges` (sorted, merged, `range::normalize`); ASCII point → walk of leading ranges only ∴ O(log n), ⊥ linear scan (`zh` = 1,716 ranges). `ranges` stays `pub` (`render`, `lint` read it; other nodes' tests build literals) ∴ canonical form guaranteed by `new`/`union`; hand-built set ! be canonical. runner: `set_test.rs` diffs search vs linear walk, generated + ∀ shipped set.
 V88: locale line lookup (V64) via name → line index built ONCE (`LazyLock`), on 1st lookup ∴ run naming ⊥ locale builds ⊥. first line per name wins ≡ old linear `find`. `adopt`, `adopt_all`, alias inlining share it ∴ ⊥ scan of `LOCALES` per name. runner: `locale_test.rs` diffs index vs scan ∀ name + misses.
+V97: ∀ GENERATED data file reproducible by a NAMED command: `locales.ctrm-sets` ← `cldr-letters.sh generate <dir>` · `emoji-sequences.txt` ← `emoji-sequences.sh data <dir>` (each after its `fetch <dir>`, online ∴ ⊥ gated: gate offline, `.:C`) · `src/fix/emoji-seq.ctrm-map` ← `emoji-sequences.sh map`, OFFLINE (reads vendored `emoji-sequences.txt`) ∴ hk step `emoji-seq-map` regenerates & diffs ∀ run. EXCEPTION, stated ⊥ hidden: `hazard.ctrm-sets` has ⊥ committed generator; members = the awk in its header over 3 UCD files (sha256 recorded, files ⊥ vendored), `\t` `\n` `\r` cut from Cc by hand ∴ reproducible by hand only, til T62.
 
 ## §T TASKS
 
@@ -62,6 +63,7 @@ T25|x|ARCHIVED to SPEC-ARCHIVE.md|V25
 T32|x|ARCHIVED to SPEC-ARCHIVE.md|V30,V22,V59
 T46|x|ARCHIVED to SPEC-ARCHIVE.md|V41,`src/rules:V29`
 T60|x|ARCHIVED to SPEC-ARCHIVE.md|V61,V59,V30
+T62|.|commit `hazard-sets.sh` (`fetch <dir>` + `generate <dir>`, V77 shape) emitting `hazard.ctrm-sets` from the header's awk & hashes ∴ V97's exception closes|V97,V77,`src/lint:V34`
 
 ## §B BUGS
 
