@@ -2,6 +2,7 @@
 //! reads as code (sherd V50). Still its child: `super` is `config`.
 
 use super::{Config, MAP, PEDANTIC, RULES, SETS, from_argv};
+use crate::cli::testkit::{argv, fixture};
 use crate::cli::{args, check, explain, fix};
 use crate::render::Format;
 use crate::rules::Rule;
@@ -19,17 +20,6 @@ const MAP_TEXT: &str = "# map\nU+2014 -\nuse words\n";
 const NOTES: &str = "a \u{2261} \u{2014} \u{22A5}x \u{00A9}\n";
 const LEGAL: &str = "\u{00A9} \u{2014}\n";
 
-fn fixture(name: &str, files: &[(&str, &str)]) -> Option<PathBuf> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("target")
-        .join(name);
-    std::fs::create_dir_all(&root).ok()?;
-    for (file, text) in files {
-        std::fs::write(root.join(file), text).ok()?;
-    }
-    Some(root)
-}
-
 fn configured(name: &str) -> Option<PathBuf> {
     let files = [
         (RULES, RULES_TEXT),
@@ -39,10 +29,6 @@ fn configured(name: &str) -> Option<PathBuf> {
         ("legal.md", LEGAL),
     ];
     fixture(name, &files)
-}
-
-fn argv(words: &[&str]) -> Vec<String> {
-    words.iter().map(|w| (*w).to_owned()).collect()
 }
 
 /// `flag line` for every line of `text`, comments and blanks included:

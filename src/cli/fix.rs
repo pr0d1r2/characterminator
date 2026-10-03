@@ -262,22 +262,9 @@ fn skip(held: &Skip) -> Skipped<'_> {
 #[cfg(test)]
 mod tests {
     use super::run;
+    use crate::cli::testkit::fixture;
     use crate::render::Format;
-    use std::path::{Path, PathBuf};
-
-    /// A tree under `target/`, untracked by construction. The files are
-    /// NAMED to `run`, so the git-tracked default never applies and the
-    /// fixture does not have to be in the index.
-    fn fixture(name: &str, files: &[(&str, &str)]) -> Option<PathBuf> {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("target")
-            .join(name);
-        std::fs::create_dir_all(&root).ok()?;
-        for (file, text) in files {
-            std::fs::write(root.join(file), text).ok()?;
-        }
-        Some(root)
-    }
+    use std::path::Path;
 
     fn ran(root: &Path, write: bool) -> (String, u8) {
         let asked = ["notes.md".to_owned()];

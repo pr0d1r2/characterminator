@@ -5,10 +5,7 @@ use super::{
     Format, Outcome, adapted, args, format_of, prepared, sarif_misused,
     sarif_refused, verb_of,
 };
-
-fn argv(words: &[&str]) -> Vec<String> {
-    words.iter().map(|w| (*w).to_owned()).collect()
-}
+use crate::cli::testkit::argv;
 
 /// The format argv asks for, or the refusal, as text.
 fn format(words: &[&str]) -> Result<Format, String> {

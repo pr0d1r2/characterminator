@@ -125,21 +125,9 @@ pub(crate) fn sets(config: &Config, format: Format) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::{Config, run, sets};
+    use crate::cli::testkit::fixture;
     use crate::render::Format;
-    use std::path::{Path, PathBuf};
-
-    /// A tree with the dotfiles named, under `target/` so it is untracked
-    /// by construction. `None` if it cannot be written.
-    fn fixture(name: &str, files: &[(&str, &str)]) -> Option<PathBuf> {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("target")
-            .join(name);
-        std::fs::create_dir_all(&root).ok()?;
-        for (file, text) in files {
-            std::fs::write(root.join(file), text).ok()?;
-        }
-        Some(root)
-    }
+    use std::path::Path;
 
     fn explained(root: &Path, path: &[String]) -> String {
         run(&crate::cli::config::discovered(root), path, Format::Human)

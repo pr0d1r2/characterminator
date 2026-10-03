@@ -129,19 +129,9 @@ fn stat(row: &Row) -> FileStats<'_> {
 #[cfg(test)]
 mod tests {
     use super::run;
+    use crate::cli::testkit::fixture;
     use crate::render::Format;
-    use std::path::{Path, PathBuf};
-
-    fn fixture(name: &str, files: &[(&str, &str)]) -> Option<PathBuf> {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("target")
-            .join(name);
-        std::fs::create_dir_all(&root).ok()?;
-        for (file, text) in files {
-            std::fs::write(root.join(file), text).ok()?;
-        }
-        Some(root)
-    }
+    use std::path::Path;
 
     fn ran(root: &Path, bpe: bool) -> String {
         let asked = ["notes.md".to_owned()];

@@ -152,6 +152,7 @@ mod tests {
     use super::{Shape, args, lines};
     use crate::charset::builtin;
     use crate::cli::config::from_argv;
+    use crate::cli::testkit::argv;
     use crate::fix::{self as engine, MapEntry};
     use crate::judge::Config;
     use crate::rules::corpus::{Noise, SHAPES, file};
@@ -314,10 +315,6 @@ mod tests {
         let mut fewer = config.clone();
         fewer.rules = Sources::new();
         assert_ne!(meaning(&fewer), meaning(&config));
-    }
-
-    fn argv(words: &[&str]) -> Vec<String> {
-        words.iter().map(|w| (*w).to_owned()).collect()
     }
 
     fn loaded(words: &[&str]) -> Config {

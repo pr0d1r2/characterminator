@@ -7,7 +7,7 @@
 //! fixtures exempted per path (`src/lint:V37`, `src/lint:V58`, B20).
 
 use super::super::run;
-use super::fixture;
+use crate::cli::testkit::fixture;
 use crate::render::Format;
 
 /// The human report for `files` under `ctrm`, with every file that is

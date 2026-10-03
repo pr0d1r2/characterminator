@@ -154,10 +154,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{Args, parse};
-
-    fn argv(words: &[&str]) -> Vec<String> {
-        words.iter().map(|w| (*w).to_owned()).collect()
-    }
+    use crate::cli::testkit::argv;
 
     fn parsed(words: &[&str]) -> Args {
         let read = parse(&argv(words));

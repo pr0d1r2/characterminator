@@ -12,6 +12,8 @@ mod fix;
 mod guard;
 mod out;
 mod stats;
+#[cfg(test)]
+pub(crate) mod testkit;
 
 use dispatch::Outcome;
 

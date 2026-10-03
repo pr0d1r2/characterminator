@@ -8,9 +8,9 @@
 
 use super::super::config::discovered;
 use super::run;
+use crate::cli::testkit::fixture;
 use crate::lint::Group;
 use crate::render::Format;
-use std::path::{Path, PathBuf};
 
 #[path = "check_judged_test.rs"]
 mod judged;
@@ -29,23 +29,6 @@ fn an_anchored_rule_reaches_a_path_spelled_with_dot_dot() {
     let asked = [String::from("sub/../sub/c.md")];
     let found = run(&discovered(&root), &asked, Format::Human);
     assert_eq!(found.map(|r| (r.text, r.code)), Ok((String::new(), 0)));
-}
-
-/// A tree carrying the dotfiles named, or `None` if it cannot be
-/// written: a test should not fail for the disk's reasons.
-///
-/// It lives under `target/`, which `.gitignore` excludes, so it is
-/// untracked by construction rather than by hoping, and each caller
-/// names its own directory so two tests never share one tree.
-fn fixture(name: &str, files: &[(&str, &str)]) -> Option<PathBuf> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("target")
-        .join(name);
-    std::fs::create_dir_all(&root).ok()?;
-    for (file, text) in files {
-        std::fs::write(root.join(file), text).ok()?;
-    }
-    Some(root)
 }
 
 /// The exit code `check` gives one file of raw `bytes`, per format.
