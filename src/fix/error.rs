@@ -53,30 +53,51 @@ impl Error {
     }
 
     /// V6, which this node checks on itself before anything is written.
-    const REFUSED_TOUCH: &'static str =
-        "would have touched an allowed byte, so it was refused (V6)";
+    /// No spec id in the words (`src/cli/usage:V121`): the reader has no
+    /// spec, so the message says whose fault it is instead.
+    const REFUSED_TOUCH: &'static str = "would have touched an allowed byte, \
+         so nothing was written -- this is a ctrm bug, please report it";
 
     /// V5, checked the same way.
-    const REFUSED_UNSETTLED: &'static str =
-        "would not settle when run twice, so it was refused (V5)";
+    const REFUSED_UNSETTLED: &'static str = "would not settle when run twice, \
+         so nothing was written -- this is a ctrm bug, please report it";
+
+    /// The forms a map line may take, for a line that is none of them.
+    const FORMS: &'static str = "is not a map line -- expected `<from> [<to>]`, \
+         `word <from> <to>`, `family <name> <parent>`, \
+         `= <class> <family>:<member>,...` or `use <name>`";
+
+    /// A source no set withholds (`src/judge:V116`).
+    const NEVER: &'static str = "maps a source made only of `ascii`, which \
+         every set grants, so it would never be rewritten -- a source needs \
+         a character outside `ascii`";
+
+    /// The 1-based line a refusal is about, when it is about one.
+    #[must_use]
+    pub(crate) const fn line(&self) -> Option<usize> {
+        match self {
+            Self::Syntax { line } | Self::NeverRewritten { line } => {
+                Some(*line)
+            }
+            _ => None,
+        }
+    }
 
     /// Why it refused.
     ///
-    /// Each names the RULE, because half of these are this node catching
-    /// ITSELF: a reader who sees one needs to know whether their config
-    /// is wrong or this crate is.
-    const fn reason(&self) -> &'static str {
+    /// A config fault says what is expected instead; this node catching
+    /// ITSELF says so, so a reader knows whether their config is wrong or
+    /// this crate is.
+    #[must_use]
+    pub(crate) const fn reason(&self) -> &'static str {
         match self {
-            Self::Syntax { .. } => "is not a declared form",
-            Self::NeverRewritten { .. } => {
-                "maps a source made only of `ascii`, which every set grants, \
-                 so it would never be rewritten"
-            }
+            Self::Syntax { .. } => Self::FORMS,
+            Self::NeverRewritten { .. } => Self::NEVER,
             Self::MapCycle => "rewrites in a cycle and never settles",
             Self::UnknownFamily { .. } => "is not declared",
-            Self::UnknownMap { .. } => "is not a builtin map (V51)",
-            Self::FamilyCycle { .. } => "is its own ancestor (V27)",
-            Self::UnrootedFamily { .. } => "never reaches `ascii` (V27)",
+            Self::UnknownMap { .. } => "is not a builtin map",
+            Self::FamilyCycle { .. } => "is its own ancestor",
+            Self::UnrootedFamily { .. } => "never reaches `ascii`",
             Self::RootReparented => "takes no parent: `ascii` is the root",
             Self::TouchedAllowedBytes => Self::REFUSED_TOUCH,
             Self::NotIdempotent => Self::REFUSED_UNSETTLED,
@@ -91,3 +112,29 @@ impl std::fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
+
+#[cfg(test)]
+mod tests {
+    use super::Error;
+
+    /// `src/cli/usage:V121`: no refusal carries a spec id; its reader
+    /// has no spec to look it up in.
+    #[test]
+    fn no_refusal_names_a_spec_id() {
+        let name = || String::from("x");
+        let named = [
+            Error::UnknownFamily { name: name() },
+            Error::UnknownMap { name: name() },
+            Error::FamilyCycle { name: name() },
+            Error::UnrootedFamily { name: name() },
+        ];
+        let bare = [Error::MapCycle, Error::RootReparented];
+        let own = [Error::TouchedAllowedBytes, Error::NotIdempotent];
+        let lines =
+            [Error::Syntax { line: 1 }, Error::NeverRewritten { line: 1 }];
+        for refusal in named.into_iter().chain(bare).chain(own).chain(lines) {
+            let said = refusal.to_string();
+            assert!(!said.contains("(V"), "{said}");
+        }
+    }
+}

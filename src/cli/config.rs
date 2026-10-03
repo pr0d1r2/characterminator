@@ -176,8 +176,10 @@ fn added(root: &Path, flag: &Flag) -> Result<Option<Added>, String> {
         "--pedantic" => Added::Line(PEDANTIC.to_owned()),
         "--fidelity" => Added::Fidelity(value),
         "--rules-file" | "--sets-file" | "--map-file" => {
-            let text = std::fs::read_to_string(root.join(&value))
-                .map_err(|e| format!("{value}: {e}"))?;
+            let text =
+                std::fs::read_to_string(root.join(&value)).map_err(|e| {
+                    format!("{value}: {}", crate::judge::plain(&e.to_string()))
+                })?;
             Added::File(value, text)
         }
         _ => return Ok(None),

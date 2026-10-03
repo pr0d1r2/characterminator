@@ -36,8 +36,10 @@ pub(crate) fn files(
     root: &Path,
     paths: &[String],
 ) -> Result<impl Iterator<Item = Result<File, String>>, String> {
-    let selected = tokens::select(root, paths)
-        .map_err(|bad| format!("{}: {}", bad.path.display(), bad.reason))?;
+    let selected = tokens::select(root, paths).map_err(|bad| {
+        let shown = shown_path(root, &bad.path);
+        format!("{shown}: {}", plain(&bad.reason))
+    })?;
     if paths.is_empty() && selected.is_empty() {
         return Err(NOTHING_TRACKED.to_owned());
     }
@@ -54,6 +56,17 @@ fn read(root: &Path, full: PathBuf) -> Result<File, String> {
         text: decode_owned(bytes),
         full,
     })
+}
+
+/// An I/O reason without the OS code: `No such file or directory (os
+/// error 2)` reads as `No such file or directory` (`src/cli/usage:V121`).
+/// The number names nothing a reader can act on.
+#[must_use]
+pub(crate) fn plain(reason: &str) -> &str {
+    reason
+        .rfind(" (os error ")
+        .and_then(|at| reason.get(..at))
+        .unwrap_or(reason)
 }
 
 /// The path as a reader typed it: relative to the root, so it matches the
@@ -75,6 +88,16 @@ pub(crate) fn shown_path(root: &Path, full: &Path) -> String {
 mod tests {
     use super::{NOTHING_TRACKED, files, shown_path};
     use std::path::Path;
+
+    /// `src/cli/usage:V121`: a missing named file is shown as typed,
+    /// relative to the root, without the OS error code.
+    #[test]
+    fn a_missing_file_is_named_as_typed() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let asked = [String::from("no-such.md")];
+        let said = files(root, &asked).err().unwrap_or_default();
+        assert_eq!(said, "no-such.md: No such file or directory");
+    }
 
     /// B69 / V118: a bare run in a work tree tracking nothing is refused,
     /// not answered with the silence of a clean run. Skipped without git.

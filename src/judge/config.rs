@@ -118,7 +118,7 @@ impl Config {
         let mut map = Map::default();
         for (place, text) in self.map.layers() {
             let line = one_line(place, text)?;
-            let named = |bad: engine::Error| format!("{}: {bad}", at(place));
+            let named = |bad| located(place, &bad);
             map = map.layer(&line, &|n| place.origin(n)).map_err(named)?;
         }
         Ok(map)
@@ -147,8 +147,22 @@ fn granted(catalog: &SetCatalog, rule: &Rule) -> Result<(), String> {
     let family = rule.family.as_deref().unwrap_or(rules::TEXT);
     match catalog.resolve_union(&rule.pattern, &rule.sets, family) {
         Ok(_) => Ok(()),
-        Err(bad) => Err(format!("{}: {bad}", rules::describe(&rule.origin))),
+        Err(bad) => {
+            let hint = suggested(catalog, &bad);
+            Err(format!("{}: {bad}{hint}", rules::describe(&rule.origin)))
+        }
     }
+}
+
+/// " (did you mean 'ascii'?)" for an unknown set within two edits of one
+/// the run declares (`src/cli/usage:V121`), else nothing.
+fn suggested(catalog: &SetCatalog, bad: &charset::ComposeError) -> String {
+    let charset::ComposeError::Unknown(name) = bad else {
+        return String::new();
+    };
+    super::nearest(name, catalog.names())
+        .map(|near| format!(" (did you mean '{near}'?)"))
+        .unwrap_or_default()
 }
 
 /// A source's text, or a flag's value once it has passed the one-line
@@ -160,6 +174,19 @@ fn one_line(place: Place<'_>, text: &str) -> Result<String, String> {
     let kept = rules::parse_flag(text, index, |line, _| Ok(line.to_owned()));
     let kept = kept.map_err(|bad| bad.to_string())?;
     Ok(kept.unwrap_or_default())
+}
+
+/// A map refusal at its place, in the `<file>:<line>: ` shape a `.ctrm`
+/// or `.ctrm-sets` refusal has (`src/cli/usage:V121`). A flag is one
+/// line, so its origin carries no line number.
+fn located(place: Place<'_>, bad: &engine::Error) -> String {
+    match (place, bad.line()) {
+        (Place::Argument(_), Some(_)) => {
+            format!("{}: {}", at(place), bad.reason())
+        }
+        (_, Some(line)) => format!("{}:{line}: {}", at(place), bad.reason()),
+        (_, None) => format!("{}: {bad}", at(place)),
+    }
 }
 
 /// A source named the way `src/rules:V20` spells an origin, less the

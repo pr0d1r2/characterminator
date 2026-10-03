@@ -281,6 +281,23 @@ fn a_set_taking_a_reserved_name_is_refused_at_its_origin() {
     assert_eq!(validated("box U+2261"), Ok(()));
 }
 
+/// `src/cli/usage:V121`: a map refusal is located `<file>:<line>:` as
+/// a `.ctrm` one is, and says the forms it expected.
+#[test]
+fn a_map_refusal_names_its_file_and_line() {
+    let map =
+        crate::rules::Sources::new().dotfile(MAP, "U+2014 -\nfoo bar baz\n");
+    let config = Config {
+        map,
+        ..Config::default()
+    };
+    let why = config.map().err().unwrap_or_default();
+    assert!(
+        why.starts_with(".ctrm-map:2: is not a map line -- expected"),
+        "{why}"
+    );
+}
+
 /// A tree that is a git work tree to `root_of` (a `.git` directory is
 /// all it asks), granting `typography` under `docs/` only.
 fn work_tree(name: &str) -> Option<PathBuf> {

@@ -15,4 +15,4 @@ pub(crate) use checker::{Checker, Judge, Looked, inspect, judged};
 pub(crate) use config::Config;
 pub(crate) use suggest::nearest;
 pub(crate) use unruled::{Unruled, hazards_in, unruled};
-pub(crate) use walk::{File, files, shown_path};
+pub(crate) use walk::{File, files, plain, shown_path};

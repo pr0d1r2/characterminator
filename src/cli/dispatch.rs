@@ -162,9 +162,24 @@ fn prepared_at(
         return Err(sarif_refused(verb));
     }
     let base = config::situated(cwd, &mut parsed);
-    let config = config::load(&base, &parsed)?;
-    config.validate()?;
+    let typed = |message: String| as_typed(&message, &parsed);
+    let config = config::load(&base, &parsed).map_err(typed)?;
+    config.validate().map_err(typed)?;
     Ok((parsed, config, format))
+}
+
+/// A config error names a flag the way it was TYPED (`--rule '* asci'`),
+/// not by its argv position (`src/cli/usage:V121`): a reader can find
+/// the words in their command line, and has to count to find `argv[3]`.
+/// `explain` keeps the position, which is an origin (`src/rules:V20`).
+fn as_typed(message: &str, args: &Args) -> String {
+    args.flags.iter().fold(message.to_owned(), |text, flag| {
+        let typed = flag.value.as_deref().map_or_else(
+            || flag.name.to_owned(),
+            |value| format!("{} '{}'", flag.name, value.escape_debug()),
+        );
+        text.replace(&format!("argv[{}]", flag.index), &typed)
+    })
 }
 
 fn dispatched(verb: &str, run: &Run<'_>) -> Outcome {
@@ -190,7 +205,9 @@ fn format_of(args: &Args) -> Result<Format, String> {
         None | Some("human") => Ok(Format::Human),
         Some("json") => Ok(Format::Json),
         Some("sarif") => Ok(Format::Sarif),
-        Some(other) => Err(format!("unknown format `{other}`")),
+        Some(other) => Err(format!(
+            "unknown format `{other}` -- choose human, json or sarif"
+        )),
     }
 }
 

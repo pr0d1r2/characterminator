@@ -56,7 +56,21 @@ fn sarif_is_asked_for_by_name() {
 #[test]
 fn an_unknown_format_is_refused() {
     let refused = format(&["check", "--format", "jsn"]);
-    assert!(refused.is_err_and(|why| why.contains("jsn")));
+    let choices = "choose human, json or sarif";
+    assert!(
+        refused.is_err_and(|why| why.contains("jsn") && why.contains(choices))
+    );
+}
+
+/// `src/cli/usage:V121`: a config error names the flag as typed, not
+/// its argv position, and a misspelled set gets the nearest name.
+#[test]
+fn a_config_error_names_the_flag_as_typed() {
+    let asked = argv(&["check", "--no-files", "--rule", "*.nomatch asci"]);
+    let why = prepared("check", &asked).err().unwrap_or_default();
+    assert!(why.starts_with("--rule '*.nomatch asci': "), "{why}");
+    assert!(why.ends_with("(did you mean 'ascii'?)"), "{why}");
+    assert!(!why.contains("argv["), "{why}");
 }
 
 #[test]
