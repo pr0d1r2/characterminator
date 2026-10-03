@@ -12,6 +12,9 @@ use crate::cli::testkit::fixture;
 use crate::lint::Group;
 use crate::render::Format;
 
+#[path = "check_shape_test.rs"]
+mod shape;
+
 #[path = "check_json_test.rs"]
 mod json;
 

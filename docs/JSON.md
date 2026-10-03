@@ -78,6 +78,14 @@ replacement is reported on the span's first character.
 
 A **skipped** entry is `{path, reason}` plus `byte` for `not-utf8`.
 
+### `check --summary`
+
+`{schema, verb, groups, skipped}`. A **group** is one (path, code point,
+lint, set): every key of a violation, taken from its FIRST occurrence in
+report order, plus `count`, how many findings it stands for. Groups come
+in the order their first occurrence was reported. `--max` is refused with
+`--format json`: a cut document would read as a complete one.
+
 ### `fix` and `fix --check`
 
 `{schema, verb, rewrites, unmapped, skipped}`

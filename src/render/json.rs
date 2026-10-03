@@ -20,6 +20,7 @@ use crate::lint::{Level, Lint};
 #[cfg(test)]
 use crate::render::Violation;
 use crate::render::escape::string;
+use crate::render::group::Fold;
 use crate::render::line::{Line, Spelled};
 use crate::render::name::{Codepoint, codepoint, level_name, method_name};
 use crate::render::order;
@@ -98,14 +99,38 @@ fn literal(path: &str) -> Cow<'_, str> {
 /// `path` is the json literal, already escaped.
 fn violation(out: &mut String, path: &str, item: Line<'_>) {
     let mut fields = Fields::open(out);
+    violation_fields(&mut fields, path, item);
+    fields.close();
+}
+
+/// Every key of a violation, into an object a caller may add to.
+fn violation_fields(fields: &mut Fields<'_>, path: &str, item: Line<'_>) {
     fields.raw("path", path);
-    hit_fields(&mut fields, item.finding.hit);
+    hit_fields(fields, item.finding.hit);
     let (lint, level) = (item.finding.lint, item.finding.level);
-    verdict_fields(&mut fields, item.set, lint, level);
+    verdict_fields(fields, item.set, lint, level);
     let to = item.remedy.and_then(|remedy| remedy.to.as_deref());
     let fixable = item.remedy.is_some_and(|remedy| remedy.fixable);
-    remedy_fields(&mut fields, to, fixable);
-    fields.close();
+    remedy_fields(fields, to, fixable);
+}
+
+/// `check --summary` (V124): one object per (file, code point), its first
+/// occurrence's violation keys plus `count`.
+pub(super) fn summary(groups: &[Fold<'_>], skipped: &[Skipped<'_>]) -> String {
+    let mut out = String::new();
+    let mut doc = Fields::open(&mut out);
+    doc.number("schema", SCHEMA);
+    doc.text("verb", "check");
+    let mut path = Spelled::new(literal);
+    list(doc.key("groups"), groups, |out, group| {
+        let mut fields = Fields::open(out);
+        violation_fields(&mut fields, path.of(group.first.path), group.first);
+        fields.number("count", group.count);
+        fields.close();
+    });
+    doc.raw("skipped", &unread(skipped));
+    doc.close();
+    out
 }
 
 /// The set it was judged against, the lint, and the level: the same three

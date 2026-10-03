@@ -23,12 +23,14 @@ const VALUED: &[&str] = &[
     "--sets-file",
     "-C",
     "--as",
+    "--max",
 ];
 
 /// The flags that stand alone.
 const SWITCHES: &[&str] = &[
     "--check",
     "--bpe",
+    "--summary",
     "--no-files",
     "--no-builtin-map",
     "--no-builtin-sets",
@@ -50,8 +52,13 @@ const SWITCHES: &[&str] = &[
 /// The flags only one verb means anything to. Accepted elsewhere they
 /// would be silently ignored, which is the failure this file exists to
 /// refuse: `ctrm check --bpe` looks like it asked for something.
-const OWNED: &[(&str, &str)] =
-    &[("--check", "fix"), ("--bpe", "stats"), ("--as", "explain")];
+const OWNED: &[(&str, &str)] = &[
+    ("--check", "fix"),
+    ("--bpe", "stats"),
+    ("--as", "explain"),
+    ("--summary", "check"),
+    ("--max", "check"),
+];
 
 /// Ends the flags: every word after it is a path, so a file whose name
 /// starts with a dash can still be named.

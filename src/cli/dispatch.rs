@@ -12,7 +12,7 @@
 use super::args::{self, Args};
 use super::{check, config, explain, fix, guard, out, stats};
 use crate::judge::Config;
-use crate::render::{self, Format};
+use crate::render::{self, Format, Shape};
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -227,10 +227,35 @@ fn cwd() -> PathBuf {
 }
 
 fn checked(run: &Run<'_>) -> Outcome {
-    match check::run(run.config, &run.args.paths, run.format) {
+    let shape = match shape_of(run) {
+        Ok(shape) => shape,
+        Err(message) => return failed_in(run, &message),
+    };
+    match check::shaped(run.config, &run.args.paths, run.format, shape) {
         Ok(report) => report_of(&report),
         Err(message) => failed_in(run, &message),
     }
+}
+
+/// `--summary` and `--max N` (`src/render:V124`). Refused where they
+/// would be ignored: SARIF has one result per finding, and the json is the
+/// whole contract, so `--max` is human only.
+fn shape_of(run: &Run<'_>) -> Result<Shape, String> {
+    let summary = run.args.has("--summary");
+    let max = run.args.value("--max").map(count).transpose()?;
+    let refused = (summary && run.format == Format::Sarif)
+        || (max.is_some() && run.format != Format::Human);
+    if refused {
+        return Err(String::from(
+            "--summary takes --format human or json; --max, human only",
+        ));
+    }
+    Ok(Shape { summary, max })
+}
+
+fn count(word: &str) -> Result<usize, String> {
+    word.parse()
+        .map_err(|_| format!("--max takes a count of rows, not `{word}`"))
 }
 
 /// `explain` and `sets` REPORT and exit 0 whatever they find (V7): they
@@ -329,7 +354,9 @@ fn adapted(answer: Result<String, String>) -> Outcome {
 }
 
 fn report_of(report: &check::Report) -> Outcome {
-    reported(&report.text, report.code)
+    let outcome = reported(&report.text, report.code);
+    noted(&report.note);
+    outcome
 }
 
 /// A gating verb's report and verdict. Success is silence, so a clean run
@@ -373,6 +400,7 @@ pub(super) const USAGE: &str =
     "ctrm -- eliminate characters outside an allowed set
 
   ctrm check [<path>...]         report characters outside the set
+    [--summary] [--max <n>]      one row per file and code point; at most n
   ctrm explain [<path>]          the set in force, and the rule behind it
     [--as args|lines|prompt]     or the config as flags, files, a prompt
   ctrm sets [--fidelity <f>]     every declared set and what it holds

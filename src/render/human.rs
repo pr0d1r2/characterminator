@@ -17,6 +17,7 @@ use crate::charset::{CharRange, CharSet};
 use crate::lint::{Group, Level};
 #[cfg(test)]
 use crate::render::Violation;
+use crate::render::group::Fold;
 use crate::render::line::{Line, Spelled};
 use crate::render::name::{Codepoint, codepoint, level_name};
 use crate::render::order;
@@ -38,18 +39,60 @@ pub(super) fn check(
     items: &[Violation<'_>],
     skipped: &[Skipped<'_>],
 ) -> String {
-    check_lines(order::lines(items), skipped)
+    check_bounded(order::lines(items).into_iter(), skipped, None)
 }
 
-/// [`check`] over violations ALREADY in report order.
-pub(super) fn check_lines<'a>(
-    lines: impl IntoIterator<Item = Line<'a>>,
+/// [`check`] over violations ALREADY in report order, cut at `max` rows
+/// and closed by `... N more` (V124).
+pub(super) fn check_bounded<'a>(
+    lines: impl Iterator<Item = Line<'a>>,
     skipped: &[Skipped<'_>],
+    max: Option<usize>,
 ) -> String {
+    let (total, room) = (lines.size_hint().0, max.unwrap_or(usize::MAX));
     let mut out = String::new();
-    violations(&mut out, lines, "");
+    violations(&mut out, lines.take(room), "");
+    more(&mut out, total.saturating_sub(room));
     unread_lines(&mut out, skipped);
     out
+}
+
+/// `check --summary` (V124): one row per (file, code point), the first
+/// occurrence's place, ` xN`, and what `fix` writes when it writes one:
+/// `a.md:1:3 U+2014 ascii x5 -> "--"`.
+pub(super) fn summary(
+    groups: &[Fold<'_>],
+    skipped: &[Skipped<'_>],
+    max: Option<usize>,
+) -> String {
+    let room = max.unwrap_or(usize::MAX);
+    let mut out = String::new();
+    let mut path = Spelled::new(shown);
+    for group in groups.iter().take(room) {
+        next_line(&mut out);
+        violation(&mut out, path.of(group.first.path), group.first);
+        folded(&mut out, group);
+    }
+    more(&mut out, groups.len().saturating_sub(room));
+    unread_lines(&mut out, skipped);
+    out
+}
+
+/// ` xN`, then ` -> "<to>"` when a rewrite starts at the first occurrence.
+fn folded(out: &mut String, group: &Fold<'_>) {
+    let _infallible = write!(out, " x{}", group.count);
+    let to = group.first.remedy.and_then(|r| r.to.as_deref());
+    if let Some(to) = to {
+        let _infallible = write!(out, " -> {to:?}");
+    }
+}
+
+/// The row a `--max` cut ends with, saying how much it hid.
+fn more(out: &mut String, hidden: usize) {
+    if hidden > 0 {
+        next_line(out);
+        let _infallible = write!(out, "... {hidden} more");
+    }
 }
 
 /// Every violation line, each after a newline unless it is the first

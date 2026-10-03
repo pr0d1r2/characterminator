@@ -162,7 +162,7 @@ Pin both actions to a commit SHA in real use.
 
 | | |
 |---|---|
-| `ctrm check [<path>...]` | report characters outside the set. Exit 1 on a violation |
+| `ctrm check [--summary] [--max <n>] [<path>...]` | report characters outside the set. Exit 1 on a violation. `--summary` folds the rows to one per file and code point, with a count; `--max` cuts them at n |
 | `ctrm fix [--check] [<path>...]` | rewrite them. `--check` reports and writes nothing |
 | `ctrm stats [--bpe] [<path>...]` | what the files cost now, and after a fix |
 | `ctrm explain [<path>]` | the set in force, and the config line that decided it |
@@ -175,6 +175,13 @@ its keys and their meanings do not change under a caller, and the documents
 are asserted whole in tests. [docs/JSON.md](docs/JSON.md) lists every key,
 unit and enum, and the version policy. `check` also takes `--format sarif`, a SARIF
 2.1.0 log that GitHub code scanning can upload, with the same exit code.
+
+A human `check` ends with a one-line tally on stderr, so stdout stays one
+row per finding:
+
+```text
+2136 findings in 23 files; most: U+22A5 x504, U+2014 x490, U+00E9 x120 -- see 'ctrm sets --containing U+22A5' or 'ctrm init'
+```
 
 Naming no path checks what git tracks. Naming a directory expands to the
 tracked files under it. Naming a file reaches it whether git tracks it or

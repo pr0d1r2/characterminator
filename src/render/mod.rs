@@ -36,6 +36,7 @@
 //! either.
 
 mod escape;
+mod group;
 mod human;
 mod json;
 mod line;
@@ -225,12 +226,41 @@ pub(crate) fn check_batches(
     format: Format,
     batches: &[Batch<'_>],
     skipped: &[Skipped<'_>],
+    shape: Shape,
 ) -> String {
     let lines = order::batches(batches);
+    if shape.summary && format != Format::Sarif {
+        let groups = group::groups(lines);
+        return match format {
+            Format::Json => json::summary(&groups, skipped),
+            _ => human::summary(&groups, skipped, shape.max),
+        };
+    }
     match format {
-        Format::Human => human::check_lines(lines, skipped),
+        Format::Human => human::check_bounded(lines, skipped, shape.max),
         Format::Json => json::check_lines(lines, skipped),
         Format::Sarif => sarif::check_lines(lines, skipped),
+    }
+}
+
+/// How much of a `check` report to write (V124). The default is all of
+/// it, one row per finding. `max` cuts the HUMAN rows only: the json is
+/// the contract and a cut one would read as a clean tail.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Shape {
+    /// One row per (file, code point) with a count.
+    pub summary: bool,
+    /// At most this many rows, then `... N more`.
+    pub max: Option<usize>,
+}
+
+/// The tally a human `check` ends with, for STDERR (V124): totals, the
+/// commonest code points, where to go next. Empty for json, SARIF and a
+/// clean run.
+pub(crate) fn check_note(format: Format, batches: &[Batch<'_>]) -> String {
+    match format {
+        Format::Human => group::tally(order::batches(batches)),
+        Format::Json | Format::Sarif => String::new(),
     }
 }
 
@@ -447,7 +477,8 @@ mod batched {
     fn same_report(batches: &[Batch<'_>]) {
         let flat = expanded(batches);
         for format in [Format::Human, Format::Json, Format::Sarif] {
-            let said = check_batches(format, batches, &[]);
+            let said =
+                check_batches(format, batches, &[], super::Shape::default());
             assert_eq!(said, check(format, &flat, &[]), "{format:?}");
         }
     }

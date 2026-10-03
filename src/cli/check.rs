@@ -13,7 +13,7 @@ use crate::charset::CharSet;
 use crate::fix::Map;
 use crate::judge::{Checker, Config, File, Looked, files, judged};
 use crate::lint::{Finding, Group, Levels, Lint, exit_code};
-use crate::render::{self, Batch, Format, Remedy, Skipped};
+use crate::render::{self, Batch, Format, Remedy, Shape, Skipped};
 use crate::scan::Unreadable;
 use std::path::Path;
 
@@ -39,6 +39,8 @@ pub(super) struct Skip {
 pub(super) struct Report {
     pub text: String,
     pub code: u8,
+    /// The tally for stderr (`src/render:V124`), empty when none.
+    pub note: String,
 }
 
 /// What one run holds for every file: the judge, and the map when the
@@ -170,25 +172,43 @@ pub(super) fn batches(source: &Row) -> impl Iterator<Item = Batch<'_>> {
 ///
 /// `paths` empty means the git-tracked fileset; naming paths reaches
 /// untracked files too (`src/tokens:V9`).
+#[cfg(test)]
 pub(super) fn run(
     config: &Config,
     paths: &[String],
     format: Format,
 ) -> Result<Report, String> {
-    // Only the json carries what `fix` would write: running the fix costs
-    // a second pass over every file with a finding, which a human report
-    // and a SARIF log would pay for nothing.
+    shaped(config, paths, format, Shape::default())
+}
+
+/// [`run`], written in `shape`: `--summary` and `--max`
+/// (`src/render:V124`).
+pub(super) fn shaped(
+    config: &Config,
+    paths: &[String],
+    format: Format,
+    shape: Shape,
+) -> Result<Report, String> {
+    // Only the json and the summary carry what `fix` would write: running
+    // the fix costs a second pass over every file with a finding, which a
+    // plain human report and a SARIF log would pay for nothing.
+    let remedied = format == Format::Json || shape.summary;
     let walk = Walk {
         checker: Checker::configured(config)?,
-        map: (format == Format::Json).then(|| config.map()).transpose()?,
+        map: remedied.then(|| config.map()).transpose()?,
     };
     let found = walk.gather(&config.root, paths)?;
+    Ok(reported(&found, format, shape))
+}
+
+fn reported(found: &Found, format: Format, shape: Shape) -> Report {
     let batches: Vec<Batch<'_>> = found.rows.iter().flat_map(batches).collect();
     let skipped: Vec<Skipped<'_>> = found.skips.iter().map(skip).collect();
-    Ok(Report {
-        text: render::check_batches(format, &batches, &skipped),
+    Report {
+        text: render::check_batches(format, &batches, &skipped, shape),
         code: found_code(&found.rows).max(unreadable_code(&found.skips)),
-    })
+        note: render::check_note(format, &batches),
+    }
 }
 
 /// The findings' exit code, read in place: a run of millions need not copy

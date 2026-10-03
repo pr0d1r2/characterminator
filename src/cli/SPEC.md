@@ -27,7 +27,7 @@ sib|src/render|human & json output, stable json contract
 
 ## §I INTERFACES
 
-- cmd: `ctrm check [paths]` → violations, 1 per line, row shape `src/render:V94`. 0 clean / 1 violation / 2 usage.
+- cmd: `ctrm check [--summary] [--max N] [paths]` → violations, 1 per line, row shape `src/render:V94`; folded & cut per `src/render:V124`. 0 clean / 1 violation / 2 usage.
 - cmd: `ctrm fix [--check] [paths]` → rewrite disallowed chars via transliteration map. `--check` reports & writes ⊥, exit 1 on drift (`rustfmt` grammar). bare: exit 1 only on unmapped char left (`src/cli:V7`).
 - cmd: `ctrm stats [--bpe] [paths]` → per file: chars outside set, bytes, tokens now vs after `fix`, via `itok`. report-only.
 - cmd: `ctrm explain [<path>] [--as args|lines|prompt]` → effective set + winning rule + its config line; `--as` renders effective config as flags, data-file lines, or agent prompt (`src/cli/explain:V32`).

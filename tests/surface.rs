@@ -79,6 +79,21 @@ fn no_arguments_and_a_help_that_is_not_a_flag_stay_errors() {
     }
 }
 
+/// `src/render:V124`: `--summary` and `--max` are refused where they
+/// would be ignored, and `--max` takes a number.
+#[test]
+fn a_shape_flag_that_would_be_ignored_is_refused() {
+    let asks: [&[&str]; 3] = [
+        &["check", "--format", "sarif", "--summary"],
+        &["check", "--format", "json", "--max", "3"],
+        &["check", "--max", "lots"],
+    ];
+    for words in asks {
+        let code = ctrm(words, false).and_then(|o| o.status.code());
+        assert_eq!(code, Some(2), "{words:?}");
+    }
+}
+
 /// `src/render:V122`: under `--format json` a refused run is ALSO a
 /// document on stdout, same exit 2; without it stdout stays empty.
 #[test]
