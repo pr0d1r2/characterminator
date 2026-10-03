@@ -107,18 +107,22 @@ impl Judge<'_> {
     /// (`src/lint:V55`, `src/lint:V58`). Empty is the byte order mark at
     /// byte 0 in a file whose set grants it: no hazard (V34), and not
     /// outside the set either.
-    fn lints_for(&self, hit: Hit) -> Vec<Lint> {
+    ///
+    /// LAZY in the pedantic tail (R17): the caller takes the first lint
+    /// that speaks, and under the default that is `outside-set`, so the
+    /// Unicode tables are asked only when nothing stronger claimed the
+    /// character.
+    fn lints_for(&self, hit: Hit) -> impl Iterator<Item = Lint> {
         let excused = self.hazards.excuses(&self.set.name, hit.character);
         let hazard =
             self.hazards.lint_at(hit, &self.exempt).filter(|_| !excused);
         let outside =
             (!self.set.contains(hit.character)).then_some(self.outside);
-        let pedantic = char_lints(hit.character);
+        let pedantic = std::iter::once_with(move || char_lints(hit.character));
         [hazard, outside]
             .into_iter()
-            .chain(pedantic)
             .flatten()
-            .collect()
+            .chain(pedantic.flatten().flatten())
     }
 }
 
@@ -313,7 +317,6 @@ fn reportable(
 fn loudest(hit: Hit, judge: &Judge<'_>, levels: &Levels) -> Option<Finding> {
     judge
         .lints_for(hit)
-        .into_iter()
         .map(|lint| levels.finding(hit, lint))
         .find(|finding| finding.level != Level::Allow)
 }

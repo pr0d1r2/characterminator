@@ -263,3 +263,25 @@ fn report(name: &str, ctrm: &str, files: &[(&str, &str)]) -> String {
     let found = run(&Config::discovered(&root), &paths, Format::Human);
     found.map(|r| r.text).unwrap_or_else(|why| why)
 }
+
+/// R17: the lints one hit could fire, strongest first, are the same
+/// whether the pedantic tail is asked eagerly or, as now, only when
+/// nothing before it spoke. FULLWIDTH LATIN CAPITAL A is outside `ascii`,
+/// NFKC folds it, and UTS #39 draws it as `A`.
+#[test]
+fn every_lint_a_hit_could_fire_is_listed_strongest_first() {
+    let (set, hazards) = (builtin::ascii(), hazards());
+    let judge = Judge::new(&set, &hazards, lint());
+    let position = crate::scan::Position {
+        line: 1,
+        column: 1,
+        byte: 0,
+    };
+    let character = '\u{FF21}';
+    let hit = crate::scan::Hit {
+        position,
+        character,
+    };
+    let names: Vec<&str> = judge.lints_for(hit).map(|l| l.name).collect();
+    assert_eq!(names, ["outside-set", "nfkc-compat", "confusable"]);
+}
