@@ -44,7 +44,7 @@ rewrote 3, nothing left
 [![built with SDD](https://img.shields.io/badge/built_with-spec--driven_development-D97757)](SPEC.md)
 <!-- END badges -->
 
-**Status: 0.1.0, functional but not yet for production.** Every verb below
+**Status: 0.1.1, functional but not yet for production.** Every verb below
 runs and is tested, and the tool gates its own tree. An odd minor version
 is that promise and no more ([the version ladder](CHANGELOG.md#version-ladder)):
 the json contract and the library surface may still move before 0.2. Linux
@@ -142,7 +142,7 @@ is held to change when the pin changes and at no other time.
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/pr0d1r2/characterminator
-    rev: v0.1.0
+    rev: v0.1.1
     hooks:
       - id: ctrm-check    # refuse; writes nothing
       # - id: ctrm-fix    # rewrite what the map can, strip hazards, refuse the rest
@@ -161,7 +161,7 @@ permissions:
   security-events: write
 steps:
   - uses: actions/checkout@v7
-  - uses: pr0d1r2/characterminator@v0.1.0
+  - uses: pr0d1r2/characterminator@v0.1.1
     with:
       args: check --format sarif
       output: ctrm.sarif
