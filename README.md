@@ -1,5 +1,11 @@
 # characterminator
 
+<!-- hallucinogen:autonomy-disclaimer start -->
+> Read [LLM-DISCLAIMER](docs/LLM-DISCLAIMER.md) first. This repository is
+> tended by an autonomous loop, and that file says what the loop may do here,
+> what it may not, and what to check before trusting anything in this tree.
+<!-- hallucinogen:autonomy-disclaimer end -->
+
 Find and eliminate characters outside an allowed set, per file type and per
 file. The default is pure ASCII; anything wider is a grant somebody wrote
 down.
