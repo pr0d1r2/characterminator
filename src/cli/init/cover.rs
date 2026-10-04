@@ -1,6 +1,6 @@
 //! The smallest grant that covers a file type (V128): a greedy set cover
-//! over the curated presets, then ONE CLDR locale if letters are left,
-//! then `any`, said as such.
+//! over the curated presets, then the CLDR locales the letters left are
+//! written in, then `any`, said as such.
 
 use crate::charset::{CharSet, SetCatalog, locale_names};
 use crate::rules::TEXT;
@@ -46,30 +46,71 @@ impl Candidates {
         }
     }
 
-    /// The grant for `needed`: presets by greatest gain, then the smallest
-    /// locale covering what is left, else `any`.
+    /// The grant for `needed`: presets by greatest gain, then the locales
+    /// for the letters left ([`Self::letters`]), else `any`.
     pub(super) fn cover(&self, needed: &BTreeSet<char>) -> Grant {
         let mut left = needed.clone();
-        let mut chosen = Vec::new();
-        while let Some(best) = best(&self.presets, &left) {
-            chosen.push(taken(best, &mut left));
-        }
+        let mut chosen = self.presets_for(&mut left);
         if left.is_empty() {
             return Grant::Sets(chosen);
         }
-        match smallest_covering(&self.locales, &left) {
-            Some(locale) => {
-                chosen.push(taken(locale, &mut left));
-                Grant::Sets(chosen)
-            }
-            None => Grant::Any(left.into_iter().collect()),
+        let Some(locales) = self.letters(&left) else {
+            return Grant::Any(left.into_iter().collect());
+        };
+        for locale in locales {
+            chosen.push(taken(locale, &mut left));
         }
+        Grant::Sets(chosen)
     }
+
+    /// The presets by greatest gain, each taking what it covers out of
+    /// `left`.
+    fn presets_for(
+        &self,
+        left: &mut BTreeSet<char>,
+    ) -> Vec<(String, Vec<char>)> {
+        let mut chosen = Vec::new();
+        while let Some(best) = best(&self.presets, left) {
+            chosen.push(taken(best, left));
+        }
+        chosen
+    }
+
+    /// One locale when English's loan letters or a base language hold all
+    /// of `left`; else the base language holding the most, plus a locale
+    /// for the rest (B80: Polish text with one U+00E9 drafted a Finnish
+    /// auxiliary set that held both by accident); else any one locale
+    /// that holds all of it.
+    fn letters(&self, left: &BTreeSet<char>) -> Option<Vec<&CharSet>> {
+        let whole = smallest_covering(&self.locales, left);
+        if whole.is_some_and(|set| set.name == LOAN_LETTERS || is_base(set)) {
+            return whole.map(|set| vec![set]);
+        }
+        self.split(left).or_else(|| whole.map(|set| vec![set]))
+    }
+
+    /// The base language holding the most of `left`, and the locale
+    /// [`smallest_covering`] picks for what it leaves.
+    fn split(&self, left: &BTreeSet<char>) -> Option<Vec<&CharSet>> {
+        let first = best(self.locales.iter().filter(|set| is_base(set)), left)?;
+        let rest = left.iter().copied().filter(|c| !first.contains(*c));
+        let second = smallest_covering(&self.locales, &rest.collect())?;
+        Some(vec![first, second])
+    }
+}
+
+/// A language's own code (`pl`), not a variant or an auxiliary set
+/// (`fi-FI-aux`): the code a reader takes as what the text is written in.
+fn is_base(set: &CharSet) -> bool {
+    !set.name.contains('-')
 }
 
 /// The preset covering the most of `left`; a tie goes to the smaller set,
 /// then to the earlier in [`PRESETS`]. `None` once nothing gains.
-fn best<'a>(sets: &'a [CharSet], left: &BTreeSet<char>) -> Option<&'a CharSet> {
+fn best<'a>(
+    sets: impl IntoIterator<Item = &'a CharSet>,
+    left: &BTreeSet<char>,
+) -> Option<&'a CharSet> {
     let gain =
         |set: &CharSet| left.iter().filter(|c| set.contains(**c)).count();
     let mut found: Option<(&CharSet, usize)> = None;
@@ -114,7 +155,7 @@ fn taken(set: &CharSet, left: &mut BTreeSet<char>) -> (String, Vec<char>) {
 /// A base locale (`zh`) before a variant (`yue-Hans`), then the smaller,
 /// then by name: deterministic, and the code a reader would write.
 fn rank(set: &CharSet) -> (bool, u32, &str) {
-    (set.name.contains('-'), size(set), set.name.as_str())
+    (!is_base(set), size(set), set.name.as_str())
 }
 
 /// How many code points a set holds, saturating.

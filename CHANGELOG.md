@@ -33,6 +33,10 @@ use, so one reading serves the whole family of tools.
 - **`ctrm fix`** rewrites U+2010 hyphen and U+2011 non-breaking hyphen to
   `-`. Unmapped, a single one left a file type unfixable, and `ctrm init`
   drafted `any` for it ([#4](https://github.com/pr0d1r2/characterminator/issues/4)).
+- **`ctrm init`** drafts letters as the language they are written in. Polish
+  text with one U+00E9 drafted `fi-FI-aux`, an auxiliary set of another
+  language that held both by accident; it now drafts `pl+en-aux`
+  ([#5](https://github.com/pr0d1r2/characterminator/issues/5)).
 
 ## [0.1.0] - 2026-10-03
 
