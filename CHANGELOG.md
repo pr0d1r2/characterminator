@@ -28,6 +28,12 @@ use, so one reading serves the whole family of tools.
   refused again replaces the `caveman` grant with its own set in
   `.ctrm-sets`.
 
+### Fixed
+
+- **`ctrm fix`** rewrites U+2010 hyphen and U+2011 non-breaking hyphen to
+  `-`. Unmapped, a single one left a file type unfixable, and `ctrm init`
+  drafted `any` for it ([#4](https://github.com/pr0d1r2/characterminator/issues/4)).
+
 ## [0.1.0] - 2026-10-03
 
 The first release.
