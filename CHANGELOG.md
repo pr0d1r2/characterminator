@@ -15,7 +15,9 @@ use, so one reading serves the whole family of tools.
 |---|---|
 | 0.1 | every verb works, is tested and gates its own repository; the `--format json` contract and the library surface are new and may still move before 0.2 |
 
-## [Unreleased]
+## [0.1.1] - 2026-10-04
+
+A patch: what the first dogfood adoption round found.
 
 ### Changed
 
@@ -133,5 +135,5 @@ The first release.
 See [`SPEC.md`](SPEC.md) for the rules every one of these behaviours is held
 to, and `mth tasks SPEC.md` for what remains.
 
-[Unreleased]: https://github.com/pr0d1r2/characterminator/compare/v0.1.0...HEAD
+[0.1.1]: https://github.com/pr0d1r2/characterminator/releases/tag/v0.1.1
 [0.1.0]: https://github.com/pr0d1r2/characterminator/releases/tag/v0.1.0

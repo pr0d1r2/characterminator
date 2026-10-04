@@ -13,10 +13,11 @@ members = ["dev"]
 # `ctr` was the first choice and is taken: containerd ships `cmd/ctr`, so it
 # is on most Docker and Kubernetes hosts.
 name = "characterminator"
-# 0.1.0: the first release -- `check`, `fix`, `stats`, `explain` and `sets`
-# work; the rest of SPEC.md's backlog does not ship yet. The number moves
+# 0.1.1: a patch on the first release -- the `caveman` preset grows on
+# dogfood evidence and two adoption-round bugs are fixed; the rest of
+# SPEC.md's backlog does not ship yet. The number moves
 # when a milestone's done-when is met, never to mark effort.
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 # The floor is the toolchain the gate actually runs: the fleet's one nixpkgs
 # authority (nixos-26.05) carries rustc 1.95.0. Declaring a higher number
