@@ -208,7 +208,10 @@ src/cli/SPEC.md      3100
 src/cli/guard/SPEC.md 1910
 src/cli/explain/SPEC.md  910
 # The `init` sub-node, new 2026-10-03: ~12% over its measured 514.
-src/cli/init/SPEC.md     580
+# 580 -> 680 on 2026-10-04 for B80, the node's first bug and so its first
+# §B section: ~12% over the measured 610, after the V128 and B80 wording
+# was compacted from 649.
+src/cli/init/SPEC.md     680
 src/scan/SPEC.md     470
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
 # every other node already had, recording work that had invariants but no
