@@ -116,14 +116,15 @@ The words the rest of this page uses, each in a line or two.
 | how | command | needs |
 |---|---|---|
 | crates.io | `cargo install --locked characterminator` | Rust 1.95 or later |
+| download a binary | download the archive for your platform from [Releases](https://github.com/pr0d1r2/characterminator/releases), unpack it, and put `ctrm` on `PATH` | Linux x86_64/aarch64 or macOS aarch64 |
 | nix, run once | `nix run github:pr0d1r2/characterminator -- check` | nix with flakes |
 | nix, install | `nix profile install github:pr0d1r2/characterminator` | nix with flakes |
 | a clone | `cargo install --locked --path .` | Rust 1.95 or later |
 
-Every route installs one binary, `ctrm`, and compiles it: there are no
-prebuilt binaries, Homebrew formula or `cargo binstall` metadata yet, so
-the first install takes a minute of compiling. The pre-commit hook and the
-GitHub Action below compile it the same way.
+Every source-based route installs one binary, `ctrm`, and compiles it. Prebuilt
+archives are available for Linux x86_64/aarch64 and macOS aarch64; Homebrew
+formula and `cargo binstall` metadata are not provided yet. The pre-commit hook
+and the GitHub Action below compile `ctrm` from source.
 
 Linux (x86_64 and aarch64) and macOS (aarch64) are gated in CI on every
 change. Windows is not tested.
@@ -730,8 +731,9 @@ list every open task, and the issue tracker is the place to ask about one.
   Linux (x86 and arm) and macOS, and the action on Linux.
 - **No standard input.** Every verb but `guard` reads named or tracked
   files; `ctrm check -` is refused.
-- **No prebuilt binaries, shell completions or man page.** Every install
-  compiles, and `--help` with a page per verb is the reference. The
+- **No shell completions or man page.** The release archives cover the gated
+  Linux x86_64/aarch64 and macOS aarch64 targets. `--help` with a page per verb
+  is the reference. The
   argument parser is hand-written, so completions are their own piece of
   work.
 
