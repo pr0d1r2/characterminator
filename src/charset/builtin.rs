@@ -233,3 +233,7 @@ impl SetCatalog {
 #[cfg(test)]
 #[path = "builtin_test.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "growth_test.rs"]
+mod growth_tests;
