@@ -23,6 +23,10 @@
 #     cargo release publish --execute
 #     cargo release push --execute
 #
+# Pushing the tag starts `.github/workflows/release.yml`, which checks out
+# that tag and attaches the three gated binary archives and checksums to its
+# existing GitHub release. It does not create or edit release notes.
+#
 # `hook` IS FIRST ON PURPOSE. `tag`, `publish` and `push` do NOT run
 # `pre-release-hook` -- only the full flow does, and `cargo release hook` on
 # its own. A sequence starting at `tag` publishes whatever the tree happens
