@@ -17,9 +17,14 @@ sib|src/cli/usage|help text, verb detection, did-you-mean, message style
 
 ## §V INVARIANTS
 
-V128: `init [--print]` reads the git-tracked fileset (`src/tokens:V9`), 1 group per file type (`*.<ext>`, else the file name). per group: hazard (`check`'s verdict, RGI joiners exempt) → named "fix these", ⊥ EVER granted · builtin map → ASCII (`src/fix:V26`) → "`ctrm fix` rewrites", ⊥ granted · rest = needed → greedy cover over `caveman typography math legal marks box emoji cr` (max gain, tie → smaller set, then that order), then 1 locale holding the rest (`en-aux` first, else base code before variant, smaller, name), else `any` + comment naming what nothing covers. ∀ set line carries a comment of what it covers; pure-ASCII types listed, ⊥ line. same files → same bytes. `.ctrm` exists → exit 2 naming `--print`, ⊥ overwrite; `--print` → stdout, writes ⊥. runner `init_test.rs`.
+V128: `init [--print]` reads the git-tracked fileset (`src/tokens:V9`), 1 group per file type (`*.<ext>`, else the file name). per group: hazard (`check`'s verdict, RGI joiners exempt) → named "fix these", ⊥ EVER granted · builtin map → ASCII (`src/fix:V26`) → "`ctrm fix` rewrites", ⊥ granted · rest = needed → greedy cover over `caveman typography math legal marks box emoji cr` (max gain, tie → smaller set, then that order), then locales: 1 holding all if `en-aux` | base code, else base holding most + 1 for rest (B80), else 1 variant holding all, else `any` + comment naming what nothing covers. ∀ set line carries a comment of what it covers; pure-ASCII types listed, ⊥ line. same files → same bytes. `.ctrm` exists → exit 2 naming `--print`, ⊥ overwrite; `--print` → stdout, writes ⊥. runner `init_test.rs`.
 
 ## §T TASKS
 
 id|status|task|cites
 T68|.|split a group by directory when one dir's need differs (itok: 1 doc of Han text turned `*.md` into `any`) ∴ `docs/x/*.md any` + `*.md ascii+caveman`, ⊥ 1 file widening the type|V128
+
+## §B BUGS
+
+id|date|cause|fix
+B80|2026-10-04|1 locale ! held all letters ∴ Polish + U+00E9 → `fi-FI-aux` ⊥ `pl+en-aux` (#5)|V128

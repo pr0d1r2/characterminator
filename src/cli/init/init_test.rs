@@ -42,6 +42,19 @@ fn letters_take_a_locale_and_the_uncovered_take_any() {
     assert_eq!(covered(&['\u{E000}']), Grant::Any(vec!['\u{E000}']));
 }
 
+/// B80: Polish letters and one U+00E9 take the language they are written
+/// in, then English's loan letters, not one auxiliary set of a third
+/// language that holds them all by accident.
+#[test]
+fn letters_take_their_language_before_an_accidental_cover() {
+    let polish = ['\u{00E9}', '\u{00F3}', '\u{0107}', '\u{0142}', '\u{017C}'];
+    let names: Vec<String> = match covered(&polish) {
+        Grant::Sets(sets) => sets.into_iter().map(|(name, _)| name).collect(),
+        Grant::Any(_) => Vec::new(),
+    };
+    assert_eq!(names, ["pl", "en-aux"]);
+}
+
 fn surveyed() -> Survey {
     let mut survey = Survey::new();
     let prose = "caf\u{e9} \u{2192} \u{2014} x\u{202E}y\n";
