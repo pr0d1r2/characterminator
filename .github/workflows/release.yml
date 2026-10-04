@@ -42,6 +42,7 @@ jobs:
           cargo build --locked --release --target "$TARGET"
           staging="ctrm-${version}-${TARGET}"
           mkdir "$staging"
+          test "$(target/${TARGET}/release/ctrm --version)" = "characterminator ${version}"
           cp "target/${TARGET}/release/ctrm" LICENSE README.md "$staging/"
           tar -czf "${staging}.tar.gz" "$staging"
       - uses: actions/upload-artifact@v4
