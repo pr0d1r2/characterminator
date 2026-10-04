@@ -208,6 +208,16 @@ fn the_builtin_map_targets_what_v26_names() {
     rewrites('\u{00A0}', " ");
 }
 
+/// B79: HYPHEN and NON-BREAKING HYPHEN become the ASCII hyphen they look
+/// like, so a comment holding one no longer forces a file type to `any`.
+#[test]
+fn the_builtin_map_rewrites_the_unicode_hyphens() {
+    let map = parsed(super::BUILTIN);
+    for from in ['\u{2010}', '\u{2011}'] {
+        rewrites(&map, from, "-");
+    }
+}
+
 /// B73: the low-9 and reversed-9 quotes that OPEN a Polish or German
 /// quotation are straightened like their curly siblings.
 #[test]

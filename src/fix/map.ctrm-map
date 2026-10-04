@@ -26,6 +26,13 @@ U+2013 -
 # not need: the ASCII hyphen is what every compiler and calculator reads.
 U+2212 -
 
+# HYPHEN and NON-BREAKING HYPHEN, to the ASCII hyphen they look exactly
+# like (B79). Tools that keep a compound word on one line write the
+# non-breaking one into prose and comments; unmapped, it was the only
+# character between a file type and `ascii`, so `init` drafted `any`.
+U+2010 -
+U+2011 -
+
 # The curly quotes, all four, to their straight forms. LEFT and RIGHT
 # SINGLE QUOTATION MARK to APOSTROPHE; LEFT and RIGHT DOUBLE to QUOTATION
 # MARK.
