@@ -60,6 +60,8 @@ V92: crate `characterminator`, bin `ctrm` (`rg`/`mth` shape: crate carries meani
 
 V103: a ceiling has a CAP: chain (dir row) ≤ 5500 tok, `SPEC.md` file ≤ 3500 tok. below the cap a ceiling rises by the ~12% band; a node that would pass it SPLITS (`sherd split`), ⊥ raises ∵ a chain = what 1 worker loads every turn & raising was the only move ever made (10 raises in 1 wave). cap moves only in its own reviewed commit. runner: hk `ceiling-cap`.
 
+V105: every release tag ships exactly three target archives (`ctrm`, `LICENSE`, `README.md`) and one `SHA256SUMS` asset: x86_64 Linux, aarch64 Linux, and aarch64 macOS. The release workflow checks out the tag, builds from it, and uploads to the existing release with `gh release upload --clobber`; it never creates or edits release notes. runner: `scripts/check-release-workflow.sh`.
+
 ## §T TASKS
 
 id|status|task|cites
@@ -78,6 +80,7 @@ T45|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
 T48|x|ARCHIVED to SPEC-ARCHIVE.md|V44
 T51|x|ARCHIVED to SPEC-ARCHIVE.md|V46
 T54|x|ARCHIVED to SPEC-ARCHIVE.md|V52
+T55|.|release assets: `.github/workflows/release.yml` builds and uploads the three tagged target archives plus checksums; the workflow contract is checked by `scripts/check-release-workflow.sh`|V105
 
 ## §B BUGS
 
