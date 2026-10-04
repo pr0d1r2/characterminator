@@ -14,5 +14,6 @@ grep -Fq 'gh release upload --clobber' "$workflow"
 grep -Fq 'SHA256SUMS' "$workflow"
 grep -Fq 'LICENSE' "$workflow"
 grep -Fq 'README.md' "$workflow"
+grep -Fq 'release/ctrm --version' "$workflow"
 test "$(grep -Fc 'tar -czf' "$workflow")" -eq 1
 test "$(grep -Fc 'target:' "$workflow")" -eq 3
