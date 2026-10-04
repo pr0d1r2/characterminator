@@ -15,6 +15,19 @@ use, so one reading serves the whole family of tools.
 |---|---|
 | 0.1 | every verb works, is tested and gates its own repository; the `--format json` contract and the library surface are new and may still move before 0.2 |
 
+## [Unreleased]
+
+### Changed
+
+- **`caveman` preset** now also grants U+2261 identical to, U+03A3 the
+  summation sigma, U+27FA long left right double arrow and U+2287
+  superset of or equal to. Dogfooding found each in 4 to 6 of 13 Rust
+  repositories, in files that already used the preset. A file granted
+  `caveman` that held one of them used to fail `ctrm check` and now
+  passes. Sets compose by union only, so a repository that wants them
+  refused again replaces the `caveman` grant with its own set in
+  `.ctrm-sets`.
+
 ## [0.1.0] - 2026-10-03
 
 The first release.
@@ -110,4 +123,5 @@ The first release.
 See [`SPEC.md`](SPEC.md) for the rules every one of these behaviours is held
 to, and `mth tasks SPEC.md` for what remains.
 
+[Unreleased]: https://github.com/pr0d1r2/characterminator/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/pr0d1r2/characterminator/releases/tag/v0.1.0
