@@ -197,6 +197,17 @@ fn caveman_grants_the_measured_symbols_too() {
     assert!(!set.contains('\u{1F600}'));
 }
 
+/// R19: the four that 4-6 of 13 Rust repos used and no preset held.
+#[test]
+fn caveman_grants_the_wave_one_gap() {
+    let set = preset("caveman");
+    assert!(set.contains('\u{2261}'));
+    assert!(set.contains('\u{03A3}'));
+    assert!(set.contains('\u{27FA}'));
+    assert!(set.contains('\u{2287}'));
+    assert!(!set.contains('\u{226A}'));
+}
+
 #[test]
 fn box_grants_both_drawing_blocks() {
     let set = preset("box");

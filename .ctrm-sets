@@ -12,11 +12,10 @@
 # need it, and rewriting the rows into code point notation would make the
 # evidence in them unreadable.
 #
-# N-ARY SUMMATION as the Greek letter, IDENTICAL TO, MUCH LESS-THAN,
-# SUPERSET OF OR EQUAL TO, N-ARY UNION, LEFT RIGHT DOUBLE ARROW, SET MINUS,
+# MUCH LESS-THAN, N-ARY UNION, SET MINUS,
 # DOUBLE LOW-9 QUOTATION MARK (the Polish opening quote, from the CLDR
 # research row), HEAVY CHECK MARK.
-spec-symbol U+03A3 U+2261 U+226A U+2287 U+22C3 U+27FA U+2216 U+201E U+2714
+spec-symbol U+226A U+22C3 U+2216 U+201E U+2714
 
 # The marks, until the `marks` preset ships with T46: WHITE HEAVY CHECK
 # MARK, CROSS MARK, CHECK MARK, BALLOT X, WARNING SIGN, BLACK RIGHTWARDS

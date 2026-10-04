@@ -72,7 +72,7 @@ T14|x|ARCHIVED to SPEC-ARCHIVE.md|V16
 T16|x|ARCHIVED to SPEC-ARCHIVE.md|-
 T17|~|release: `release.toml` (`cargo-release`) + crates.io publish, ∵ T13 & T16 land|-
 T27|x|ARCHIVED to SPEC-ARCHIVE.md|`src/tokens:V10`,`src/cli:V7`
-T28|.|dogfood wave 2: extend to rest of fleet (`src/charset:R4`) once wave 1 confirms presets|`src/charset:V23`
+T28|.|dogfood wave 2: fleet (`src/charset:R4`), presets confirmed (`src/charset:R19`); mine adopters' `.ctrm-sets` (human edits only) → promote per `src/charset:V138`|`src/charset:V138`
 T40|x|ARCHIVED to SPEC-ARCHIVE.md|`src:V38`,`src:V39`
 T45|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
 T48|x|ARCHIVED to SPEC-ARCHIVE.md|V44
