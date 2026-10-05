@@ -57,6 +57,10 @@ local fast = new Mapping<String, Step> {
       cargo run --quiet --bin ctrm -- check || { echo 'hk: a tracked file holds a character its set does not grant. Each line above is path:line:col, the code point, and the set it was judged against. Fix the character, or grant it in `.ctrm` -- a grant is a decision, so say why in the commit.' >&2; exit 1; }
       """
   }
+  ["release-workflow"] {
+    glob = List(".github/workflows/release.yml", "scripts/check-release-workflow.sh")
+    check = "bash scripts/check-release-workflow.sh"
+  }
   // THE SPEC FORM, checked by its OWNER. The format has one implementation
   // and this repo calls it rather than porting it. Every node's SPEC.md is
   // checked, not only the root: the federation put rules in one file per

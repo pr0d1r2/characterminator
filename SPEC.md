@@ -60,24 +60,19 @@ V92: crate `characterminator`, bin `ctrm` (`rg`/`mth` shape: crate carries meani
 
 V103: a ceiling has a CAP: chain (dir row) ≤ 5500 tok, `SPEC.md` file ≤ 3500 tok. below the cap a ceiling rises by the ~12% band; a node that would pass it SPLITS (`sherd split`), ⊥ raises ∵ a chain = what 1 worker loads every turn & raising was the only move ever made (10 raises in 1 wave). cap moves only in its own reviewed commit. runner: hk `ceiling-cap`.
 
+V105: every release tag ships exactly three target archives (`ctrm`, `LICENSE`, `README.md`) and one `SHA256SUMS` asset: x86_64 Linux, aarch64 Linux, and aarch64 macOS. The release workflow checks out the tag, builds from it, and uploads to the existing release with `gh release upload --clobber`; it never creates or edits release notes. runner: `scripts/check-release-workflow.sh`.
+
 ## §T TASKS
 
 id|status|task|cites
-T1|x|ARCHIVED to SPEC-ARCHIVE.md|-
-T2|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V15,V16
-T3|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
-T4|x|ARCHIVED to SPEC-ARCHIVE.md|V15,V14
-T13|x|ARCHIVED to SPEC-ARCHIVE.md|V13
-T14|x|ARCHIVED to SPEC-ARCHIVE.md|V16
-T16|x|ARCHIVED to SPEC-ARCHIVE.md|-
 T17|~|release: `release.toml` (`cargo-release`) + crates.io publish, ∵ T13 & T16 land|-
 T27|x|ARCHIVED to SPEC-ARCHIVE.md|`src/tokens:V10`,`src/cli:V7`
 T28|.|dogfood wave 2: fleet (`src/charset:R4`), presets confirmed (`src/charset:R19`); mine adopters' `.ctrm-sets` (human edits only) → promote per `src/charset:V138`|`src/charset:V138`
-T40|x|ARCHIVED to SPEC-ARCHIVE.md|`src:V38`,`src:V39`
 T45|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
 T48|x|ARCHIVED to SPEC-ARCHIVE.md|V44
 T51|x|ARCHIVED to SPEC-ARCHIVE.md|V46
 T54|x|ARCHIVED to SPEC-ARCHIVE.md|V52
+T55|.|release assets: `.github/workflows/release.yml` builds and uploads the three tagged target archives plus checksums; the workflow contract is checked by `scripts/check-release-workflow.sh`|V105
 
 ## §B BUGS
 
