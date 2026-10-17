@@ -57,8 +57,11 @@ local fast = new Mapping<String, Step> {
       cargo run --quiet --bin ctrm -- check || { echo 'hk: a tracked file holds a character its set does not grant. Each line above is path:line:col, the code point, and the set it was judged against. Fix the character, or grant it in `.ctrm` -- a grant is a decision, so say why in the commit.' >&2; exit 1; }
       """
   }
+  // THE RELEASE CONTRACT (V105). `release.yml` runs only when a tag is
+  // pushed, so a broken edit to it is first seen on the release it exists
+  // for. This reads the file on every change to it instead.
   ["release-workflow"] {
-    glob = List(".github/workflows/release.yml", "scripts/check-release-workflow.sh")
+    glob = List(".github/workflows/release.yml", "action.yml", "scripts/check-release-workflow.sh")
     check = "bash scripts/check-release-workflow.sh"
   }
   // THE SPEC FORM, checked by its OWNER. The format has one implementation
