@@ -126,7 +126,9 @@ the first install takes a minute of compiling. The pre-commit hook and the
 GitHub Action below compile it the same way.
 
 Linux (x86_64 and aarch64) and macOS (aarch64) are gated in CI on every
-change. Windows is not tested.
+change. macOS (x86_64) has no CI runner: the flake's package evaluates
+for it on every change but is never built there, and nixpkgs 26.05 is the
+last release to support it. Windows is not tested.
 
 The minimum Rust version follows the `rustc` the flake pins, so the gate
 and a `cargo install` build with the same compiler. It moves only in a
