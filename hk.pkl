@@ -320,13 +320,13 @@ local precommit = (fast) {
 }
 
 hooks {
-  /// `stash = "git"` is correctness, not speed: without it a partially
-  /// staged file (`git add -p`) is checked as it looks in the worktree,
-  /// giving a verdict about code you are not committing.
-  ///
-  /// Installed by `flake.nix`'s shellHook, BY HAND rather than by
-  /// `hk install`, so a shell without hk REFUSES with an instruction --
-  /// enter the dev shell -- instead of failing with "command not found".
+  // `stash = "git"` is correctness, not speed: without it a partially
+  // staged file (`git add -p`) is checked as it looks in the worktree,
+  // giving a verdict about code you are not committing.
+  //
+  // Installed by `flake.nix`'s shellHook, BY HAND rather than by
+  // `hk install`, so a shell without hk REFUSES with an instruction --
+  // enter the dev shell -- instead of failing with "command not found".
   ["pre-commit"] {
     fix = true
     stash = "git"
@@ -335,7 +335,7 @@ hooks {
   ["pre-push"] {
     steps = all
   }
-  /// What `hk check` runs -- the CI entry point.
+  // What `hk check` runs -- the CI entry point.
   ["check"] {
     steps = all
   }
