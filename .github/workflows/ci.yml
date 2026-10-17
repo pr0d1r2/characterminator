@@ -37,6 +37,9 @@ jobs:
   #   ubuntu-latest     x86_64-linux
   #   ubuntu-24.04-arm  aarch64-linux
   #   macos-latest      aarch64-darwin
+  #
+  # x86_64-darwin has no runner here: GitHub retired its Intel macOS
+  # runners, and nixpkgs 26.05 is the last release to support the system.
   gate:
     name: gate (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
