@@ -72,7 +72,7 @@ T45|x|ARCHIVED to SPEC-ARCHIVE.md|V14,V16
 T48|x|ARCHIVED to SPEC-ARCHIVE.md|V44
 T51|x|ARCHIVED to SPEC-ARCHIVE.md|V46
 T54|x|ARCHIVED to SPEC-ARCHIVE.md|V52
-T55|.|release assets: `.github/workflows/release.yml` builds and uploads the three tagged target archives plus checksums; the workflow contract is checked by `scripts/check-release-workflow.sh`|V105
+T55|x|release assets: `.github/workflows/release.yml` builds and uploads the three tagged target archives plus checksums; the workflow contract is checked by `scripts/check-release-workflow.sh`|V105
 
 ## §B BUGS
 
