@@ -74,6 +74,7 @@ it; if they disagree, `hk.pkl` is right and this table is the bug.
 |---|---|
 | `fmt`, `clippy`, `test` | the usual, with clippy at `-D warnings` |
 | `ctrm` | this tool, run on this repository's own tree |
+| `release-workflow` | a release workflow that no longer builds the three tagged targets with the pinned rustc, or no longer uploads them with checksums (V105) |
 | `mth`, `mth-check` | every `SPEC.md` is well formed and still correct, and no closed option recorded in a `.spec-records` (the root's, or one beside a node's spec) has gone missing |
 | `context-limits` | no spec is over the token ceiling it declared |
 | `sherd-check`, `sherd-sync`, `sherd-budget` | the node tree resolves, `NAV` is not stale, and no node chain is over its ceiling; after `mth-check`, so a malformed spec is reported by its format's owner first |
