@@ -55,16 +55,26 @@
     let
       systems = [
         "aarch64-darwin"
+        "x86_64-darwin"
         "x86_64-linux"
         "aarch64-linux"
       ];
       # The overlay is what makes `pkgs.hk` mean nix-hk's hk rather than
       # nixpkgs'. Applied as an overlay so there is exactly one `pkgs` here.
-      forAll =
-        f:
-        nixpkgs.lib.genAttrs systems (
+      forEach =
+        list: f:
+        nixpkgs.lib.genAttrs list (
           s: f (nixpkgs.legacyPackages.${s}.extend nix-hk.overlays.default)
         );
+      forAll = forEach systems;
+      # The dev shell carries the fleet tools, so it exists only where all
+      # three publish a package: microlith and itok ship no x86_64-darwin,
+      # and a shell naming a missing attribute fails `nix flake check
+      # --all-systems`. Derived, not listed, so the shell arrives with the
+      # input bump that brings the tools, in that same reviewed diff.
+      devSystems = builtins.filter (
+        s: microlith.packages ? ${s} && itok.packages ? ${s} && sherd.packages ? ${s}
+      ) systems;
 
       # A git hook written BY HAND rather than by `hk install`, so that when
       # hk is missing it says what to do instead of failing with "command not
@@ -150,7 +160,7 @@
         default = ctrmPkg pkgs;
       });
 
-      devShells = forAll (pkgs: {
+      devShells = forEach devSystems (pkgs: {
         default = pkgs.mkShell {
           packages = [
             pkgs.rustc

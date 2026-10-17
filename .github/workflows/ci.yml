@@ -37,6 +37,12 @@ jobs:
   #   ubuntu-latest     x86_64-linux
   #   ubuntu-24.04-arm  aarch64-linux
   #   macos-latest      aarch64-darwin
+  #
+  # x86_64-darwin has no runner here: GitHub retired its Intel macOS
+  # runners, and nixpkgs 26.05 is the last release to support the system.
+  # Its package is EVALUATED instead, by `--all-systems` below, so the
+  # claim fails here the day it stops evaluating. It has no dev shell:
+  # microlith and itok publish no x86_64-darwin build (flake.nix).
   gate:
     name: gate (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -82,7 +88,10 @@ jobs:
       # `--check` never rewrites: CI reports drift, a human fixes it.
       # `--no-fail-fast` so one red step does not hide the others.
       - run: nix develop --command hk check --all --check --no-fail-fast
-      - run: nix flake check
+      # `--all-systems`: every runner evaluates every system's outputs,
+      # the only check x86_64-darwin gets. Evaluation, not a build, so a
+      # foreign system costs seconds.
+      - run: nix flake check --all-systems
 
   # THE ACTION, used the way a consumer uses it (V52): `uses: ./` builds
   # ctrm from this checkout with the rustc the action pins -- no nix -- and
