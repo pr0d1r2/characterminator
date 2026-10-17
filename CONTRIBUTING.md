@@ -50,7 +50,7 @@ Older ones may read the specs differently.
 
 | tool | version | what it does here |
 |---|---|---|
-| `hk` | 1.58.1 | runs the gate defined in `hk.pkl` |
+| `hk` | 2.7.0 | runs the gate defined in `hk.pkl` |
 | `mth` (crate `microlith`) | 0.7.3 | formats and checks every `SPEC.md` |
 | `sherd` | 0.5.3 | checks the spec tree and each node's token budget |
 | `itok` | 0.3.1 | checks the per-file token ceilings |
