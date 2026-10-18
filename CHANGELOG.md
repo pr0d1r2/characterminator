@@ -15,6 +15,16 @@ use, so one reading serves the whole family of tools.
 |---|---|
 | 0.1 | every verb works, is tested and gates its own repository; the `--format json` contract and the library surface are new and may still move before 0.2 |
 
+## [0.1.2] - 2026-10-18
+
+A patch: the flake builds on Intel Macs.
+
+### Added
+
+- **`x86_64-darwin`** in the flake systems (#20, closing #18). Consumers
+  pin a tag, so `v0.1.1` had no `characterminator.packages.x86_64-darwin`.
+  nixpkgs 26.05 is the last release to support this system.
+
 ## [0.1.1] - 2026-10-04
 
 A patch: what the first dogfood adoption round found.
@@ -135,5 +145,6 @@ The first release.
 See [`SPEC.md`](SPEC.md) for the rules every one of these behaviours is held
 to, and `mth tasks SPEC.md` for what remains.
 
+[0.1.2]: https://github.com/pr0d1r2/characterminator/releases/tag/v0.1.2
 [0.1.1]: https://github.com/pr0d1r2/characterminator/releases/tag/v0.1.1
 [0.1.0]: https://github.com/pr0d1r2/characterminator/releases/tag/v0.1.0
