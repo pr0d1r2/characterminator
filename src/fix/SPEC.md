@@ -32,7 +32,7 @@ sib|src/cli|arg dispatch, verbs, exit codes, `guard` hook adapter
 ## §R RESEARCH
 
 id|topic|finding|src
-R18|`fix --check` peak memory|5.5 M chars drawn from `a` `b` space U+00E9 U+2014 U+4E2D `x` LF (8.9 MB): 687 K rewrites + 1.37 M left. human 915 → 385 MB (`check` 266 ∴ 1.45×), json 1103 → 579; output byte-identical. cost was copies: path & set per row, each rewrite & finding cloned for render, each replacement cloned pass → report, engine `unmapped` held while leftovers judged. now path & set once per file (`check`'s batches), rows moved or borrowed, hits placed in place|`/usr/bin/time -l`, release, macOS arm64, 2026-10-03
+R18|`fix --check` peak memory|8.9 MB (687 K rewrites + 1.37 M left): human 915 → 385 MB (`check` 266), json 1103 → 579; output byte-identical. was copies per row; now path & set once per file (`check`'s batches), rows moved or borrowed|`/usr/bin/time -l`, release, macOS arm64, 2026-10-03
 
 ## §V INVARIANTS
 
@@ -43,6 +43,7 @@ V26: typography = builtin map targets, ⊥ default grant (`src/charset:R4`: 45.1
 V27: character families = open tree, declared by map line `family <name> <parent>`; parent chain ! end @ `ascii` (intrinsic root); cycle → config error, exit 2. builtin: `ascii` ← `text` ← `emoji`. new family (e.g. `nerd`) = 1 line + members in classes.
 V28: map line `= <class> <family>:<member>[,<member>...] ...` declares equivalence class; members labelled by family, first per family preferred. disallowed member → preferred member of rule's fidelity family if allowed, else along its fallback path (V27) → `ascii`; none allowed → unmapped (V4). `--map` twin takes this form (`src/rules:V18`). multi-codepoint members per `src/fix/emoji:V31`.
 V104: a hazard IN THAT FILE (= `check`'s verdict: `src/lint/hazard:V57`, `src/lint/hazard:V63`, byte-0 BOM; `src/judge` `Judge::fix` per pass (`src/fix/emoji:V65`)) → rewritten even where granted: map entry first, else DELETED if its class draws ⊥ text; `control-character` ? carry meaning ∴ w/o entry kept & reported. REJECTED: delete only map-covered (bidi ∉ map: B59); delete controls (guesses meaning). `stats` after = same. runners `apply_hazards_test.rs`, `src/cli/fix_hazard_test.rs`.
+V139: U+FFFD = LOST data, ⊥ a char to map: `<from>` holding it → config error ∵ one target would stand for every lost char. `fix --from-git` (⊥ w/ `--check`) first restores it from the staged copy, else `HEAD`: same line number | the 1 distinct line, same length, equal elsewhere; else kept & reported. runner `lost_test.rs`.
 
 ## §T TASKS
 

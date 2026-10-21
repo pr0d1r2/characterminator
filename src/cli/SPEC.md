@@ -30,7 +30,7 @@ sib|src/render|human & json output, stable json contract
 ## §I INTERFACES
 
 - cmd: `ctrm check [--summary] [--max N] [paths]` → violations, 1 per line, row shape `src/render:V94`; folded & cut per `src/render:V124`. 0 clean / 1 violation / 2 usage.
-- cmd: `ctrm fix [--check] [paths]` → rewrite disallowed chars via transliteration map. `--check` reports & writes ⊥, exit 1 on drift (`rustfmt` grammar). bare: exit 1 only on unmapped char left (`src/cli:V7`).
+- cmd: `ctrm fix [--check] [--from-git] [paths]` → rewrite disallowed chars via transliteration map. `--check` reports & writes ⊥, exit 1 on drift (`rustfmt` grammar). `--from-git` restores U+FFFD first (`src/fix:V139`). bare: exit 1 only on unmapped char left (`src/cli:V7`).
 - cmd: `ctrm stats [--bpe] [paths]` → per file: chars outside set, bytes, tokens now vs after `fix`, via `itok`. report-only.
 - cmd: `ctrm explain [<path>] [--as args|lines|prompt]` → effective set + winning rule + its config line; `--as` renders effective config as flags, data-file lines, or agent prompt (`src/cli/explain:V32`).
 - cmd: `ctrm sets [<name>...] [--locales] [--containing <c>]` → curated presets w/ descriptions, then declared; locales counted unless asked (`src/cli/explain:V127`), w/ members, at the family the rules give (`src/rules:V29`).

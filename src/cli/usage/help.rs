@@ -43,7 +43,7 @@ output and place:
   --                    every word after it is a path
 
 verb flags (see the verb's page):
-  check --summary --max <n>    fix --check    stats --bpe
+  check --summary --max <n>    fix --check --from-git    stats --bpe
   explain --as <form>    sets --locales --containing <c>    init --print
 
 exit codes: 0 clean; 1 a violation, or drift under fix --check;
@@ -67,12 +67,15 @@ exit codes: 0 clean, 1 a violation, 2 a usage or configuration error
 example: ctrm check --format json docs/";
 
 const FIX: &str =
-    "ctrm fix [--check] [<path>...] -- rewrite characters outside the set
+    "ctrm fix [--check|--from-git] [<path>...] -- rewrite disallowed characters
 
 Rewrites each one through the map (.ctrm-map, then the builtin); a
 character with no mapping is kept and reported, never dropped.
 
   --check               write nothing; report the drift, exit 1 on any
+  --from-git            first put back each U+FFFD (a character lost on
+                        decoding) from the staged copy or HEAD, where the
+                        rest of its line is identical; not with --check
   --format <f>          human or json
   configuration flags   see ctrm --help
 

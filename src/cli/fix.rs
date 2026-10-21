@@ -17,13 +17,14 @@
 use super::check::{
     Row, Skip, batches, found_code, judged_against, skip, unreadable_code,
 };
+use super::history;
 use super::remedy::Case;
 use crate::fix::{self as engine, Map};
 use crate::judge::{Checker, Config, File, Judge, files, judged};
 use crate::lint::{Finding, Level, Lint, OUTSIDE_SET};
 use crate::render::{self, Batch, Change, Format, Skipped};
 use crate::scan::Unreadable;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// What a run of `fix` produced.
 pub(super) struct Report {
@@ -71,6 +72,8 @@ struct Found {
     /// (V72): a refusal or a read error on the tenth file must not leave
     /// the first nine rewritten behind a run that reports only the error.
     pending: Vec<(PathBuf, String)>,
+    /// U+FFFD characters `--from-git` put back (`src/fix:V139`).
+    restored: usize,
 }
 
 /// Run `fix` over a repository.
@@ -83,13 +86,49 @@ struct Found {
 ///
 /// A configuration that cannot be read, a file that cannot be written,
 /// or a rewrite the engine refused to trust (`src/fix:V5`, `src/fix:V6`).
+#[cfg(test)]
 pub(super) fn run(
     config: &Config,
     paths: &[String],
     format: Format,
     write: bool,
 ) -> Result<Report, String> {
-    let pass = Pass::new(config, write)?;
+    let mode = Mode {
+        write,
+        from_git: false,
+    };
+    run_with(config, paths, format, mode)
+}
+
+/// What a run is asked to do beyond judging.
+#[derive(Clone, Copy)]
+pub(super) struct Mode {
+    /// False is `--check`.
+    pub write: bool,
+    /// `--from-git`: put back each U+FFFD an earlier copy can vouch for,
+    /// BEFORE the rewrite (`src/fix:V139`).
+    pub from_git: bool,
+}
+
+/// [`run`], with the options a caller may ask for.
+///
+/// # Errors
+///
+/// As [`run`], and `--from-git` together with `--check`: restoring is a
+/// write, and a gate that quietly wrote nothing would read as clean.
+pub(super) fn run_with(
+    config: &Config,
+    paths: &[String],
+    format: Format,
+    mode: Mode,
+) -> Result<Report, String> {
+    if mode.from_git && !mode.write {
+        return Err(String::from(
+            "--from-git restores lost characters, which is a write: \
+             it cannot be combined with --check",
+        ));
+    }
+    let pass = Pass::new(config, mode)?;
     let mut found = Found::default();
     for file in files(&config.root, paths)? {
         pass.visit(file?, &mut found)?;
@@ -114,33 +153,53 @@ struct Pass {
     checker: Checker,
     map: Map,
     write: bool,
+    from_git: bool,
 }
 
 impl Pass {
-    fn new(config: &Config, write: bool) -> Result<Self, String> {
+    fn new(config: &Config, mode: Mode) -> Result<Self, String> {
         Ok(Self {
             checker: Checker::configured(config)?,
             map: config.map()?,
-            write,
+            write: mode.write,
+            from_git: mode.from_git,
         })
     }
 
     /// One file: judge it, rewrite it, queue the write when asked.
+    ///
+    /// With `--from-git` the text is first healed from git, and what is
+    /// written is compared with the text ON DISK, so a file whose only
+    /// change is a restored character is still written.
     fn visit(&self, file: File, found: &mut Found) -> Result<(), String> {
         let File { full, shown, text } = file;
-        let Some(text) = text_of(text, &shown, found) else {
+        let Some(on_disk) = text_of(text, &shown, found) else {
             return Ok(());
         };
+        let text = self.healed(&full, &on_disk, found);
         let (set, levels) = self.checker.shared_law(&shown)?;
         let judge = self.checker.judge(&set);
         let case = Case::new(&judge, &levels, &text);
         let mut changed = Changed::new(shown, &set.name);
         let output = self.rewritten(&case, &mut changed, found)?;
-        if self.write && output != text {
+        if self.write && output != on_disk {
             found.pending.push((full, output));
         }
         found.absorb(changed);
         Ok(())
+    }
+
+    /// `text`, with each U+FFFD git can vouch for put back when asked;
+    /// the number restored is added to the run's tally.
+    fn healed(&self, full: &Path, text: &str, found: &mut Found) -> String {
+        if !self.from_git || !text.contains('\u{FFFD}') {
+            return text.to_owned();
+        }
+        let healed = history::healed(full, text);
+        let back =
+            engine::lost_in(text).saturating_sub(engine::lost_in(&healed));
+        found.restored = found.restored.saturating_add(back);
+        healed
     }
 
     /// One text's rewrite: what is left is kept, the rewrites are MOVED
@@ -268,7 +327,23 @@ fn report_of(found: &Found, format: Format, write: bool) -> Report {
     Report {
         text: render::fix(format, &changes, &kept, &skipped),
         code: code_of(found, write),
-        note: render::fix_note(format, changes.len(), left, write),
+        note: noted(format, found.restored, {
+            render::fix_note(format, changes.len(), left, write)
+        }),
+    }
+}
+
+/// The tally, led by the characters `--from-git` restored when it did.
+/// Human only: json and sarif carry no tally (`src/render:V123`).
+fn noted(format: Format, restored: usize, tally: String) -> String {
+    if restored == 0 || format != Format::Human {
+        return tally;
+    }
+    let said = format!("restored {restored} lost character(s) from git");
+    if tally.is_empty() {
+        said
+    } else {
+        format!("{said}\n{tally}")
     }
 }
 

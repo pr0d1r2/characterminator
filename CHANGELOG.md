@@ -15,6 +15,22 @@ use, so one reading serves the whole family of tools.
 |---|---|
 | 0.1 | every verb works, is tested and gates its own repository; the `--format json` contract and the library surface are new and may still move before 0.2 |
 
+## [Unreleased]
+
+### Added
+
+- **`ctrm fix --from-git`** (#16) puts back each U+FFFD that the staged
+  copy, else `HEAD`, can vouch for: the same line, or the one distinct
+  line, of the same length and equal everywhere but at the U+FFFD. What
+  git cannot vouch for is kept and reported. Not with `--check`.
+
+### Changed
+
+- **U+FFFD is reported as lost data**: its human row ends with
+  `replacement character: the original was lost on decoding; ...`.
+- **A `.ctrm-map` line whose `<from>` holds U+FFFD is refused** (exit 2):
+  one target cannot be right for every character a decoder lost.
+
 ## [0.1.2] - 2026-10-18
 
 A patch: the flake builds on Intel Macs.

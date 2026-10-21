@@ -30,6 +30,7 @@ const VALUED: &[&str] = &[
 /// The flags that stand alone.
 const SWITCHES: &[&str] = &[
     "--check",
+    "--from-git",
     "--bpe",
     "--summary",
     "--no-files",
@@ -61,6 +62,7 @@ const SWITCHES: &[&str] = &[
 /// refuse: `ctrm check --bpe` looks like it asked for something.
 const OWNED: &[(&str, &str)] = &[
     ("--check", "fix"),
+    ("--from-git", "fix"),
     ("--bpe", "stats"),
     ("--as", "explain"),
     ("--summary", "check"),

@@ -14,6 +14,9 @@ pub enum Error {
     /// A map line whose source every set grants, so it can never be
     /// rewritten (`src/judge:V116`).
     NeverRewritten { line: usize },
+    /// A map line whose source holds U+FFFD, which carries no information
+    /// about the character it replaced, so no fixed target is ever right.
+    LostCharacter { line: usize },
     /// A replacement is rewritten again without ever settling, so the map
     /// chains back to a source it already used.
     MapCycle,
@@ -38,7 +41,9 @@ impl Error {
     /// the fault belongs to the map as a whole.
     fn subject(&self) -> String {
         match self {
-            Self::Syntax { line } | Self::NeverRewritten { line } => {
+            Self::Syntax { line }
+            | Self::NeverRewritten { line }
+            | Self::LostCharacter { line } => {
                 format!("map line {line}")
             }
             Self::UnknownFamily { name }
@@ -72,13 +77,21 @@ impl Error {
          every set grants, so it would never be rewritten -- a source needs \
          a character outside `ascii`";
 
+    /// U+FFFD in a source: the decoder wrote it in place of whatever was
+    /// there, so a mapping would turn every other lost character into the
+    /// same one.
+    const LOST: &'static str = "maps U+FFFD, the replacement character, \
+         which stands for ANY character lost on decoding, so no target is \
+         right for all of them -- restore the file with `fix --from-git` \
+         or retype the character";
+
     /// The 1-based line a refusal is about, when it is about one.
     #[must_use]
     pub(crate) const fn line(&self) -> Option<usize> {
         match self {
-            Self::Syntax { line } | Self::NeverRewritten { line } => {
-                Some(*line)
-            }
+            Self::Syntax { line }
+            | Self::NeverRewritten { line }
+            | Self::LostCharacter { line } => Some(*line),
             _ => None,
         }
     }
@@ -93,6 +106,7 @@ impl Error {
         match self {
             Self::Syntax { .. } => Self::FORMS,
             Self::NeverRewritten { .. } => Self::NEVER,
+            Self::LostCharacter { .. } => Self::LOST,
             Self::MapCycle => "rewrites in a cycle and never settles",
             Self::UnknownFamily { .. } => "is not declared",
             Self::UnknownMap { .. } => "is not a builtin map",
@@ -128,13 +142,20 @@ mod tests {
             Error::FamilyCycle { name: name() },
             Error::UnrootedFamily { name: name() },
         ];
-        let bare = [Error::MapCycle, Error::RootReparented];
         let own = [Error::TouchedAllowedBytes, Error::NotIdempotent];
-        let lines =
-            [Error::Syntax { line: 1 }, Error::NeverRewritten { line: 1 }];
-        for refusal in named.into_iter().chain(bare).chain(own).chain(lines) {
+        for refusal in named.into_iter().chain(own).chain(whole_or_lined()) {
             let said = refusal.to_string();
             assert!(!said.contains("(V"), "{said}");
         }
+    }
+
+    fn whole_or_lined() -> [Error; 5] {
+        [
+            Error::MapCycle,
+            Error::RootReparented,
+            Error::Syntax { line: 1 },
+            Error::NeverRewritten { line: 1 },
+            Error::LostCharacter { line: 1 },
+        ]
     }
 }

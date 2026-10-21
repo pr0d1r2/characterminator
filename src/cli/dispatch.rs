@@ -349,8 +349,11 @@ fn listed(run: &Run<'_>) -> Outcome {
 /// `fix` WRITES unless `--check` is given, which is V7's split: the verb
 /// that rewrites files is the one a caller names deliberately.
 fn fixed(run: &Run<'_>) -> Outcome {
-    let write = !run.args.has("--check");
-    match fix::run(run.config, &run.args.paths, run.format, write) {
+    let mode = fix::Mode {
+        write: !run.args.has("--check"),
+        from_git: run.args.has("--from-git"),
+    };
+    match fix::run_with(run.config, &run.args.paths, run.format, mode) {
         Ok(report) => fix_report_of(&report),
         Err(message) => failed_in(run, &message),
     }

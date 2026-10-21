@@ -302,6 +302,9 @@ impl Map {
         number: usize,
     ) -> Result<(), Error> {
         let entry = entry.ok_or(Error::Syntax { line: number })?;
+        if entry.from.contains(LOST) {
+            return Err(Error::LostCharacter { line: number });
+        }
         if never_withheld(&entry.from) {
             return Err(Error::NeverRewritten { line: number });
         }
@@ -401,6 +404,11 @@ pub(crate) fn named(word: &str) -> Option<String> {
     }
     Some(word.to_owned())
 }
+
+/// U+FFFD REPLACEMENT CHARACTER: what a lossy decode leaves where it
+/// could not read a character. It names no character, so a map from it
+/// is wrong for every file but one.
+pub(crate) const LOST: char = '\u{FFFD}';
 
 /// Whether every character of a source is in `ascii`, which every rule
 /// grants (`src/rules:V24`) and no hazard touches: such a source is never

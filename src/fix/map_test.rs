@@ -30,6 +30,17 @@ fn a_source_made_only_of_ascii_is_refused() {
     assert!(parse("U+000D\nfoo\u{2014} x\n").is_ok());
 }
 
+/// U+FFFD carries no information about what it replaced, so a map from
+/// it would turn every other lost character into the same one.
+#[test]
+fn a_source_holding_the_replacement_character_is_refused() {
+    let lost = Err(Error::LostCharacter { line: 2 });
+    assert_eq!(parse("U+2014 -\n\u{FFFD} \u{A7}\n"), lost);
+    assert_eq!(parse("U+2014 -\nU+FFFD U+00A7\n"), lost);
+    assert_eq!(parse("U+2014 -\nU+2014+U+FFFD x\n"), lost);
+    assert!(parse("U+2014 \u{FFFD}\n").is_ok());
+}
+
 #[test]
 fn an_absent_replacement_is_an_explicit_delete() {
     let map = parsed("U+200B\n");
