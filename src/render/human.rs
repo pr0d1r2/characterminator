@@ -133,7 +133,24 @@ fn violation(out: &mut String, path: &str, item: Line<'_>) {
     let _infallible =
         write!(out, "{path}:{}:{} {code} {last}", at.line, at.column);
     level_note(out, item.finding.level);
+    lost_note(out, hit.character);
 }
+
+/// U+FFFD is not a character but the trace of one: a decoder wrote it
+/// where it could not read the original, so the row says the data is gone
+/// rather than reading like any other character outside the set.
+fn lost_note(out: &mut String, character: char) {
+    if character == REPLACEMENT {
+        out.push_str(LOST_NOTE);
+    }
+}
+
+/// U+FFFD REPLACEMENT CHARACTER.
+const REPLACEMENT: char = '\u{FFFD}';
+
+/// What a U+FFFD row adds: the loss, and the one way back.
+const LOST_NOTE: &str = " -- replacement character: the original was lost \
+     on decoding; no map can recover it (try `fix --from-git`)";
 
 /// A `warn` row read exactly like a `deny` row, so a reader could not tell
 /// which findings fail the run. Only `warn` is named: `deny` and `forbid`
@@ -560,6 +577,20 @@ mod tests {
             "src/a.rs:3:5 U+2014 ascii"
         );
         assert_eq!(check(&[warn, forbid], &[]), expected);
+    }
+
+    /// A U+FFFD row says the original is gone; other rows are unchanged.
+    #[test]
+    fn a_replacement_character_is_said_to_be_lost_data() {
+        let mut lost = em_dash();
+        lost.finding.hit.character = '\u{FFFD}';
+        let expected = concat!(
+            "src/a.rs:2:5 U+FFFD ascii -- replacement character: the ",
+            "original was lost on decoding; no map can recover it ",
+            "(try `fix --from-git`)\n",
+            "src/a.rs:2:5 U+2014 ascii"
+        );
+        assert_eq!(check(&[lost, em_dash()], &[]), expected);
     }
 
     #[test]
