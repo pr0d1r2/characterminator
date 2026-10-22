@@ -11,7 +11,7 @@
 //! level, and anything else is the set list. That is why the parse needs
 //! no lookahead and no dependency.
 
-use crate::lint::{Group, Level, Target};
+use crate::lint::{Group, Level, Lint, Target};
 use crate::rules::line::{ParseError, error};
 use crate::rules::{LevelChoice, Origin, Rule};
 
@@ -21,6 +21,7 @@ impl Rule {
         Rule {
             pattern,
             sets: Vec::new(),
+            hazards: Vec::new(),
             family: None,
             levels: Vec::new(),
             default_level: None,
@@ -53,6 +54,7 @@ pub(crate) fn parse_rule(
 /// exactly like a rule that worked.
 fn says_something(rule: Rule) -> Result<Rule, ParseError> {
     let silent = rule.sets.is_empty()
+        && rule.hazards.is_empty()
         && rule.family.is_none()
         && rule.levels.is_empty()
         && rule.default_level.is_none();
@@ -108,16 +110,58 @@ fn add_sets(
     field: &str,
     origin: &Origin,
 ) -> Result<(), ParseError> {
-    if !rule.sets.is_empty() {
+    if !rule.sets.is_empty() || !rule.hazards.is_empty() {
         return Err(error(origin.clone(), "one set list per rule"));
     }
     for name in field.split('+') {
         if name.is_empty() {
             return Err(error(origin.clone(), "empty set name in the list"));
         }
-        rule.sets.push(name.to_string());
+        match name.strip_prefix(HAZARD_PREFIX) {
+            Some(class) => allow_hazard(rule, class, origin)?,
+            None => rule.sets.push(name.to_string()),
+        }
     }
     Ok(())
+}
+
+/// The prefix that turns a set-list item into a hazard grant.
+const HAZARD_PREFIX: &str = "hazard:";
+
+/// `hazard:<class>` in the set list lets that ONE class into the rule's
+/// paths (V139). Refused unless a path may be granted the class and the
+/// pattern is narrow: a hazard grant is the one grant that must stay
+/// visible in review, so it cannot hide in a broad glob.
+fn allow_hazard(
+    rule: &mut Rule,
+    class: &str,
+    origin: &Origin,
+) -> Result<(), ParseError> {
+    if Lint::grantable(class).is_none() {
+        let why = format!(
+            "`hazard:{class}` is not a hazard class a path may be granted; \
+             only `hazard:tags` is"
+        );
+        return Err(error(origin.clone(), why));
+    }
+    if !narrow(&rule.pattern) {
+        return Err(error(origin.clone(), BROAD));
+    }
+    if !rule.hazards.iter().any(|held| held == class) {
+        rule.hazards.push(class.to_string());
+    }
+    Ok(())
+}
+
+/// Why a hazard grant on a sweeping pattern is refused.
+const BROAD: &str = "a hazard grant needs an exact path or a glob whose \
+                     first segment is literal, not `*` or `**` at the root";
+
+/// Whether a pattern is anchored by a literal first path segment, so it
+/// names a place rather than sweeping the whole tree.
+fn narrow(pattern: &str) -> bool {
+    let first = pattern.split('/').next().unwrap_or_default();
+    !first.is_empty() && !first.contains(['*', '?', '[', '{'])
 }
 
 /// `!<lint|group>=<level>` names a target; bare `!<level>` does not.
@@ -218,6 +262,47 @@ mod tests {
             assert!(said.contains("cannot be lowered"), "{line}: {said}");
         }
         assert!(parse("* !hazard=forbid !crlf=allow").is_some());
+    }
+
+    /// V139: `hazard:tags` in the set list is a grant of its own, kept
+    /// apart from the sets, and only for a narrow pattern.
+    #[test]
+    fn a_hazard_grant_is_held_apart_from_the_sets() {
+        let rule = parse("tests/fixtures/tags/* ascii+hazard:tags");
+        let rule = rule.unwrap_or_else(|| Rule::bare(String::new(), origin()));
+        assert_eq!(rule.sets, vec!["ascii"]);
+        assert_eq!(rule.hazards, vec!["tags"]);
+        let alone = parse("tests/tags.txt hazard:tags");
+        assert_eq!(alone.map(|rule| rule.hazards), Some(vec!["tags".into()]));
+    }
+
+    #[test]
+    fn a_hazard_grant_is_refused_for_a_broad_pattern() {
+        for line in [
+            "* ascii+hazard:tags",
+            "** ascii+hazard:tags",
+            "**/x.txt ascii+hazard:tags",
+            "*.txt ascii+hazard:tags",
+            "t?/x ascii+hazard:tags",
+        ] {
+            let said = parse_rule(line, origin()).err().map(|e| e.to_string());
+            let said = said.unwrap_or_default();
+            assert!(said.contains("exact path"), "{line}: {said}");
+        }
+    }
+
+    #[test]
+    fn only_the_tags_class_may_be_granted() {
+        for line in [
+            "a/b ascii+hazard:bidi",
+            "a/b ascii+hazard:bidi-control",
+            "a/b ascii+hazard:",
+            "a/b ascii+hazard:any",
+        ] {
+            let said = parse_rule(line, origin()).err().map(|e| e.to_string());
+            let said = said.unwrap_or_default();
+            assert!(said.contains("only `hazard:tags`"), "{line}: {said}");
+        }
     }
 
     #[test]

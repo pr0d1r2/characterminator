@@ -19,7 +19,7 @@ use super::check::{
 };
 use super::remedy::Case;
 use crate::fix::{self as engine, Map};
-use crate::judge::{Checker, Config, File, Judge, files, judged};
+use crate::judge::{Checker, Config, File, files, judged};
 use crate::lint::{Finding, Level, Lint, OUTSIDE_SET};
 use crate::render::{self, Batch, Change, Format, Skipped};
 use crate::scan::Unreadable;
@@ -152,7 +152,7 @@ impl Pass {
         changed: &mut Changed,
         found: &mut Found,
     ) -> Result<String, String> {
-        let fixed = self.fixed(case.judge, case.text, &changed.path)?;
+        let fixed = self.fixed(case, &changed.path)?;
         found.keep(
             &changed.path,
             &changed.set,
@@ -170,12 +170,12 @@ impl Pass {
     /// together (R18).
     fn fixed(
         &self,
-        judge: &Judge<'_>,
-        text: &str,
+        case: &Case<'_>,
         shown: &str,
     ) -> Result<engine::Fixed, String> {
+        let (judge, text) = (case.judge, case.text);
         let mut fixed = judge
-            .fix(text, &self.map)
+            .fix(text, &self.map, case.levels)
             .map_err(|e| format!("{shown}: {e}"))?;
         fixed.report.unmapped = Vec::new();
         Ok(fixed)

@@ -181,6 +181,7 @@ impl Checker {
     ) -> Result<(Rc<CharSet>, Levels), String> {
         let found = rules::resolve(shown, &self.rules, &rules::matches);
         let mut levels = levels_for(&found)?;
+        grant_hazards(&found, &mut levels)?;
         levels.set_strict(self.strict);
         Ok((self.granted(&found)?, levels))
     }
@@ -294,6 +295,20 @@ fn levels_for(found: &Resolution) -> Result<Levels, String> {
 
 fn unknown(target: &str) -> String {
     format!("unknown lint or group: {target}")
+}
+
+/// The hazard classes a winning rule lets in (`hazard:tags`), recorded as
+/// granted lints: reported at `warn`, never failing (`src/rules:V139`).
+fn grant_hazards(
+    found: &Resolution,
+    levels: &mut Levels,
+) -> Result<(), String> {
+    for class in &found.hazards {
+        let lint = Lint::grantable(class)
+            .ok_or_else(|| format!("unknown hazard class: {class}"))?;
+        levels.grant(lint);
+    }
+    Ok(())
 }
 
 /// The findings in one file's bytes.

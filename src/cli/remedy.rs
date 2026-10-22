@@ -76,7 +76,7 @@ impl<'a> Case<'a> {
         map: &Map,
         findings: &[Finding],
     ) -> Vec<Remedy> {
-        let Ok(fixed) = self.judge.fix(self.text, map) else {
+        let Ok(fixed) = self.judge.fix(self.text, map, self.levels) else {
             return vec![Remedy::default(); findings.len()];
         };
         let left = bytes(&self.left_in_place(&fixed));

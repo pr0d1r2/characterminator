@@ -227,7 +227,7 @@ impl Hazards {
     }
 
     /// The lint of the first class holding `character`, wherever it sits.
-    fn class_of(&self, character: char) -> Option<Lint> {
+    pub(crate) fn class_of(&self, character: char) -> Option<Lint> {
         let (lint, _) = self
             .classes
             .iter()

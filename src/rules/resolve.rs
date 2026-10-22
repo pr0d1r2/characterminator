@@ -35,6 +35,8 @@ pub(crate) struct Resolution<'a> {
     /// The set names granted, which a caller resolves against the charset
     /// node. Never empty: with no matching rule it is `ascii` (V1).
     pub sets: Vec<String>,
+    /// The hazard classes the grant's winner lets in (V139), by name.
+    pub hazards: Vec<String>,
     /// Levels chosen for named lints and groups, later matching rules
     /// overriding earlier ones per target.
     pub levels: Vec<LevelChoice>,
@@ -97,7 +99,7 @@ impl<'a> Found<'a> {
     /// grant goes to the last rule that named a set, exactly as fidelity
     /// goes to the last rule that named a family (V56).
     fn absorb(&mut self, rule: &'a Rule) {
-        if !rule.sets.is_empty() {
+        if !rule.sets.is_empty() || !rule.hazards.is_empty() {
             self.winner = Some(rule);
         }
         let bare = rule.default_level.map(|_| rule);
@@ -109,6 +111,7 @@ impl<'a> Found<'a> {
     fn finish(self) -> Resolution<'a> {
         Resolution {
             sets: granted(self.winner),
+            hazards: self.winner.map(|r| r.hazards.clone()).unwrap_or_default(),
             levels: self.levels.iter().map(|l| l.value.clone()).collect(),
             default_level: self.leveller.and_then(|r| r.default_level),
             family: family_named(self.fidelity),

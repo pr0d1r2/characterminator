@@ -15,6 +15,18 @@ use, so one reading serves the whole family of tools.
 |---|---|
 | 0.1 | every verb works, is tested and gates its own repository; the `--format json` contract and the library surface are new and may still move before 0.2 |
 
+## [Unreleased]
+
+### Added
+
+- **`hazard:tags`** in a `.ctrm` set list (#15): `tests/fixtures/x/* ascii+hazard:tags`
+  lets tag characters (U+E0000-U+E007F) into the named paths only. Each is
+  reported as a `tag-character` note at `warn`, never failing the run
+  (not even under `--strict`), and `fix` leaves them. The pattern must be an
+  exact path or a glob with a literal first segment (`*` and `**` at the
+  root are refused), and no other hazard class can be granted. `guard`
+  still refuses to let an agent read such a file.
+
 ## [0.1.2] - 2026-10-18
 
 A patch: the flake builds on Intel Macs.

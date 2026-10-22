@@ -83,6 +83,9 @@ pub(crate) struct LevelChoice {
 pub(crate) struct Rule {
     pub pattern: String,
     pub sets: Vec<String>,
+    /// Hazard classes the line lets into its paths, as in `hazard:tags`
+    /// (V139). Held as NAMES; the lint node says which exist.
+    pub hazards: Vec<String>,
     pub family: Option<String>,
     /// Levels set for named lints and groups, as in `!pedantic=warn`.
     pub levels: Vec<LevelChoice>,

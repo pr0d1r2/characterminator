@@ -79,3 +79,15 @@ fn a_second_fix_finds_nothing_left() {
     let (out, code) = ran(&root, true);
     assert_eq!((out.as_str(), code), ("", 0));
 }
+
+/// `src/rules:V139`: a path granted `hazard:tags` keeps its tag characters
+/// through a bare `fix` -- the artefact the grant exists for -- while any
+/// other hazard in it is still deleted.
+#[test]
+fn a_granted_tag_character_survives_fix_and_the_rest_does_not() {
+    let text = "a\u{E0041}b\u{200B}c\n";
+    let ctrm = "notes.md ascii+hazard:tags\n";
+    let (left, out, code) = fixed("ctrm-fixhz-granted", ctrm, text);
+    assert_eq!(left, "a\u{E0041}bc\n", "{out}");
+    assert_eq!(code, 0, "{out}");
+}

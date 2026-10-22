@@ -252,3 +252,61 @@ fn russian_prose_is_confusable_on_purpose() {
     assert_eq!(on, format!("{md}\nru.md:1:3 U+0440 confusable (warn)"));
     assert_eq!(off, md);
 }
+
+/// The JSON report and exit code for one of `files`, under a `.ctrm` that
+/// grants `granted.txt` the `tags` hazard class (`src/rules:V139`).
+fn granted_run(path: &str) -> (u8, String) {
+    let files = [
+        (".ctrm", "granted.txt ascii+hazard:tags\n"),
+        ("granted.txt", "x\u{E0041}\n"),
+        ("other.txt", "x\u{E0041}\n"),
+        ("mixed.txt", "\u{E0041}\u{202E}\n"),
+    ];
+    let Some(root) = fixture("ctrm-hazard-granted", &files) else {
+        return (9, String::new());
+    };
+    let config = crate::cli::config::discovered(&root);
+    let report = run(&config, &[String::from(path)], Format::Json);
+    let report = report.unwrap_or_else(|why| unreachable!("{why}"));
+    (report.code, report.text)
+}
+
+/// `src/rules:V139`: the named path may hold tag characters, each a `warn`
+/// note that does not fail the run.
+#[test]
+fn a_named_path_may_hold_tag_characters_as_notes() {
+    let (code, text) = granted_run("granted.txt");
+    assert_eq!(code, 0, "{text}");
+    assert!(text.contains("\"tag-character\""), "{text}");
+    assert!(text.contains("\"warn\""), "{text}");
+}
+
+/// The same bytes in any other path still fail at forbid.
+#[test]
+fn the_same_tags_elsewhere_still_fail() {
+    let (code, text) = granted_run("other.txt");
+    assert_eq!(code, 1, "{text}");
+    assert!(text.contains("\"forbid\""), "{text}");
+}
+
+/// The grant names ONE class: another hazard in the path still fires.
+#[test]
+fn another_hazard_beside_the_grant_still_fails() {
+    let (code, text) = granted_run("mixed.txt");
+    assert_eq!(code, 1, "{text}");
+    assert!(text.contains("\"bidi-control\""), "{text}");
+}
+
+/// The grant is refused where it would sweep the tree, or name a class
+/// other than tags, at its origin (`src/rules:V139`).
+#[test]
+fn a_broad_or_wrong_hazard_grant_is_refused_at_its_origin() {
+    let lines = ["* ascii+hazard:tags", "a/b ascii+hazard:bidi"];
+    let here = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    for line in lines {
+        let words = crate::cli::testkit::argv(&["check", "--rule", line]);
+        let config = crate::cli::config::from_argv(here, &words);
+        let why = config.and_then(|c| c.validate()).err().unwrap_or_default();
+        assert!(why.contains("argv[3]"), "{line}: {why}");
+    }
+}

@@ -19,6 +19,8 @@ use crate::scan::Hit;
 pub(crate) struct Levels {
     directives: Vec<(Target, Level)>,
     strict: bool,
+    /// Hazard lints the path is granted by name (`hazard:tags`).
+    granted: Vec<Lint>,
 }
 
 impl Levels {
@@ -44,9 +46,26 @@ impl Levels {
         self.strict = strict;
     }
 
+    /// Record a hazard lint this path is GRANTED (`hazard:tags`,
+    /// `src/lint/hazard:V140`): its occurrences are reported at `warn`, a
+    /// note, whatever strict mode says, instead of at the forbid floor.
+    pub(crate) fn grant(&mut self, lint: Lint) {
+        if !self.granted.contains(&lint) {
+            self.granted.push(lint);
+        }
+    }
+
+    /// Whether this path is granted `lint`: a note, not a violation.
+    pub(crate) fn is_granted(&self, lint: Lint) -> bool {
+        self.granted.contains(&lint)
+    }
+
     /// The level that applies to one lint, all directives and strict mode
     /// taken into account.
     pub(crate) fn level_of(&self, lint: Lint) -> Level {
+        if self.is_granted(lint) {
+            return Level::Warn;
+        }
         let stated = self.stated(lint);
         if self.strict {
             stated.under_strict()
