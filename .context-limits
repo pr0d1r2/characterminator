@@ -100,7 +100,10 @@ src/fix/words/SPEC.md 1080
 # 1160 -> 1460: V56 and B5, the node's first bug row, land with the fix
 # they describe -- a level-only line used to win the set grant. Archiving
 # T49 ran first and bought 15 tokens. 1460 is ~12% over the measured 1305.
-src/rules/SPEC.md    1920
+# RAISED 1920 -> 2200 (file) and 3650 -> 4100 (chain), reviewed: V139 lands the
+# `hazard:tags` grant. Compacting V139 first got it to ~110 tokens; measured 1986
+# file, 3661 chain.
+src/rules/SPEC.md    2200
 # RAISED 1100 -> 1420, reviewed. T36 built the hazard set, and the node
 # gained V49: which lint each hazard class reports under, that the classes
 # are read from compiled-in data rather than the run's catalog, and that the
@@ -311,7 +314,7 @@ src/lint             2790
 src/lint/hazard      4160
 src/lint/pedantic    3660
 src/render           4200
-src/rules            3650
+src/rules            4100
 src/scan             2580
 src/tokens           2970
 src/judge            3300
