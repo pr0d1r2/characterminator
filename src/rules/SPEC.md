@@ -40,6 +40,7 @@ V45: DISCOVERED dotfile = `.ctrm`, `.ctrm-sets`, `.ctrm-map` @ the RUN ROOT only
 V75: rule line ! name ≥ 1 of set | `@<family>` | `!<level>`. pattern only (`a.md`) → parse error at its origin, exit 2 ∵ a line that grants & levels ⊥ reads like a rule that worked.
 V87: glob match (V2) = iterative, last-star backtrack: `*` over chars, `**` over segments ∴ O(pattern × path), ⊥ recursion, ⊥ alloc; surface rules = virtual `**` segments, ⊥ rebuilt string. runner: `glob_test.rs` diffs vs old recursive matcher on generated cases.
 V117: `!<t>=<level>`, t = `hazard` | a hazard lint (e.g. `bidi-control`), level ≠ `forbid` → parse error at origin "hazard lints are forbid and cannot be lowered" ∵ `src/lint:V36` ignored it ∴ the line read as a lowering that worked (B68 in `src/judge`).
+V139: `<path> ascii+hazard:tags` = hazard GRANT (⊥ a set): tag chars OK in THAT path, each `tag-character` at `warn` (note, exit 0, ⊥ strict-raised), `fix` keeps them. ! narrow: exact path | literal first segment (`*`, `**`, `*.md` refused). `tags` ONLY (`src/lint/hazard:V140`); other hazards still forbid. `guard` UNCHANGED (`src/cli/guard:V110`) ∵ a cloned repo's knob = an attacker's. REJECTED: `!tag-character=warn` (V117).
 
 ## §T TASKS
 

@@ -87,6 +87,16 @@ impl Lint {
     pub fn default_level(self) -> Level {
         self.group.default_level()
     }
+
+    /// The hazard lint a path may be GRANTED by class name (`hazard:<class>`
+    /// in a rule, `src/lint/hazard:V140`): tag characters, and nothing else.
+    /// Bidi controls and the rest stay unconditional.
+    pub(crate) fn grantable(class: &str) -> Option<Self> {
+        match class {
+            "tags" => Self::named("tag-character"),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

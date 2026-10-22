@@ -86,6 +86,7 @@ fn file_rule() -> Rule {
     Rule {
         pattern: String::from("docs/**"),
         sets: vec![String::from("ascii")],
+        hazards: vec![],
         family: Some(String::from("dash")),
         levels: vec![pedantic_warn()],
         default_level: None,

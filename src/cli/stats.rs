@@ -101,12 +101,12 @@ impl Pass {
 
     /// One text's numbers: outside its set, and the cost before and after.
     fn counted(&self, shown: &str, text: &str) -> Result<Row, String> {
-        let (set, _) = self.checker.shared_law(shown)?;
+        let (set, levels) = self.checker.shared_law(shown)?;
         let allowed = |point: char| set.contains(point);
         let fixed = self
             .checker
             .judge(&set)
-            .fix(text, &self.map)
+            .fix(text, &self.map, &levels)
             .map_err(|bad| format!("{shown}: {bad}"))?;
         let outside = text.chars().filter(|point| !allowed(*point)).count();
         Ok(Row {

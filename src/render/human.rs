@@ -487,6 +487,7 @@ mod tests {
         Rule {
             pattern: String::from("docs/**"),
             sets: vec![String::from("ascii")],
+            hazards: vec![],
             family: None,
             levels: vec![],
             default_level: None,

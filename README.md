@@ -299,6 +299,13 @@ docs/**/*.md ascii+typography+emoji @emoji
 vendor/** any
 ```
 
+A hazard stays forbid, with one named exception for test fixtures: a rule
+whose pattern is an exact path or a glob with a literal first segment may
+add `hazard:tags` to its set list (`tests/fixtures/tags/* ascii+hazard:tags`).
+Tag characters in those paths are reported as `warn` notes instead of
+failing, and `fix` leaves them. No other hazard class can be granted, and
+`ctrm guard` still refuses to let an agent read the file.
+
 A path no line matches gets `ascii`. That is the strict default, and it is
 deliberate: an unguarded character is the cost this tool exists to find.
 
