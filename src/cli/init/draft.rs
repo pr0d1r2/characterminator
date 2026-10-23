@@ -90,8 +90,7 @@ const ANY: &str = "# so `any`, which grants everything (hazards still fire).\n\
 /// What `fix` handles and what must be fixed by hand.
 fn notes(kind: &Kind) -> Vec<String> {
     let fixable: Vec<char> = kind.fixable.iter().copied().collect();
-    let mut lines =
-        wrapped("`ctrm fix` rewrites, no grant needed:", &points(&fixable));
+    let mut lines = wrapped(&until_fix(kind), &points(&fixable));
     if kind.sequences {
         lines.push(String::from(
             "# Emoji sequences: `ctrm fix` compresses them to one emoji.",
@@ -104,6 +103,16 @@ fn notes(kind: &Kind) -> Vec<String> {
         .collect();
     lines.extend(wrapped("Hazards, never granted -- fix these:", &hazards));
     lines
+}
+
+/// What leaving the rewritable characters ungranted costs until `fix` runs.
+fn until_fix(kind: &Kind) -> String {
+    let (findings, files) = kind.unfixed;
+    format!(
+        "`ctrm fix` rewrites these; until it runs, check reports \
+         {findings} findings in {files} files (`init --keep-fixable` \
+         grants them instead):"
+    )
 }
 
 fn points(chars: &[char]) -> Vec<String> {
