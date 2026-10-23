@@ -184,7 +184,7 @@ fn dispatched(verb: &str, run: &Run<'_>) -> Outcome {
         "check" => checked(run),
         "explain" => explained(run),
         "sets" => listed(run),
-        "init" => said(run, init::run(run.config, run.args.has("--print"))),
+        "init" => said(run, drafted(run)),
         "fix" => fixed(run),
         _ => counted(run),
     }
@@ -457,3 +457,9 @@ fn usage() -> Outcome {
 #[cfg(test)]
 #[path = "dispatch_test.rs"]
 mod tests;
+
+fn drafted(run: &Run<'_>) -> Result<String, String> {
+    let print = run.args.has("--print");
+    let keep = run.args.has("--keep-fixable");
+    init::run(run.config, init::Ask { print, keep })
+}

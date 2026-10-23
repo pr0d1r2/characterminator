@@ -209,7 +209,9 @@ The hazard is never granted; it is listed to fix:
 ```text
 # *.md, files: 1.
 # en-aux for U+00E9
-# `ctrm fix` rewrites, no grant needed: U+2014 U+201C U+201D
+# `ctrm fix` rewrites these; until it runs, check reports 3 findings in
+#   1 files (`init --keep-fixable` grants them instead): U+2014 U+201C
+#   U+201D
 *.md ascii+en-aux
 
 # *.rs, files: 1.
@@ -249,7 +251,7 @@ with other tools, [the json contract](docs/JSON.md), and the rest in
 | `ctrm explain [<path>]` | the set in force, and the config line that decided it |
 | `ctrm explain [<path>] --as args\|lines\|prompt` | the whole configuration as flags, as data files, or as an agent prompt |
 | `ctrm sets [<name>...] [--locales] [--containing <c>]` | the curated presets and what each is for, then your own; locales on request |
-| `ctrm init [--print]` | draft a `.ctrm` from the tracked files: per file type, the fewest presets that cover it, each line commented. Never overwrites one; `--print` writes the draft to stdout |
+| `ctrm init [--print] [--keep-fixable]` | draft a `.ctrm` from the tracked files: per file type, the fewest presets that cover it, each line commented. Never overwrites one; `--print` writes the draft to stdout; `--keep-fixable` grants what `fix` would rewrite too, so the draft passes `check` as written |
 | `ctrm guard` | agent hook: hook JSON in, decision JSON out. See [guarding an agent](#guarding-an-agent) |
 
 Every verb but `guard` takes `--format json`, which is a stable contract:
