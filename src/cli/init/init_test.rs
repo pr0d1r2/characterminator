@@ -81,7 +81,8 @@ fn the_draft_grants_the_need_and_never_a_hazard() {
     let text = draft(&surveyed(), &candidates);
     assert!(text.contains("\n*.md ascii+marks+en-aux\n"), "{text}");
     assert!(
-        text.contains("until it runs, check reports 1 findings in 1 files"),
+        prose(&text)
+            .contains("until it runs, check reports 1 findings in 1 files"),
         "{text}"
     );
     assert!(text.contains("U+202E bidi-control in docs/a.md"), "{text}");
@@ -136,6 +137,38 @@ fn the_default_draft_counts_what_check_reports_until_fix_runs() {
     survey.add("docs/a.md", "a \u{2014} b \u{2014} c\n");
     survey.add("docs/b.md", "d \u{2014} e\n");
     let text = draft(&survey, &Candidates::builtin());
-    assert!(text.contains("reports 3 findings in 2 files"), "{text}");
+    assert!(
+        prose(&text).contains("reports 3 findings in 2 files"),
+        "{text}"
+    );
+    assert!(text.lines().all(|line| line.len() <= 72), "{text}");
     assert!(text.contains("--keep-fixable"), "{text}");
+}
+
+/// A line that grants a character the map rewrites leaves it alone: it is
+/// no finding and `fix` does not touch it (`src/fix:V6`), so the draft
+/// neither counts it nor says `fix` rewrites it.
+#[test]
+fn what_the_line_grants_is_not_counted_until_fix_runs() {
+    let mut survey = Survey::new(false);
+    survey.add("docs/a.md", "a \u{E000} b \u{2014} c\n");
+    let text = prose(&draft(&survey, &Candidates::builtin()));
+    assert!(text.contains("\n*.md any\n"), "{text}");
+    assert!(!text.contains("until it runs"), "{text}");
+    assert!(text.contains("this line grants them: U+2014"), "{text}");
+}
+
+/// The draft read as prose: continuation lines joined to the line above.
+fn prose(text: &str) -> String {
+    text.replace("\n#   ", " ")
+}
+
+/// A set chosen for its letters can hold a character the map rewrites:
+/// `kek` holds U+2019, `en-aux` does not.
+#[test]
+fn a_chosen_set_allows_what_it_holds_beyond_the_need() {
+    let candidates = Candidates::builtin();
+    let line = |name: &str| Grant::Sets(vec![(String::from(name), Vec::new())]);
+    assert!(candidates.allows(&line("kek"), '\u{2019}'));
+    assert!(!candidates.allows(&line("en-aux"), '\u{2019}'));
 }

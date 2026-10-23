@@ -28,7 +28,7 @@ pub(super) fn draft(survey: &Survey, candidates: &Candidates) -> String {
 
 fn is_ascii(kind: &Kind) -> bool {
     kind.needed.is_empty()
-        && kind.fixable.is_empty()
+        && kind.fixable().is_empty()
         && kind.hazards.is_empty()
         && !kind.sequences
 }
@@ -53,14 +53,16 @@ fn summary(survey: &Survey) -> String {
 /// One file type: why, then the rule line when it needs one.
 fn section(pattern: &str, kind: &Kind, candidates: &Candidates) -> String {
     let mut lines = vec![format!("# {pattern}, files: {}.", kind.files)];
-    let rule = if kind.needed.is_empty() {
+    let grant =
+        (!kind.needed.is_empty()).then(|| candidates.cover(&kind.needed));
+    let rule = if let Some(grant) = &grant {
+        Some(granted(pattern, grant, &mut lines))
+    } else {
         lines.push(String::from("# Needs no grant."));
         None
-    } else {
-        let grant = candidates.cover(&kind.needed);
-        Some(granted(pattern, &grant, &mut lines))
     };
-    lines.extend(notes(kind));
+    let allowed = |c| grant.as_ref().is_some_and(|g| candidates.allows(g, c));
+    lines.extend(notes(kind, &allowed));
     lines.extend(rule);
     lines.join("\n")
 }
@@ -88,9 +90,8 @@ const ANY: &str = "# so `any`, which grants everything (hazards still fire).\n\
                    # A set of your own in `.ctrm-sets` is tighter.";
 
 /// What `fix` handles and what must be fixed by hand.
-fn notes(kind: &Kind) -> Vec<String> {
-    let fixable: Vec<char> = kind.fixable.iter().copied().collect();
-    let mut lines = wrapped(&until_fix(kind), &points(&fixable));
+fn notes(kind: &Kind, allowed: &dyn Fn(char) -> bool) -> Vec<String> {
+    let mut lines = rewritten(kind, allowed);
     if kind.sequences {
         lines.push(String::from(
             "# Emoji sequences: `ctrm fix` compresses them to one emoji.",
@@ -105,9 +106,20 @@ fn notes(kind: &Kind) -> Vec<String> {
     lines
 }
 
+/// The characters the builtin map rewrites: what `check` reports on them
+/// until `fix` runs, and the ones the rule line grants anyway, which are
+/// no finding and which `fix` therefore leaves (`src/fix:V6`).
+fn rewritten(kind: &Kind, allowed: &dyn Fn(char) -> bool) -> Vec<String> {
+    let (kept, fixed): (Vec<char>, Vec<char>) =
+        kind.fixable().into_iter().partition(|c| allowed(*c));
+    let mut lines = wrapped(&until_fix(kind.unfixed(allowed)), &points(&fixed));
+    let lead = "The builtin map rewrites these, but this line grants them:";
+    lines.extend(wrapped(lead, &points(&kept)));
+    lines
+}
+
 /// What leaving the rewritable characters ungranted costs until `fix` runs.
-fn until_fix(kind: &Kind) -> String {
-    let (findings, files) = kind.unfixed;
+fn until_fix((findings, files): (usize, usize)) -> String {
     format!(
         "`ctrm fix` rewrites these; until it runs, check reports \
          {findings} findings in {files} files (`init --keep-fixable` \
@@ -119,13 +131,15 @@ fn points(chars: &[char]) -> Vec<String> {
     chars.iter().map(|c| codepoint(*c)).collect()
 }
 
-/// `# <lead> a b c` wrapped at 72 columns; nothing when `items` is empty.
+/// `# <lead> a b c` wrapped at 72 columns, the lead's own words too;
+/// nothing when `items` is empty.
 fn wrapped(lead: &str, items: &[String]) -> Vec<String> {
     if items.is_empty() {
         return Vec::new();
     }
-    let mut lines = vec![format!("# {lead}")];
-    for item in items {
+    let mut words = lead.split(' ');
+    let mut lines = vec![format!("# {}", words.next().unwrap_or_default())];
+    for item in words.chain(items.iter().map(String::as_str)) {
         appended(&mut lines, item);
     }
     lines
