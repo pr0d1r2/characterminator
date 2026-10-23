@@ -44,7 +44,8 @@ output and place:
 
 verb flags (see the verb's page):
   check --summary --max <n>    fix --check    stats --bpe
-  explain --as <form>    sets --locales --containing <c>    init --print
+  explain --as <form>    sets --locales --containing <c>
+  init --print --keep-fixable
 
 exit codes: 0 clean; 1 a violation, or drift under fix --check;
 2 a usage or configuration error. guard never exits 2.
@@ -123,11 +124,13 @@ exit codes: 0 answered, 2 a usage or configuration error
 
 example: ctrm sets --containing U+2014";
 
-const INIT: &str = "ctrm init [--print] -- draft a .ctrm from the tracked files
+const INIT: &str = "ctrm init [--print] [--keep-fixable] -- draft a .ctrm
 
 Grants each kind of file the sets its characters already need.
 
   --print               write the draft to stdout, not to .ctrm
+  --keep-fixable        grant what `fix` would rewrite too (typography),
+                        so the draft passes `check` as written
   configuration flags   see ctrm --help
 
 exit codes: 0 drafted, 2 a usage or configuration error

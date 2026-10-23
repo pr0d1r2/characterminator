@@ -10,7 +10,7 @@ mod draft;
 mod survey;
 mod verb;
 
-pub(super) use verb::run;
+pub(super) use verb::{Ask, run};
 
 #[cfg(test)]
 #[path = "init_test.rs"]
