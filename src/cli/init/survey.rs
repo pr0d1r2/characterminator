@@ -13,10 +13,9 @@ pub(super) struct Kind {
     pub files: usize,
     /// Outside `ascii`, not a hazard, not rewritten by the builtin map.
     pub needed: BTreeSet<char>,
-    /// Rewritten to ASCII by the builtin map: no grant needed.
-    pub fixable: BTreeSet<char>,
-    /// What `check` reports on those until `fix` runs: findings, files.
-    pub unfixed: (usize, usize),
+    /// Rewritten to ASCII by the builtin map: no grant needed. One tally
+    /// per file, each character with how often it occurs there.
+    tallies: Vec<BTreeMap<char, usize>>,
     /// Each hazard code point, its lint, and the first path it was in.
     pub hazards: BTreeMap<char, (&'static str, String)>,
     /// A joiner inside an RGI emoji sequence was seen: `fix` compresses it.
@@ -48,7 +47,7 @@ impl Survey {
     pub(super) fn add(&mut self, shown: &str, text: &str) {
         let exempt = self.hazards.exempt(text);
         let kind = self.kinds.entry(pattern_of(shown)).or_default();
-        let before = kind.begin();
+        kind.begin();
         for hit in scan_str(text, plain) {
             let c = hit.character;
             if let Some(lint) = self.hazards.lint_at(hit, &exempt) {
@@ -60,31 +59,51 @@ impl Survey {
                 kind.file(c, !self.keep && self.map.contains(&c));
             }
         }
-        kind.end(before);
     }
 }
 
 impl Kind {
-    /// A file of this type is read: the findings so far.
-    fn begin(&mut self) -> usize {
+    /// A file of this type is read: its own tally of what `fix` rewrites.
+    fn begin(&mut self) {
         self.files = self.files.saturating_add(1);
-        self.unfixed.0
-    }
-
-    /// That file is done: it counts if it held a finding `fix` rewrites.
-    fn end(&mut self, before: usize) {
-        let touched = usize::from(self.unfixed.0 > before);
-        self.unfixed.1 = self.unfixed.1.saturating_add(touched);
+        self.tallies.push(BTreeMap::new());
     }
 
     /// A character that is no hazard: rewritten by `fix`, or needed.
     fn file(&mut self, c: char, mapped: bool) {
-        if mapped {
-            self.unfixed.0 = self.unfixed.0.saturating_add(1);
-            self.fixable.insert(c);
-        } else {
-            self.needed.insert(c);
+        match self.tallies.last_mut() {
+            Some(tally) if mapped => {
+                let seen = tally.entry(c).or_insert(0);
+                *seen = seen.saturating_add(1);
+            }
+            _ => {
+                self.needed.insert(c);
+            }
         }
+    }
+
+    /// Every character the builtin map would rewrite, in any file.
+    pub(super) fn fixable(&self) -> BTreeSet<char> {
+        self.tallies
+            .iter()
+            .flat_map(|tally| tally.keys().copied())
+            .collect()
+    }
+
+    /// What `check` reports until `fix` runs, findings and files, on the
+    /// characters the drafted line does not grant: a granted one is no
+    /// finding, and `fix` leaves it alone (`src/fix:V6`).
+    pub(super) fn unfixed(
+        &self,
+        granted: &dyn Fn(char) -> bool,
+    ) -> (usize, usize) {
+        let each = self.tallies.iter().map(|tally| {
+            let left = tally.iter().filter(|(c, _)| !granted(**c));
+            left.fold(0_usize, |sum, (_, n)| sum.saturating_add(*n))
+        });
+        each.filter(|n| *n > 0).fold((0, 0), |(all, files), n| {
+            (all.saturating_add(n), files.saturating_add(1))
+        })
     }
 }
 

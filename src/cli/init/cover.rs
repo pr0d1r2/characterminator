@@ -63,6 +63,19 @@ impl Candidates {
         Grant::Sets(chosen)
     }
 
+    /// Whether the line drafted for `grant` allows `c`: `any` allows
+    /// everything, and a set chosen for one character holds others too
+    /// (`kek` holds U+2019, which the builtin map rewrites).
+    pub(super) fn allows(&self, grant: &Grant, c: char) -> bool {
+        let Grant::Sets(sets) = grant else {
+            return true;
+        };
+        let mut all = self.presets.iter().chain(&self.locales);
+        all.any(|set| {
+            set.contains(c) && sets.iter().any(|(n, _)| *n == set.name)
+        })
+    }
+
     /// The presets by greatest gain, each taking what it covers out of
     /// `left`.
     fn presets_for(
