@@ -5,6 +5,7 @@ use super::draft::draft;
 use super::survey::{Survey, pattern_of};
 use super::verb::{Ask, run};
 use crate::cli::testkit::fixture;
+use crate::render::Format;
 use std::collections::BTreeSet;
 
 #[test]
@@ -171,4 +172,45 @@ fn a_chosen_set_allows_what_it_holds_beyond_the_need() {
     let line = |name: &str| Grant::Sets(vec![(String::from(name), Vec::new())]);
     assert!(candidates.allows(&line("kek"), '\u{2019}'));
     assert!(!candidates.allows(&line("en-aux"), '\u{2019}'));
+}
+
+/// Two files of dashes, surveyed with or without `--keep-fixable`.
+const DASHES: [(&str, &str); 2] = [
+    ("a.md", "a \u{2014} b \u{2014} c\n"),
+    ("b.md", "d \u{2014} e\n"),
+];
+
+/// `check`'s exit code and tally on [`DASHES`] under the draft itself,
+/// or its refusal; `None` only when the fixture cannot be written.
+type Checked = Result<(u8, String), String>;
+
+fn checked_under_draft(name: &str, keep: bool) -> Option<Checked> {
+    let mut survey = Survey::new(keep);
+    DASHES
+        .iter()
+        .for_each(|(path, text)| survey.add(path, text));
+    let ctrm = draft(&survey, &Candidates::builtin());
+    let mut files = DASHES.to_vec();
+    files.push((".ctrm", ctrm.as_str()));
+    let root = fixture(name, &files)?;
+    let asked: Vec<String> =
+        DASHES.iter().map(|(p, _)| (*p).to_owned()).collect();
+    let config = crate::cli::config::discovered(&root);
+    let found = crate::cli::check::run(&config, &asked, Format::Human);
+    Some(found.map(|report| (report.code, report.note)))
+}
+
+/// What the draft promises is what `check` does under it: the default
+/// draft's count is `check`'s own, and `--keep-fixable`'s passes as written.
+#[test]
+fn check_under_the_draft_does_what_the_draft_says() {
+    let Some(unfixed) = checked_under_draft("ctrm-init-unfixed", false) else {
+        return;
+    };
+    assert!(unfixed.is_ok(), "{unfixed:?}");
+    let (code, note) = unfixed.unwrap_or_default();
+    assert_eq!(code, 1, "{note}");
+    assert!(note.starts_with("3 findings in 2 files"), "{note}");
+    let kept = checked_under_draft("ctrm-init-keep-fixable", true);
+    assert_eq!(kept.map(|found| found.map(|(code, _)| code)), Some(Ok(0)));
 }
