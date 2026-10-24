@@ -31,6 +31,19 @@ fn the_cover_takes_the_presets_that_gain_most() {
     assert_eq!(grant, Grant::Sets(want));
 }
 
+/// Issue #35 (`src/charset:R20`): the notation shell scripts and bats
+/// specs write drafts presets, not `any`.
+#[test]
+fn shell_notation_takes_presets_not_any() {
+    let grant = covered(&['\u{2022}', '\u{226A}', '\u{2081}', '\u{21D0}']);
+    let want = vec![
+        (String::from("math"), vec!['\u{2081}', '\u{226A}']),
+        (String::from("typography"), vec!['\u{2022}']),
+        (String::from("caveman"), vec!['\u{21D0}']),
+    ];
+    assert_eq!(grant, Grant::Sets(want));
+}
+
 /// Letters no preset holds go to ONE locale; nothing at all, to `any`.
 #[test]
 fn letters_take_a_locale_and_the_uncovered_take_any() {
