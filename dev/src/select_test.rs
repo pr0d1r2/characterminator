@@ -83,3 +83,9 @@ fn hk_pkl_has_no_doc_comment_inside_an_object() {
         "nested /// in hk.pkl at lines {nested:?}"
     );
 }
+
+#[test]
+fn a_nested_doc_comment_is_found_and_a_top_level_one_is_not() {
+    let pkl = "/// top\nhooks {\n  // plain\n  /// nested\n\t/// tabbed\n}\n";
+    assert_eq!(nested_doc_comment_lines(pkl), vec![4, 5]);
+}
