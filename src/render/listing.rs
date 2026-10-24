@@ -177,9 +177,9 @@ mod tests {
     fn a_code_point_no_set_holds_is_said_so() {
         let asked = Listing {
             sets: Vec::new(),
-            containing: Some('\u{2295}'),
+            containing: Some('\u{2298}'),
             unlisted_locales: 0,
         };
-        assert_eq!(listing(Format::Human, &asked), "no set holds U+2295");
+        assert_eq!(listing(Format::Human, &asked), "no set holds U+2298");
     }
 }
