@@ -64,6 +64,7 @@ pub(super) fn run(
     text: &str,
     ground: Ground<'_>,
     hazards: Vec<Hazard>,
+    kept: Vec<usize>,
 ) -> Result<Pass, Error> {
     let mut walk = Run {
         text,
@@ -71,6 +72,7 @@ pub(super) fn run(
         allowed: ground.allowed,
         budget: ground.budget,
         hazards,
+        kept,
         next: 0,
         at: Cursor::start(),
         pass: Pass::default(),
@@ -92,6 +94,8 @@ struct Run<'a> {
     budget: usize,
     /// This text's hazards, ascending, and the first one not yet passed.
     hazards: Vec<Hazard>,
+    /// Offsets the set keeps as they are, ascending: no rewrite covers one.
+    kept: Vec<usize>,
     next: usize,
     at: Cursor,
     pass: Pass,
@@ -157,8 +161,8 @@ impl Run<'_> {
         let Some(found) = self.map.resolve_at(rest, &allowed)? else {
             return Ok(None);
         };
-        let Some(source) = rest.get(..found.len).filter(|s| !s.is_empty())
-        else {
+        let spans = |s: &&str| !s.is_empty() && !self.covers_kept(s.len());
+        let Some(source) = rest.get(..found.len).filter(spans) else {
             return Ok(None);
         };
         let to = self.expand(&found.to)?;
@@ -166,6 +170,14 @@ impl Run<'_> {
             return Ok(None);
         }
         Ok(Some((source, Match { to, ..found })))
+    }
+
+    /// Whether a span of `len` bytes at the cursor covers a kept offset.
+    fn covers_kept(&self, len: usize) -> bool {
+        let from = self.at.byte;
+        let first = self.kept.partition_point(|k| *k < from);
+        let end = from.saturating_add(len);
+        self.kept.get(first).is_some_and(|k| *k < end)
     }
 
     fn rewrite(
@@ -217,11 +229,11 @@ impl Run<'_> {
             allowed: self.allowed,
             budget,
         };
-        Ok(run(to, ground, Vec::new())?.output)
+        Ok(run(to, ground, Vec::new(), Vec::new())?.output)
     }
 
     fn keep(&mut self, ch: char) {
-        if !(self.allowed)(ch) {
+        if !(self.allowed)(ch) && !self.covers_kept(ch.len_utf8()) {
             self.pass.unmapped.push(Hit {
                 position: self.at.position(),
                 character: ch,

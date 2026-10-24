@@ -85,10 +85,16 @@ pub struct Rewrite {
 pub(crate) struct Law<'a> {
     pub allowed: &'a dyn Fn(char) -> bool,
     pub hazards: &'a HazardsIn<'a>,
+    /// The byte offsets where a character the set withholds is kept: a
+    /// variation selector on a granted base (`src/lint/hazard:V63`).
+    pub kept: &'a KeptIn<'a>,
 }
 
 /// The hazards of one text, ascending by byte.
 pub(crate) type HazardsIn<'a> = dyn Fn(&str) -> Vec<Hazard> + 'a;
+
+/// The offsets of one text that stay as they are, ascending.
+pub(crate) type KeptIn<'a> = dyn Fn(&str) -> Vec<usize> + 'a;
 
 /// One hazard in one text: its byte offset, and whether it may be DELETED
 /// when no map entry covers it. A hazard that carries no visible text --
