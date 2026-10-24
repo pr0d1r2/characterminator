@@ -102,6 +102,7 @@ pub fn fix(
     let law = Law {
         allowed: &allowed,
         hazards: &|_| Vec::new(),
+        kept: &|_| Vec::new(),
     };
     fix_under(text, map, law)
 }
@@ -200,7 +201,8 @@ fn guarded(text: &str, map: &Map, law: Law<'_>) -> Result<Pass, Error> {
         allowed: law.allowed,
         budget: map.budget(),
     };
-    let pass = run(text, ground, (law.hazards)(text))?;
+    let kept = (law.kept)(text);
+    let pass = run(text, ground, (law.hazards)(text), kept)?;
     if untouched_bytes_match(text, &pass) {
         Ok(pass)
     } else {

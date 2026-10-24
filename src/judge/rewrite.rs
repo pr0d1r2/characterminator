@@ -25,11 +25,19 @@ impl Judge<'_> {
     ) -> Result<Fixed, FixError> {
         let allowed = |c: char| self.set.contains(c) || self.granted(c, levels);
         let hazards = |text: &str| self.hazards_in(text, levels);
+        let kept = |text: &str| self.selectors(text);
         let law = Law {
             allowed: &allowed,
             hazards: &hazards,
+            kept: &kept,
         };
         fix_under(text, map, law)
+    }
+
+    /// The offsets of the selectors this file's set lets stand after their
+    /// base character (`src/lint/hazard:V63`).
+    pub(super) fn selectors(&self, text: &str) -> Vec<usize> {
+        self.hazards.selectors(text, |c| self.set.contains(c))
     }
 
     /// Whether the path is granted the hazard class `character` is in.
@@ -46,7 +54,9 @@ impl Judge<'_> {
         if hits.is_empty() {
             return Vec::new();
         }
-        let exempt = self.hazards.exempt(text);
+        let mut exempt = self.hazards.exempt(text);
+        exempt.extend(self.selectors(text));
+        exempt.sort_unstable();
         let hazard = |hit: Hit| {
             let lint = self.hazards.lint_at(hit, &exempt)?;
             (!levels.is_granted(lint)).then_some(Hazard {

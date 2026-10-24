@@ -87,3 +87,51 @@ fn a_joiner_or_tag_outside_a_listed_sequence_still_fires() {
     let tag = ("tag-character", Level::Forbid, 4);
     assert_eq!(smuggled, vec![tag, ("tag-character", Level::Forbid, 8)]);
 }
+
+/// A selector right after a granted character that has a standardized
+/// variation sequence picks how it draws: no finding, U+2714 U+FE0F stays byte-exact.
+#[test]
+fn a_selector_after_a_granted_base_is_no_finding() {
+    let set = any();
+    assert_eq!(findings("a \u{2714}\u{FE0F} b\n", &set), vec![]);
+    assert_eq!(findings("a \u{2714}\u{FE0E} b\n", &set), vec![]);
+    let plain = emoji();
+    if plain.contains('\u{2714}') {
+        assert_eq!(findings("\u{2714}\u{FE0F}", &plain), vec![]);
+    }
+}
+
+/// A selector alone, after ASCII, after a base the set withholds, or after a
+/// character with no variation sequence is still reported.
+#[test]
+fn a_selector_elsewhere_is_still_reported() {
+    let ascii = builtin::ascii();
+    let fire = |text: &str| findings(text, &ascii).len();
+    assert_eq!(fire("\u{FE0F}"), 1);
+    assert_eq!(fire("a\u{FE0F}"), 1);
+    assert_eq!(fire("a\u{FE0E}"), 1);
+    assert_eq!(fire("\u{2714}\u{FE0F}"), 2);
+    let any = any();
+    assert_eq!(findings("\u{1F600}\u{FE0F}", &any).len(), 1);
+    assert_eq!(findings("\u{FE0F}\u{FE0F}", &any).len(), 2);
+}
+
+/// `fix` leaves the selector where `check` lets it stand: the text of a
+/// shell test matching a tool's U+2714 U+FE0F output stays byte-exact; a stray one
+/// after ASCII still goes.
+#[test]
+fn fix_keeps_a_selector_after_a_granted_base() {
+    let names = ["ascii", "marks", "emoji"].map(String::from);
+    let set = builtin::catalog()
+        .ok()
+        .and_then(|c| c.resolve_union("a+m+e", &names, "emoji").ok())
+        .unwrap_or_else(builtin::ascii);
+    let hazards = super::hazards();
+    let judge = super::Judge::new(&set, &hazards);
+    let map = crate::fix::Map::builtin();
+    let levels = crate::lint::Levels::new();
+    let text = "\u{2714}\u{FE0F} \u{2714}\u{FE0E} a\u{FE0F}\n";
+    let fixed = judge.fix(text, &map, &levels);
+    let want = "\u{2714}\u{FE0F} \u{2714}\u{FE0E} a\n";
+    assert_eq!(fixed.map(|f| f.output).unwrap_or_default(), want);
+}
