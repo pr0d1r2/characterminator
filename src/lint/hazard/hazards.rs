@@ -124,6 +124,18 @@ impl Hazards {
         self.sequences.exempt(text)
     }
 
+    /// The byte offsets in `text` of every VS15 or VS16 right after a
+    /// character `granted` accepts that has a standardized variation
+    /// sequence, ascending: a presentation choice on a granted character,
+    /// neither a hazard nor outside the set.
+    pub(crate) fn selectors(
+        &self,
+        text: &str,
+        granted: impl Fn(char) -> bool,
+    ) -> Vec<usize> {
+        super::sequence::selectors(text, granted)
+    }
+
     /// [`Hazards::lint_for`], less a hit at an `exempt` offset.
     pub(crate) fn lint_at(&self, hit: Hit, exempt: &[usize]) -> Option<Lint> {
         let inside = exempt.binary_search(&hit.position.byte).is_ok();

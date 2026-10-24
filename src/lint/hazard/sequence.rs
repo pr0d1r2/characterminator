@@ -13,7 +13,7 @@
 
 use crate::charset::builtin::{self, EmojiSequence, SequenceKind};
 use std::cmp::Reverse;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::LazyLock;
 
 /// ZERO WIDTH JOINER.
@@ -127,6 +127,37 @@ impl Sequences {
             .map(String::as_str)
             .find(|s| rest.starts_with(s))
     }
+}
+
+/// VARIATION SELECTOR-15, text presentation.
+const VS15: char = '\u{FE0E}';
+
+/// The characters with a standardized variation sequence: the base of every
+/// listed presentation sequence (`Basic_Emoji` + VS16), which is also the
+/// base the text-style one (VS15) is defined for.
+static VARYING: LazyLock<BTreeSet<char>> = LazyLock::new(|| {
+    let presentation = builtin::emoji_sequences()
+        .filter(|s| s.kind == SequenceKind::Presentation);
+    presentation.filter_map(|s| s.text.chars().next()).collect()
+});
+
+/// The byte offset of every VS15 or VS16 in `text` that directly follows a
+/// character `granted` accepts and that has a standardized variation
+/// sequence, ascending. Such a selector only picks how that character draws.
+pub(super) fn selectors(
+    text: &str,
+    granted: impl Fn(char) -> bool,
+) -> Vec<usize> {
+    let mut found = Vec::new();
+    let mut before: Option<char> = None;
+    for (at, c) in text.char_indices() {
+        let base = before.filter(|b| granted(*b) && VARYING.contains(b));
+        if (c == VS16 || c == VS15) && base.is_some() {
+            found.push(at);
+        }
+        before = Some(c);
+    }
+    found
 }
 
 /// The list's sequences by first character, longest first.
