@@ -57,3 +57,29 @@ fn every_declared_input_is_in_the_hk_glob() {
         assert!(glob.contains(&quoted), "{input} not in the glob: {glob}");
     }
 }
+
+/// Pkl allows a `///` doc comment only on a member at the top of the
+/// module, never inside an object body; hk 2.x and Pkl 0.31 stop at the
+/// first one they meet. Nested comments must be plain `//`.
+fn nested_doc_comment_lines(hk: &str) -> Vec<usize> {
+    let indented = |l: &&str| l.starts_with([' ', '\t']);
+    hk.lines()
+        .enumerate()
+        .filter(|(_, l)| indented(l) && l.trim_start().starts_with("///"))
+        .map(|(i, _)| i.saturating_add(1))
+        .collect()
+}
+
+#[test]
+fn hk_pkl_has_no_doc_comment_inside_an_object() {
+    let hk = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../hk.pkl"
+    ));
+    assert!(hk.is_ok(), "hk.pkl is not readable from the dev crate");
+    let nested = nested_doc_comment_lines(&hk.unwrap_or_default());
+    assert!(
+        nested.is_empty(),
+        "nested /// in hk.pkl at lines {nested:?}"
+    );
+}
