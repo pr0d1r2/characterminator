@@ -7,6 +7,13 @@ use std::path::Path;
 /// The file `init` writes, at the root the run was asked about.
 const CTRM: &str = ".ctrm";
 
+/// What `init` was asked: `--print` and `--keep-fixable`.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Ask {
+    pub print: bool,
+    pub keep: bool,
+}
+
 /// Survey the tracked files and write the draft, or print it. An existing
 /// `.ctrm` is NEVER overwritten: it holds decisions, and a draft is not one.
 ///
@@ -14,7 +21,8 @@ const CTRM: &str = ".ctrm";
 ///
 /// An existing `.ctrm` (unless `print`), a fileset that cannot be listed,
 /// or a draft that cannot be written.
-pub(crate) fn run(config: &Config, print: bool) -> Result<String, String> {
+pub(crate) fn run(config: &Config, ask: Ask) -> Result<String, String> {
+    let print = ask.print;
     let target = config.root.join(CTRM);
     if !print && target.exists() {
         return Err(format!(
@@ -22,7 +30,7 @@ pub(crate) fn run(config: &Config, print: bool) -> Result<String, String> {
              `ctrm init --print` writes the draft to stdout instead"
         ));
     }
-    let text = drafted(&config.root)?;
+    let text = drafted(&config.root, ask.keep)?;
     if print {
         return Ok(text.trim_end().to_owned());
     }
@@ -31,8 +39,8 @@ pub(crate) fn run(config: &Config, print: bool) -> Result<String, String> {
 }
 
 /// The draft for the tracked files under `root`.
-fn drafted(root: &Path) -> Result<String, String> {
-    let mut found = survey::Survey::new();
+fn drafted(root: &Path, keep: bool) -> Result<String, String> {
+    let mut found = survey::Survey::new(keep);
     for file in files(root, &[])? {
         let File { shown, text, .. } = file?;
         match text {

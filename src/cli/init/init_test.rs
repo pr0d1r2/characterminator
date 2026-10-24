@@ -3,8 +3,9 @@
 use super::cover::{Candidates, Grant};
 use super::draft::draft;
 use super::survey::{Survey, pattern_of};
-use super::verb::run;
+use super::verb::{Ask, run};
 use crate::cli::testkit::fixture;
+use crate::render::Format;
 use std::collections::BTreeSet;
 
 #[test]
@@ -55,8 +56,17 @@ fn letters_take_their_language_before_an_accidental_cover() {
     assert_eq!(names, ["pl", "en-aux"]);
 }
 
+const WRITE: Ask = Ask {
+    print: false,
+    keep: false,
+};
+const PRINT: Ask = Ask {
+    print: true,
+    keep: false,
+};
+
 fn surveyed() -> Survey {
-    let mut survey = Survey::new();
+    let mut survey = Survey::new(false);
     let prose = "caf\u{e9} \u{2192} \u{2014} x\u{202E}y\n";
     survey.add("docs/a.md", prose);
     survey.add("src/b.rs", "fn main() {}\n");
@@ -71,7 +81,11 @@ fn the_draft_grants_the_need_and_never_a_hazard() {
     let candidates = Candidates::builtin();
     let text = draft(&surveyed(), &candidates);
     assert!(text.contains("\n*.md ascii+marks+en-aux\n"), "{text}");
-    assert!(text.contains("rewrites, no grant needed: U+2014"), "{text}");
+    assert!(
+        prose(&text)
+            .contains("until it runs, check reports 1 findings in 1 files"),
+        "{text}"
+    );
     assert!(text.contains("U+202E bidi-control in docs/a.md"), "{text}");
     assert!(
         text.contains("Pure ASCII, no line needed: *.rs (1)"),
@@ -90,12 +104,12 @@ fn an_existing_ctrm_is_never_overwritten() {
         return;
     };
     let config = crate::cli::config::discovered(&root);
-    let why = run(&config, false).err().unwrap_or_default();
+    let why = run(&config, WRITE).err().unwrap_or_default();
     assert!(why.contains("--print"), "{why}");
     // `--print` is never refused for the existing file. In this fixture,
     // which has no git-tracked file, it may still stop at the empty-run
     // rule (`src/judge:V118`), and that is not the refusal under test.
-    let printed = run(&config, true);
+    let printed = run(&config, PRINT);
     let refused = printed
         .as_ref()
         .err()
@@ -103,4 +117,100 @@ fn an_existing_ctrm_is_never_overwritten() {
     assert!(!refused, "{printed:?}");
     let kept = std::fs::read_to_string(root.join(".ctrm")).unwrap_or_default();
     assert_eq!(kept, "* ascii\n");
+}
+
+/// `--keep-fixable` grants what `fix` would rewrite, so the draft passes
+/// `check` as written and has no "until fix runs" note to make.
+#[test]
+fn keep_fixable_grants_what_fix_would_rewrite() {
+    let mut survey = Survey::new(true);
+    survey.add("docs/a.md", "a \u{2014} b \u{2014} c\n");
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(text.contains("\n*.md ascii+typography\n"), "{text}");
+    assert!(!text.contains("until it runs"), "{text}");
+}
+
+/// Without it the draft says how many findings `check` reports until `fix`
+/// runs, and in how many files.
+#[test]
+fn the_default_draft_counts_what_check_reports_until_fix_runs() {
+    let mut survey = Survey::new(false);
+    survey.add("docs/a.md", "a \u{2014} b \u{2014} c\n");
+    survey.add("docs/b.md", "d \u{2014} e\n");
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(
+        prose(&text).contains("reports 3 findings in 2 files"),
+        "{text}"
+    );
+    assert!(text.lines().all(|line| line.len() <= 72), "{text}");
+    assert!(text.contains("--keep-fixable"), "{text}");
+}
+
+/// A line that grants a character the map rewrites leaves it alone: it is
+/// no finding and `fix` does not touch it (`src/fix:V6`), so the draft
+/// neither counts it nor says `fix` rewrites it.
+#[test]
+fn what_the_line_grants_is_not_counted_until_fix_runs() {
+    let mut survey = Survey::new(false);
+    survey.add("docs/a.md", "a \u{E000} b \u{2014} c\n");
+    let text = prose(&draft(&survey, &Candidates::builtin()));
+    assert!(text.contains("\n*.md any\n"), "{text}");
+    assert!(!text.contains("until it runs"), "{text}");
+    assert!(text.contains("this line grants them: U+2014"), "{text}");
+}
+
+/// The draft read as prose: continuation lines joined to the line above.
+fn prose(text: &str) -> String {
+    text.replace("\n#   ", " ")
+}
+
+/// A set chosen for its letters can hold a character the map rewrites:
+/// `kek` holds U+2019, `en-aux` does not.
+#[test]
+fn a_chosen_set_allows_what_it_holds_beyond_the_need() {
+    let candidates = Candidates::builtin();
+    let line = |name: &str| Grant::Sets(vec![(String::from(name), Vec::new())]);
+    assert!(candidates.allows(&line("kek"), '\u{2019}'));
+    assert!(!candidates.allows(&line("en-aux"), '\u{2019}'));
+}
+
+/// Two files of dashes, surveyed with or without `--keep-fixable`.
+const DASHES: [(&str, &str); 2] = [
+    ("a.md", "a \u{2014} b \u{2014} c\n"),
+    ("b.md", "d \u{2014} e\n"),
+];
+
+/// `check`'s exit code and tally on [`DASHES`] under the draft itself,
+/// or its refusal; `None` only when the fixture cannot be written.
+type Checked = Result<(u8, String), String>;
+
+fn checked_under_draft(name: &str, keep: bool) -> Option<Checked> {
+    let mut survey = Survey::new(keep);
+    DASHES
+        .iter()
+        .for_each(|(path, text)| survey.add(path, text));
+    let ctrm = draft(&survey, &Candidates::builtin());
+    let mut files = DASHES.to_vec();
+    files.push((".ctrm", ctrm.as_str()));
+    let root = fixture(name, &files)?;
+    let asked: Vec<String> =
+        DASHES.iter().map(|(p, _)| (*p).to_owned()).collect();
+    let config = crate::cli::config::discovered(&root);
+    let found = crate::cli::check::run(&config, &asked, Format::Human);
+    Some(found.map(|report| (report.code, report.note)))
+}
+
+/// What the draft promises is what `check` does under it: the default
+/// draft's count is `check`'s own, and `--keep-fixable`'s passes as written.
+#[test]
+fn check_under_the_draft_does_what_the_draft_says() {
+    let Some(unfixed) = checked_under_draft("ctrm-init-unfixed", false) else {
+        return;
+    };
+    assert!(unfixed.is_ok(), "{unfixed:?}");
+    let (code, note) = unfixed.unwrap_or_default();
+    assert_eq!(code, 1, "{note}");
+    assert!(note.starts_with("3 findings in 2 files"), "{note}");
+    let kept = checked_under_draft("ctrm-init-keep-fixable", true);
+    assert_eq!(kept.map(|found| found.map(|(code, _)| code)), Some(Ok(0)));
 }

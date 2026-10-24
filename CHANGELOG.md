@@ -26,6 +26,11 @@ use, so one reading serves the whole family of tools.
   exact path or a glob with a literal first segment (`*` and `**` at the
   root are refused), and no other hazard class can be granted. `guard`
   still refuses to let an agent read such a file.
+- **`ctrm init --keep-fixable`** (#36): the draft grants what `fix` would
+  rewrite too (typography), so it passes `check` as written. Without it,
+  each file type's draft now says how many findings in how many files
+  `check` reports until `ctrm fix` runs, counting only what the drafted
+  line leaves ungranted.
 
 ## [0.1.2] - 2026-10-18
 
