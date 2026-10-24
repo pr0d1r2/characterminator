@@ -53,6 +53,9 @@ pub(crate) struct Judge<'a> {
     /// The offsets of this text's joiners and tags that sit inside an
     /// RGI emoji sequence, and so are no hazard (`src/lint/hazard:V63`).
     exempt: Vec<usize>,
+    /// The offsets of this text's VS15 and VS16 that follow a granted
+    /// character with a standardized variation sequence: no finding at all.
+    selectors: Vec<usize>,
 }
 
 impl<'a> Judge<'a> {
@@ -62,6 +65,7 @@ impl<'a> Judge<'a> {
             set,
             hazards,
             exempt: Vec::new(),
+            selectors: Vec::new(),
         }
     }
 }
@@ -71,6 +75,7 @@ impl Judge<'_> {
     fn over(&self, text: &str) -> Self {
         Judge {
             exempt: self.hazards.exempt(text),
+            selectors: self.selectors(text),
             ..*self
         }
     }
@@ -117,10 +122,12 @@ impl Judge<'_> {
         let outside =
             (!self.set.contains(hit.character)).then_some(OUTSIDE_SET);
         let pedantic = std::iter::once_with(move || char_lints(hit.character));
-        [hazard, outside]
+        let chosen = self.selectors.binary_search(&hit.position.byte).is_ok();
+        let all = [hazard, outside]
             .into_iter()
             .flatten()
-            .chain(pedantic.flatten().flatten())
+            .chain(pedantic.flatten().flatten());
+        all.take(if chosen { 0 } else { usize::MAX })
     }
 }
 

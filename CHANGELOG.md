@@ -19,6 +19,11 @@ use, so one reading serves the whole family of tools.
 
 ### Added
 
+- A VS15/VS16 (U+FE0E/U+FE0F) right after a granted character that has a
+  standardized variation sequence (`✔️`) is no longer reported, and `fix`
+  leaves it, so text matching a tool's emoji output stays byte-exact (#34). A
+  lone selector, or one after ASCII, is still reported.
+
 - **`hazard:tags`** in a `.ctrm` set list (#15): `tests/fixtures/x/* ascii+hazard:tags`
   lets tag characters (U+E0000-U+E007F) into the named paths only. Each is
   reported as a `tag-character` note at `warn`, never failing the run
@@ -32,6 +37,11 @@ use, so one reading serves the whole family of tools.
 A patch: the flake builds on Intel Macs.
 
 ### Added
+
+- A VS15/VS16 (U+FE0E/U+FE0F) right after a granted character that has a
+  standardized variation sequence (`✔️`) is no longer reported, and `fix`
+  leaves it, so text matching a tool's emoji output stays byte-exact (#34). A
+  lone selector, or one after ASCII, is still reported.
 
 - **`x86_64-darwin`** in the flake systems (#20, closing #18). Consumers
   pin a tag, so `v0.1.1` had no `characterminator.packages.x86_64-darwin`.
@@ -67,6 +77,11 @@ A patch: what the first dogfood adoption round found.
 The first release.
 
 ### Added
+
+- A VS15/VS16 (U+FE0E/U+FE0F) right after a granted character that has a
+  standardized variation sequence (`✔️`) is no longer reported, and `fix`
+  leaves it, so text matching a tool's emoji output stays byte-exact (#34). A
+  lone selector, or one after ASCII, is still reported.
 
 - **`ctrm check`**: report every character outside the set its file is
   granted, as `path:line:col U+XXXX <set>`, then a one-line tally on
