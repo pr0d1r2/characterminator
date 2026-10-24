@@ -27,6 +27,24 @@ use, so one reading serves the whole family of tools.
   root are refused), and no other hazard class can be granted. `guard`
   still refuses to let an agent read such a file.
 
+### Changed
+
+- **`caveman`, `math` and `typography` presets** grant the notation that
+  `ctrm init` drafted as `any` for shell scripts, bats specs and
+  compressed-notation markdown (#35). `caveman` adds U+21D0 leftwards
+  double arrow, U+27F9 long rightwards double arrow, U+21E2 rightwards
+  dashed arrow and U+21C4 rightwards arrow over leftwards arrow. `math`
+  adds U+226A and U+226B much less-than and much greater-than, U+2273
+  greater-than or equivalent to, U+220C does not contain as member, U+2289
+  neither a superset of nor equal to, U+2295 circled plus, U+2225 parallel
+  to, U+2016 double vertical line, U+2219 bullet operator, and the
+  subscripts U+2081, U+2082, U+2083 and U+2099. `typography` adds U+2022
+  bullet, which `ctrm fix` does not rewrite. A file granted one of these
+  presets that held one of these characters used to fail `ctrm check` and
+  now passes. Sets compose by union only, so a repository that wants them
+  refused again replaces the preset grant with its own set in
+  `.ctrm-sets`.
+
 ## [0.1.2] - 2026-10-18
 
 A patch: the flake builds on Intel Macs.
