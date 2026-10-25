@@ -119,8 +119,8 @@ fn an_existing_ctrm_is_never_overwritten() {
     assert_eq!(kept, "* ascii\n");
 }
 
-/// `--keep-fixable` grants what `fix` would rewrite, so the draft passes
-/// `check` as written and has no "until fix runs" note to make.
+/// `--keep-fixable` grants what `fix` would rewrite, so `check` reports
+/// none of it and the draft has no "until fix runs" note to make.
 #[test]
 fn keep_fixable_grants_what_fix_would_rewrite() {
     let mut survey = Survey::new(true);
@@ -200,23 +200,33 @@ const DASHES: [(&str, &str); 2] = [
 type Checked = Result<(u8, String), String>;
 
 fn checked_under_draft(name: &str, keep: bool) -> Option<Checked> {
+    checked_under_draft_of(name, keep, &DASHES)
+}
+
+/// The same, for any tracked `files`.
+fn checked_under_draft_of(
+    name: &str,
+    keep: bool,
+    tracked: &[(&str, &str)],
+) -> Option<Checked> {
     let mut survey = Survey::new(keep);
-    DASHES
+    tracked
         .iter()
         .for_each(|(path, text)| survey.add(path, text));
     let ctrm = draft(&survey, &Candidates::builtin());
-    let mut files = DASHES.to_vec();
+    let mut files = tracked.to_vec();
     files.push((".ctrm", ctrm.as_str()));
     let root = fixture(name, &files)?;
     let asked: Vec<String> =
-        DASHES.iter().map(|(p, _)| (*p).to_owned()).collect();
+        tracked.iter().map(|(p, _)| (*p).to_owned()).collect();
     let config = crate::cli::config::discovered(&root);
     let found = crate::cli::check::run(&config, &asked, Format::Human);
     Some(found.map(|report| (report.code, report.note)))
 }
 
 /// What the draft promises is what `check` does under it: the default
-/// draft's count is `check`'s own, and `--keep-fixable`'s passes as written.
+/// draft's count is `check`'s own, and `--keep-fixable`'s leaves nothing
+/// `fix` would rewrite for `check` to report.
 #[test]
 fn check_under_the_draft_does_what_the_draft_says() {
     let Some(unfixed) = checked_under_draft("ctrm-init-unfixed", false) else {
@@ -228,4 +238,20 @@ fn check_under_the_draft_does_what_the_draft_says() {
     assert!(note.starts_with("3 findings in 2 files"), "{note}");
     let kept = checked_under_draft("ctrm-init-keep-fixable", true);
     assert_eq!(kept.map(|found| found.map(|(code, _)| code)), Some(Ok(0)));
+}
+
+/// `--keep-fixable` clears what `fix` would rewrite, not every finding: a
+/// hazard is never granted (V128), so `check` still fails on it, and on
+/// it alone.
+#[test]
+fn keep_fixable_still_leaves_a_hazard_for_check() {
+    let tracked = [("a.md", "a \u{2014} b\u{202E}c\n")];
+    let found = checked_under_draft_of("ctrm-init-keep-hazard", true, &tracked);
+    let Some(found) = found else {
+        return;
+    };
+    assert!(found.is_ok(), "{found:?}");
+    let (code, note) = found.unwrap_or_default();
+    assert_eq!(code, 1, "{note}");
+    assert!(note.starts_with("1 finding in 1 file;"), "{note}");
 }

@@ -130,7 +130,8 @@ Grants each kind of file the sets its characters already need.
 
   --print               write the draft to stdout, not to .ctrm
   --keep-fixable        grant what `fix` would rewrite too (typography),
-                        so the draft passes `check` as written
+                        so `check` reports none of it; a hazard is never
+                        granted and still fails
   configuration flags   see ctrm --help
 
 exit codes: 0 drafted, 2 a usage or configuration error
