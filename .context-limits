@@ -214,7 +214,9 @@ src/cli/explain/SPEC.md  910
 # 580 -> 680 on 2026-10-04 for B80, the node's first bug and so its first
 # §B section: ~12% over the measured 610, after the V128 and B80 wording
 # was compacted from 649.
-src/cli/init/SPEC.md     680
+# 680 -> 800 on 2026-10-25 for B82 (#37), the plural-noun bug: ~12% over
+# the measured 711, after the V128 clause was folded into its own wording.
+src/cli/init/SPEC.md     800
 src/scan/SPEC.md     470
 # RAISED twice. 375 -> 420: the node did not bloat, it gained the §T section
 # every other node already had, recording work that had invariants but no
