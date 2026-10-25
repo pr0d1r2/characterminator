@@ -83,7 +83,7 @@ fn the_draft_grants_the_need_and_never_a_hazard() {
     assert!(text.contains("\n*.md ascii+marks+en-aux\n"), "{text}");
     assert!(
         prose(&text)
-            .contains("until it runs, check reports 1 findings in 1 files"),
+            .contains("until it runs, check reports 1 finding in 1 file "),
         "{text}"
     );
     assert!(text.contains("U+202E bidi-control in docs/a.md"), "{text}");
@@ -144,6 +144,21 @@ fn the_default_draft_counts_what_check_reports_until_fix_runs() {
     );
     assert!(text.lines().all(|line| line.len() <= 72), "{text}");
     assert!(text.contains("--keep-fixable"), "{text}");
+}
+
+/// Each count takes its own noun's number: one finding, one file, and
+/// two findings in one file.
+#[test]
+fn a_count_of_one_is_singular() {
+    let said = |text: &str| {
+        let mut survey = Survey::new(false);
+        survey.add("docs/a.md", text);
+        prose(&draft(&survey, &Candidates::builtin()))
+    };
+    let one = said("a \u{2014} b\n");
+    assert!(one.contains("reports 1 finding in 1 file ("), "{one}");
+    let two = said("a \u{2014} b \u{2014} c\n");
+    assert!(two.contains("reports 2 findings in 1 file ("), "{two}");
 }
 
 /// A line that grants a character the map rewrites leaves it alone: it is

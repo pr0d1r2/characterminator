@@ -210,7 +210,7 @@ The hazard is never granted; it is listed to fix:
 # *.md, files: 1.
 # en-aux for U+00E9
 # `ctrm fix` rewrites these; until it runs, check reports 3 findings in
-#   1 files (`init --keep-fixable` grants them instead): U+2014 U+201C
+#   1 file (`init --keep-fixable` grants them instead): U+2014 U+201C
 #   U+201D
 *.md ascii+en-aux
 
