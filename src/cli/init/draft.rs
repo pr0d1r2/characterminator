@@ -122,9 +122,20 @@ fn rewritten(kind: &Kind, allowed: &dyn Fn(char) -> bool) -> Vec<String> {
 fn until_fix((findings, files): (usize, usize)) -> String {
     format!(
         "`ctrm fix` rewrites these; until it runs, check reports \
-         {findings} findings in {files} files (`init --keep-fixable` \
-         grants them instead):"
+         {} in {} (`init --keep-fixable` grants them instead):",
+        counted(findings, "finding"),
+        counted(files, "file")
     )
+}
+
+/// `1 file`, `2 files`: the noun takes its count's number, as `check`'s
+/// own tally does (B82).
+fn counted(n: usize, noun: &str) -> String {
+    if n == 1 {
+        format!("1 {noun}")
+    } else {
+        format!("{n} {noun}s")
+    }
 }
 
 fn points(chars: &[char]) -> Vec<String> {
