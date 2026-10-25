@@ -251,7 +251,7 @@ with other tools, [the json contract](docs/JSON.md), and the rest in
 | `ctrm explain [<path>]` | the set in force, and the config line that decided it |
 | `ctrm explain [<path>] --as args\|lines\|prompt` | the whole configuration as flags, as data files, or as an agent prompt |
 | `ctrm sets [<name>...] [--locales] [--containing <c>]` | the curated presets and what each is for, then your own; locales on request |
-| `ctrm init [--print] [--keep-fixable]` | draft a `.ctrm` from the tracked files: per file type, the fewest presets that cover it, each line commented. Never overwrites one; `--print` writes the draft to stdout; `--keep-fixable` grants what `fix` would rewrite too, so the draft passes `check` as written |
+| `ctrm init [--print] [--keep-fixable]` | draft a `.ctrm` from the tracked files: per file type, the fewest presets that cover it, each line commented. Never overwrites one; `--print` writes the draft to stdout; `--keep-fixable` grants what `fix` would rewrite too, so `check` reports none of it; a hazard is never granted and still fails |
 | `ctrm guard` | agent hook: hook JSON in, decision JSON out. See [guarding an agent](#guarding-an-agent) |
 
 Every verb but `guard` takes `--format json`, which is a stable contract:

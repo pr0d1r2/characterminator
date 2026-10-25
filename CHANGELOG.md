@@ -32,7 +32,8 @@ use, so one reading serves the whole family of tools.
   root are refused), and no other hazard class can be granted. `guard`
   still refuses to let an agent read such a file.
 - **`ctrm init --keep-fixable`** (#36): the draft grants what `fix` would
-  rewrite too (typography), so it passes `check` as written. Without it,
+  rewrite too (typography), so `check` reports none of it; a hazard is
+  never granted and still fails `check`. Without it,
   each file type's draft now says how many findings in how many files
   `check` reports until `ctrm fix` runs, counting only what the drafted
   line leaves ungranted.
