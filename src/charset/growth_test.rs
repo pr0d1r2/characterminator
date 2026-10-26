@@ -1,6 +1,7 @@
 //! V138: a function preset grows only on evidence, so its size is pinned
 //! here. Adding a member fails this test until the count is raised, and
-//! the commit that raises it cites the research row that met the bar.
+//! the commit that raises it cites the research row that met the bar,
+//! or the dated owner decision that row records when the scan fell short.
 
 use super::{CharSet, catalog};
 
