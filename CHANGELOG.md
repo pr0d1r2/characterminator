@@ -38,6 +38,13 @@ use, so one reading serves the whole family of tools.
   `check` reports until `ctrm fix` runs, counting only what the drafted
   line leaves ungranted.
 
+### Fixed
+
+- **`ctrm init`** lists each hazard under every file that holds it, as
+  `path:line:col` of its first place there, not under the first file only
+  (#33). Past five files the draft says `and K more -- ctrm check`; a long
+  list wraps between places, so each one stays whole to copy.
+
 ## [0.1.2] - 2026-10-18
 
 A patch: the flake builds on Intel Macs.

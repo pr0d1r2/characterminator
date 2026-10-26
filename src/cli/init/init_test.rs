@@ -81,12 +81,10 @@ fn the_draft_grants_the_need_and_never_a_hazard() {
     let candidates = Candidates::builtin();
     let text = draft(&surveyed(), &candidates);
     assert!(text.contains("\n*.md ascii+marks+en-aux\n"), "{text}");
-    assert!(
-        prose(&text)
-            .contains("until it runs, check reports 1 finding in 1 file "),
-        "{text}"
-    );
-    assert!(text.contains("U+202E bidi-control in docs/a.md"), "{text}");
+    let said = prose(&text);
+    assert!(said.contains("reports 1 finding in 1 file "), "{text}");
+    let hazard = "U+202E bidi-control in docs/a.md:1:11\n";
+    assert!(said.contains(hazard), "{text}");
     assert!(
         text.contains("Pure ASCII, no line needed: *.rs (1)"),
         "{text}"
@@ -102,16 +100,30 @@ fn a_hazard_is_listed_under_every_file_holding_it() {
     let mut survey = Survey::new(false);
     survey.add("one.sh", "a \u{8a} b\n");
     survey.add("two.sh", "x\nc \u{8a} d\u{8a}\n");
-    let text = draft(&survey, &Candidates::builtin());
-    assert!(
-        text.contains("U+008A control-character in one.sh:1:3, two.sh:2:3"),
-        "{text}"
-    );
+    let text = prose(&draft(&survey, &Candidates::builtin()));
+    let both = "U+008A control-character in one.sh:1:3, two.sh:2:3\n";
+    assert!(text.contains(both), "{text}");
     for n in 0..7 {
         survey.add(&format!("f{n}.sh"), "\u{8a}\n");
     }
+    let text = prose(&draft(&survey, &Candidates::builtin()));
+    let cut = ", f2.sh:1:1 and 4 more -- ctrm check\n";
+    assert!(text.contains(cut), "{text}");
+}
+
+/// Five long paths still wrap at 72 columns, between places and never
+/// inside one, so each `path:line:col` stays whole to copy.
+#[test]
+fn a_long_hazard_list_wraps_between_places() {
+    let mut survey = Survey::new(false);
+    let dir = "src/cli/guard/a/deeply/nested/directory";
+    for n in 0..6 {
+        survey.add(&format!("{dir}/f{n}.sh"), "\u{8a}\n");
+    }
     let text = draft(&survey, &Candidates::builtin());
-    assert!(text.contains("and 4 more -- ctrm check"), "{text}");
+    assert!(text.lines().all(|line| line.len() <= 72), "{text}");
+    let place = format!("#   {dir}/f1.sh:1:1,\n");
+    assert!(text.contains(&place), "{text}");
 }
 
 /// An existing `.ctrm` is refused, exit 2, pointing at `--print`, and

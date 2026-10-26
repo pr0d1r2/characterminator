@@ -97,33 +97,41 @@ fn notes(kind: &Kind, allowed: &dyn Fn(char) -> bool) -> Vec<String> {
             "# Emoji sequences: `ctrm fix` compresses them to one emoji.",
         ));
     }
-    let hazards: Vec<String> = kind
-        .hazards
-        .iter()
-        .map(|(c, Hazard { lint, spots })| {
-            format!("{} {lint} in {}", codepoint(*c), located(spots))
-        })
-        .collect();
-    lines.extend(wrapped("Hazards, never granted -- fix these:", &hazards));
+    lines.extend(wrapped(
+        "Hazards, never granted -- fix these:",
+        &hazards(kind),
+    ));
     lines
+}
+
+/// Each hazard, its lint, then its places, one wrap item each.
+fn hazards(kind: &Kind) -> Vec<String> {
+    let each = kind.hazards.iter().flat_map(|(c, Hazard { lint, spots })| {
+        let lead = format!("{} {lint} in", codepoint(*c));
+        std::iter::once(lead).chain(located(spots))
+    });
+    each.collect()
 }
 
 /// How many places one hazard lists before `and K more`.
 const SHOWN: usize = 5;
 
-/// `a.sh:1:3, b.sh:2:4`, cut at `SHOWN` with a pointer to `check`.
-fn located(spots: &[Spot]) -> String {
-    let shown: Vec<String> = spots
+/// `a.sh:1:3,` `b.sh:2:4`, cut at `SHOWN` with a pointer to `check`: one
+/// item per place, so a long list wraps between places, never inside one.
+fn located(spots: &[Spot]) -> Vec<String> {
+    let mut items: Vec<String> = spots
         .iter()
         .take(SHOWN)
-        .map(|s| format!("{}:{}:{}", s.path, s.line, s.column))
+        .map(|s| format!("{}:{}:{},", s.path, s.line, s.column))
         .collect();
-    let mut text = shown.join(", ");
+    if let Some(last) = items.last_mut() {
+        last.pop();
+    }
     let more = spots.len().saturating_sub(SHOWN);
     if more > 0 {
-        text.push_str(&format!(" and {more} more -- ctrm check"));
+        items.push(format!("and {more} more -- ctrm check"));
     }
-    text
+    items
 }
 
 /// The characters the builtin map rewrites: what `check` reports on them
