@@ -118,11 +118,13 @@ fn rewritten(kind: &Kind, allowed: &dyn Fn(char) -> bool) -> Vec<String> {
     lines
 }
 
-/// What leaving the rewritable characters ungranted costs until `fix` runs.
+/// What leaving the rewritable characters ungranted costs until `fix` runs,
+/// and the way to grant them that works once this draft is `.ctrm`: a plain
+/// `init` then refuses to overwrite it, `--print` never does (V128).
 fn until_fix((findings, files): (usize, usize)) -> String {
     format!(
         "`ctrm fix` rewrites these; until it runs, check reports \
-         {} in {} (`init --keep-fixable` grants them instead):",
+         {} in {} (`init --print --keep-fixable` drafts them granted):",
         counted(findings, "finding"),
         counted(files, "file")
     )
