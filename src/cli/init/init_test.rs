@@ -161,6 +161,33 @@ fn a_count_of_one_is_singular() {
     assert!(two.contains("reports 2 findings in 1 file ("), "{two}");
 }
 
+/// The note's advice still works once the draft is `.ctrm`: the command
+/// it names is not refused for the file it is written in.
+#[test]
+fn the_advice_works_beside_the_draft_it_is_in() {
+    let mut survey = Survey::new(false);
+    survey.add("a.md", "a \u{2014} b\n");
+    let ctrm = draft(&survey, &Candidates::builtin());
+    let advice = "init --print --keep-fixable";
+    assert!(prose(&ctrm).contains(&format!("(`{advice}`")), "{ctrm}");
+    let Some(root) = fixture("ctrm-init-advice", &[(".ctrm", &ctrm)]) else {
+        return;
+    };
+    let config = crate::cli::config::discovered(&root);
+    let found = run(&config, asked(advice));
+    let refused = found.as_ref().err().is_some_and(|e| e.contains("exists"));
+    assert!(!refused, "{found:?}");
+}
+
+/// The flags an `init` command line names.
+fn asked(command: &str) -> Ask {
+    let words: Vec<&str> = command.split(' ').collect();
+    Ask {
+        print: words.contains(&"--print"),
+        keep: words.contains(&"--keep-fixable"),
+    }
+}
+
 /// A line that grants a character the map rewrites leaves it alone: it is
 /// no finding and `fix` does not touch it (`src/fix:V6`), so the draft
 /// neither counts it nor says `fix` rewrites it.
