@@ -3,7 +3,7 @@
 //! work to do, never granted.
 
 use super::cover::{Candidates, Grant};
-use super::survey::{Kind, Survey};
+use super::survey::{Hazard, Kind, Spot, Survey};
 use crate::render::codepoint;
 
 const HEADER: &str = "\
@@ -100,10 +100,30 @@ fn notes(kind: &Kind, allowed: &dyn Fn(char) -> bool) -> Vec<String> {
     let hazards: Vec<String> = kind
         .hazards
         .iter()
-        .map(|(c, (lint, path))| format!("{} {lint} in {path}", codepoint(*c)))
+        .map(|(c, Hazard { lint, spots })| {
+            format!("{} {lint} in {}", codepoint(*c), located(spots))
+        })
         .collect();
     lines.extend(wrapped("Hazards, never granted -- fix these:", &hazards));
     lines
+}
+
+/// How many places one hazard lists before `and K more`.
+const SHOWN: usize = 5;
+
+/// `a.sh:1:3, b.sh:2:4`, cut at `SHOWN` with a pointer to `check`.
+fn located(spots: &[Spot]) -> String {
+    let shown: Vec<String> = spots
+        .iter()
+        .take(SHOWN)
+        .map(|s| format!("{}:{}:{}", s.path, s.line, s.column))
+        .collect();
+    let mut text = shown.join(", ");
+    let more = spots.len().saturating_sub(SHOWN);
+    if more > 0 {
+        text.push_str(&format!(" and {more} more -- ctrm check"));
+    }
+    text
 }
 
 /// The characters the builtin map rewrites: what `check` reports on them

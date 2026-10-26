@@ -95,6 +95,25 @@ fn the_draft_grants_the_need_and_never_a_hazard() {
     assert_eq!(text, draft(&surveyed(), &candidates));
 }
 
+/// Every file holding a hazard is listed with line:col, cut at five
+/// with a count of the rest.
+#[test]
+fn a_hazard_is_listed_under_every_file_holding_it() {
+    let mut survey = Survey::new(false);
+    survey.add("one.sh", "a \u{8a} b\n");
+    survey.add("two.sh", "x\nc \u{8a} d\u{8a}\n");
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(
+        text.contains("U+008A control-character in one.sh:1:3, two.sh:2:3"),
+        "{text}"
+    );
+    for n in 0..7 {
+        survey.add(&format!("f{n}.sh"), "\u{8a}\n");
+    }
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(text.contains("and 4 more -- ctrm check"), "{text}");
+}
+
 /// An existing `.ctrm` is refused, exit 2, pointing at `--print`, and
 /// `--print` writes nothing.
 #[test]

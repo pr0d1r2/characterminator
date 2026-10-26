@@ -7,6 +7,21 @@ use crate::lint::Hazards;
 use crate::scan::scan_str;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
+/// A hazard's first place in one file.
+#[derive(Debug)]
+pub(super) struct Spot {
+    pub path: String,
+    pub line: usize,
+    pub column: usize,
+}
+
+/// One hazard code point: its lint and where it sits.
+#[derive(Debug)]
+pub(super) struct Hazard {
+    pub lint: &'static str,
+    pub spots: Vec<Spot>,
+}
+
 /// One file type's characters, as the draft explains them.
 #[derive(Debug, Default)]
 pub(super) struct Kind {
@@ -16,8 +31,9 @@ pub(super) struct Kind {
     /// Rewritten to ASCII by the builtin map: no grant needed. One tally
     /// per file, each character with how often it occurs there.
     tallies: Vec<BTreeMap<char, usize>>,
-    /// Each hazard code point, its lint, and the first path it was in.
-    pub hazards: BTreeMap<char, (&'static str, String)>,
+    /// Each hazard code point, its lint, and where each file holding it
+    /// first has it.
+    pub hazards: BTreeMap<char, Hazard>,
     /// A joiner inside an RGI emoji sequence was seen: `fix` compresses it.
     pub sequences: bool,
 }
@@ -51,8 +67,9 @@ impl Survey {
         for hit in scan_str(text, plain) {
             let c = hit.character;
             if let Some(lint) = self.hazards.lint_at(hit, &exempt) {
-                let first = (lint.name, shown.to_owned());
-                kind.hazards.entry(c).or_insert(first);
+                let (line, column) = (hit.position.line, hit.position.column);
+                let path = shown.to_owned();
+                kind.hazard(c, lint.name, Spot { path, line, column });
             } else if exempt.binary_search(&hit.position.byte).is_ok() {
                 kind.sequences = true;
             } else {
@@ -67,6 +84,19 @@ impl Kind {
     fn begin(&mut self) {
         self.files = self.files.saturating_add(1);
         self.tallies.push(BTreeMap::new());
+    }
+
+    /// A hazard seen in `shown`: kept once per file, at its first place.
+    fn hazard(&mut self, c: char, lint: &'static str, spot: Spot) {
+        let spots = Vec::new();
+        let hazard = self.hazards.entry(c).or_insert(Hazard { lint, spots });
+        if hazard
+            .spots
+            .last()
+            .is_none_or(|last| last.path != spot.path)
+        {
+            hazard.spots.push(spot);
+        }
     }
 
     /// A character that is no hazard: rewritten by `fix`, or needed.
