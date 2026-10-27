@@ -122,7 +122,7 @@ fn located(spots: &[Spot]) -> Vec<String> {
     let mut items: Vec<String> = spots
         .iter()
         .take(SHOWN)
-        .map(|s| format!("{}:{}:{},", s.path, s.line, s.column))
+        .map(|s| format!("{}:{}:{},", escaped(&s.path), s.line, s.column))
         .collect();
     if let Some(last) = items.last_mut() {
         last.pop();
@@ -132,6 +132,20 @@ fn located(spots: &[Spot]) -> Vec<String> {
         items.push(format!("and {more} more -- ctrm check"));
     }
     items
+}
+
+/// A path with its control characters escaped: a tracked name may hold a
+/// newline, which would end the `#` comment and start a live rule line.
+fn escaped(path: &str) -> String {
+    let mut out = String::new();
+    for c in path.chars() {
+        if c.is_control() {
+            out.extend(c.escape_default());
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 
 /// The characters the builtin map rewrites: what `check` reports on them

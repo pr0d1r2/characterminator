@@ -111,6 +111,17 @@ fn a_hazard_is_listed_under_every_file_holding_it() {
     assert!(text.contains(cut), "{text}");
 }
 
+/// A path holding a newline cannot end the comment and start a rule line.
+#[test]
+fn a_newline_in_a_path_cannot_forge_a_rule() {
+    let mut survey = Survey::new(false);
+    survey.add("one.sh", "a \u{8a} b\n");
+    survey.add("z\n* any\n#.sh", "\u{8a}\n");
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(!text.contains("\n* any"), "{text}");
+    assert!(text.contains("z\\n* any\\n#.sh"), "{text}");
+}
+
 /// Five long paths still wrap at 72 columns, between places and never
 /// inside one, so each `path:line:col` stays whole to copy.
 #[test]
