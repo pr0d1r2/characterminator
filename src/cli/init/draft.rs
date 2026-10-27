@@ -4,7 +4,7 @@
 
 use super::cover::{Candidates, Grant};
 use super::survey::{Hazard, Kind, Spot, Survey};
-use crate::render::codepoint;
+use crate::render::{codepoint, path_shown};
 
 const HEADER: &str = "\
 # Drafted by `ctrm init` from the tracked files. Review it before you
@@ -118,11 +118,14 @@ const SHOWN: usize = 5;
 
 /// `a.sh:1:3,` `b.sh:2:4`, cut at `SHOWN` with a pointer to `check`: one
 /// item per place, so a long list wraps between places, never inside one.
+/// A path is spelled as `check` spells it (`src/render:V11`): a newline in
+/// a tracked name would end the comment and start a live rule line, and a
+/// bidi override would reverse it.
 fn located(spots: &[Spot]) -> Vec<String> {
     let mut items: Vec<String> = spots
         .iter()
         .take(SHOWN)
-        .map(|s| format!("{}:{}:{},", escaped(&s.path), s.line, s.column))
+        .map(|s| format!("{}:{}:{},", path_shown(&s.path), s.line, s.column))
         .collect();
     if let Some(last) = items.last_mut() {
         last.pop();
@@ -132,20 +135,6 @@ fn located(spots: &[Spot]) -> Vec<String> {
         items.push(format!("and {more} more -- ctrm check"));
     }
     items
-}
-
-/// A path with its control characters escaped: a tracked name may hold a
-/// newline, which would end the `#` comment and start a live rule line.
-fn escaped(path: &str) -> String {
-    let mut out = String::new();
-    for c in path.chars() {
-        if c.is_control() {
-            out.extend(c.escape_default());
-        } else {
-            out.push(c);
-        }
-    }
-    out
 }
 
 /// The characters the builtin map rewrites: what `check` reports on them

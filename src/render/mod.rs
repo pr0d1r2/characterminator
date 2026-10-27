@@ -48,6 +48,7 @@ mod total;
 mod value;
 
 pub(crate) use escape::string as json_string;
+pub(crate) use human::shown as path_shown;
 pub(crate) use listing::{Listed, Listing, SetKind, listing};
 pub(crate) use name::codepoint;
 

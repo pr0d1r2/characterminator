@@ -119,7 +119,21 @@ fn a_newline_in_a_path_cannot_forge_a_rule() {
     survey.add("z\n* any\n#.sh", "\u{8a}\n");
     let text = draft(&survey, &Candidates::builtin());
     assert!(!text.contains("\n* any"), "{text}");
-    assert!(text.contains("z\\n* any\\n#.sh"), "{text}");
+    assert!(text.contains("z<U+000A>* any<U+000A>#.sh"), "{text}");
+}
+
+/// A path is spelled as `check` spells it (`src/render:V11`): a bidi
+/// override cannot reverse the comment, and the draft stays pure ASCII,
+/// as the `.ctrm` it becomes is judged by the `ascii` default.
+#[test]
+fn a_path_in_the_draft_is_spelled_as_check_spells_it() {
+    let mut survey = Survey::new(false);
+    survey.add("x\u{202E}y.sh", "\u{8a}\n");
+    survey.add("za\u{17c}.sh", "\u{8a}\n");
+    let text = prose(&draft(&survey, &Candidates::builtin()));
+    let both = "in x<U+202E>y.sh:1:1, za<U+017C>.sh:1:1\n";
+    assert!(text.contains(both), "{text}");
+    assert!(text.is_ascii(), "{text}");
 }
 
 /// Five long paths still wrap at 72 columns, between places and never
