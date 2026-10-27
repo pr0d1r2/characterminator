@@ -151,16 +151,18 @@ fn level_note(out: &mut String, level: Level) {
 /// report that echoed it raw would clear the screen or reverse the line
 /// it sits on (B31). The json form needs none of this: it escapes.
 ///
+/// A literal `<` is spelled too, so `a<U+017C>.sh` and `a\u{17c}.sh` differ.
+///
 /// A path that is printable ASCII already -- nearly every one -- is
 /// BORROWED rather than copied (R17).
 pub(crate) fn shown(path: &str) -> Cow<'_, str> {
-    if path.bytes().all(|b| matches!(b, b' '..=b'~')) {
+    if path.bytes().all(|b| matches!(b, b' '..=b';' | b'='..=b'~')) {
         return Cow::Borrowed(path);
     }
     let mut out = String::with_capacity(path.len());
     for c in path.chars() {
         match c {
-            ' '..='~' => out.push(c),
+            ' '..=';' | '='..='~' => out.push(c),
             _ => {
                 let _infallible = write!(out, "<{}>", Codepoint(c));
             }
@@ -535,6 +537,7 @@ mod tests {
         let want = format!("{safe}:2:5 U+2014 ascii\n{safe}: skipped, binary");
         assert_eq!(said, want);
         assert_eq!(super::shown("za\u{17c}.md"), "za<U+017C>.md");
+        assert_eq!(super::shown("a<U+017C>.md"), "a<U+003C>U+017C>.md");
     }
 
     /// A pedantic finding names its LINT where the set would go: the set
