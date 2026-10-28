@@ -88,6 +88,8 @@ pub(crate) struct Law<'a> {
     /// The byte offsets where a character the set withholds is kept: a
     /// variation selector on a granted base (`src/lint/hazard:V63`).
     pub kept: &'a KeptIn<'a>,
+    /// The double-encoded runs, restored (`src/lint/hazard:V142`).
+    pub restores: &'a RestoresIn<'a>,
 }
 
 /// The hazards of one text, ascending by byte.
@@ -105,4 +107,38 @@ pub(crate) type KeptIn<'a> = dyn Fn(&str) -> Vec<usize> + 'a;
 pub(crate) struct Hazard {
     pub byte: usize,
     pub delete: bool,
+}
+
+/// The runs of one text to RESTORE, ascending by byte.
+pub(crate) type RestoresIn<'a> = dyn Fn(&str) -> Vec<Restore> + 'a;
+
+/// One double-encoded run (`src/lint/hazard:V142`): `len` bytes at `byte`
+/// that are one character read as Latin-1, and the character. Re-decoding is
+/// lossless, so the walk writes it whatever the set grants and whatever the map
+/// says of it; the next pass judges the restored character like any other.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Restore {
+    pub byte: usize,
+    pub len: usize,
+    pub to: char,
+}
+
+/// What one pass knows of its text besides the map: the hazards, the offsets
+/// kept as they are, and the runs restored.
+#[derive(Debug, Default)]
+pub(crate) struct Marks {
+    pub hazards: Vec<Hazard>,
+    pub kept: Vec<usize>,
+    pub restores: Vec<Restore>,
+}
+
+impl Marks {
+    /// What `law` knows of `text`, asked once per pass.
+    pub(crate) fn of(text: &str, law: Law<'_>) -> Self {
+        Self {
+            hazards: (law.hazards)(text),
+            kept: (law.kept)(text),
+            restores: (law.restores)(text),
+        }
+    }
 }

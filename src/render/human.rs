@@ -14,7 +14,7 @@
 //! the empty string, so the caller owns its own line endings.
 
 use crate::charset::{CharRange, CharSet};
-use crate::lint::{Group, Level};
+use crate::lint::{DOUBLE_ENCODED, Group, Level};
 #[cfg(test)]
 use crate::render::Violation;
 use crate::render::group::Fold;
@@ -129,9 +129,17 @@ fn next_line(out: &mut String) {
 fn violation(out: &mut String, path: &str, item: Line<'_>) {
     let hit = item.finding.hit;
     let (at, code) = (hit.position, Codepoint(hit.character));
-    let last = verdict(item);
-    let _infallible =
-        write!(out, "{path}:{}:{} {code} {last}", at.line, at.column);
+    let _infallible = if item.finding.lint == DOUBLE_ENCODED {
+        let said = hit.character.to_string();
+        write!(
+            out,
+            "{path}:{}:{} {} {said:?} ({code})",
+            at.line, at.column, DOUBLE_ENCODED.name
+        )
+    } else {
+        let last = verdict(item);
+        write!(out, "{path}:{}:{} {code} {last}", at.line, at.column)
+    };
     level_note(out, item.finding.level);
 }
 
@@ -545,6 +553,19 @@ mod tests {
         item.finding.lint = Lint::new("trailing-whitespace", Group::Pedantic);
         item.finding.hit.character = ' ';
         let expected = "src/a.rs:2:5 U+0020 trailing-whitespace";
+        assert_eq!(check(&[item], &[]), expected);
+    }
+
+    /// `src/lint/hazard:V142`: a double-encoded run says what it decodes to,
+    /// quoted, and a control it decodes to is escaped, never printed raw.
+    #[test]
+    fn a_double_encoded_finding_names_the_character_it_decodes_to() {
+        let mut item = em_dash();
+        item.finding.lint = crate::lint::DOUBLE_ENCODED;
+        let expected = "src/a.rs:2:5 double-encoded \"\u{2014}\" (U+2014)";
+        assert_eq!(check(&[item.clone()], &[]), expected);
+        item.finding.hit.character = '\u{80}';
+        let expected = "src/a.rs:2:5 double-encoded \"\\u{80}\" (U+0080)";
         assert_eq!(check(&[item], &[]), expected);
     }
 

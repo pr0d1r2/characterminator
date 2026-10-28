@@ -10,7 +10,7 @@
 //! it reads are the charset node's generated data file -- no table of code
 //! points is shipped from this node.
 
-use crate::lint::{Group, Level, pedantic};
+use crate::lint::{DOUBLE_ENCODED, Group, Level, pedantic};
 
 /// A named check. The name is what a rule line and the json output carry,
 /// so it is the stable identifier rather than the message text.
@@ -54,6 +54,7 @@ pub(crate) const LINTS: &[Lint] = &[
     Lint::new("stray-bom", Group::Hazard),
     Lint::new("control-character", Group::Hazard),
     Lint::new("invisible", Group::Hazard),
+    DOUBLE_ENCODED,
     OUTSIDE_SET,
     // `src/lint/pedantic:V37` candidates, in the order that spec lists them.
     pedantic::NOT_NFC,
@@ -146,7 +147,7 @@ mod tests {
     #[test]
     fn every_hazard_lint_forbids_before_any_rule_speaks() {
         let hazards = LINTS.iter().filter(|l| l.group == Group::Hazard);
-        assert_eq!(hazards.clone().count(), 5);
+        assert_eq!(hazards.clone().count(), 6);
         for lint in hazards {
             assert_eq!(lint.default_level(), Level::Forbid, "{}", lint.name);
         }

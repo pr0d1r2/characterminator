@@ -9,9 +9,9 @@
 use super::Config;
 use crate::charset::{CharSet, SetCatalog};
 use crate::lint::{
-    CHAR_LINTS, Finding, Hazards, LINE_LINTS, Level, Levels, Lint, OUTSIDE_SET,
-    TEXT_LINTS, Target, char_lints, line_hits, one_claim, text_hits,
-    unicode_space,
+    CHAR_LINTS, DOUBLE_ENCODED, Finding, Hazards, LINE_LINTS, Level, Levels,
+    Lint, OUTSIDE_SET, TEXT_LINTS, Target, char_lints, double_encoded, inside,
+    line_hits, one_claim, text_hits, unicode_space,
 };
 use crate::rules::{self, Resolution, Rule};
 use crate::scan::{Hit, Unreadable, decode, scan_str};
@@ -347,7 +347,27 @@ pub(crate) fn judged(
     let hits = scan_str(text, |c| judge.passes(c, deep));
     let mut found = reportable(hits, judge, levels);
     found.extend(context_findings(text, levels));
+    let found = damaged(text, found, levels);
     one_claim(found)
+}
+
+/// Double-encoded runs (`src/lint/hazard:V142`) said ONCE each, in place of
+/// the characters they are made of: the lead, the C1 controls and the stray
+/// Latin-1 letters are one damage, and a reader is told what it was.
+fn damaged(text: &str, found: Vec<Finding>, levels: &Levels) -> Vec<Finding> {
+    let runs = double_encoded(text);
+    if runs.is_empty() {
+        return found;
+    }
+    let mut kept: Vec<Finding> = found
+        .into_iter()
+        .filter(|f| !inside(&runs, f.hit.position.byte))
+        .collect();
+    kept.extend(
+        runs.iter()
+            .map(|run| levels.finding(run.hit(), DOUBLE_ENCODED)),
+    );
+    kept
 }
 
 /// Whether a run asked for any of these lints: none at `allow` is the

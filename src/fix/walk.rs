@@ -11,7 +11,7 @@
 use crate::fix::emoji::{Extent, Pairing};
 use crate::fix::map::{Map, Match, violates};
 use crate::fix::words::Gap;
-use crate::fix::{Error, Hazard, Rewrite};
+use crate::fix::{Error, Hazard, Marks, Restore, Rewrite};
 use crate::scan::{Hit, Position};
 
 /// One walk over one text.
@@ -63,22 +63,9 @@ pub(super) struct Ground<'a> {
 pub(super) fn run(
     text: &str,
     ground: Ground<'_>,
-    hazards: Vec<Hazard>,
-    kept: Vec<usize>,
+    marks: Marks,
 ) -> Result<Pass, Error> {
-    let mut walk = Run {
-        text,
-        map: ground.map,
-        allowed: ground.allowed,
-        budget: ground.budget,
-        hazards,
-        kept,
-        next: 0,
-        at: Cursor::start(),
-        pass: Pass::default(),
-        gap: Gap::default(),
-        pairing: Pairing::default(),
-    };
+    let mut walk = Run::new(text, ground, marks);
     walk.walk()?;
     Ok(walk.pass)
 }
@@ -96,6 +83,9 @@ struct Run<'a> {
     hazards: Vec<Hazard>,
     /// Offsets the set keeps as they are, ascending: no rewrite covers one.
     kept: Vec<usize>,
+    /// Double-encoded runs, ascending: re-decoded where the cursor meets one
+    /// (`src/lint/hazard:V142`).
+    restores: Vec<Restore>,
     next: usize,
     at: Cursor,
     pass: Pass,
@@ -105,6 +95,25 @@ struct Run<'a> {
     /// Where the walk stands in a run of regional indicators, which pair
     /// from its start (`src/fix/emoji:V76`).
     pairing: Pairing,
+}
+
+impl<'a> Run<'a> {
+    fn new(text: &'a str, ground: Ground<'a>, marks: Marks) -> Self {
+        Self {
+            text,
+            map: ground.map,
+            allowed: ground.allowed,
+            budget: ground.budget,
+            hazards: marks.hazards,
+            kept: marks.kept,
+            restores: marks.restores,
+            next: 0,
+            at: Cursor::start(),
+            pass: Pass::default(),
+            gap: Gap::default(),
+            pairing: Pairing::default(),
+        }
+    }
 }
 
 impl Run<'_> {
@@ -141,10 +150,30 @@ impl Run<'_> {
         if self.pairing.closes(rest) {
             return Ok(None);
         }
+        if let Some(found) = self.restored(rest) {
+            return Ok(Some(found));
+        }
         if let Some(found) = self.mapped(rest, hazard)? {
             return Ok(Some(found));
         }
         Ok(hazard.filter(|h| h.delete).and_then(|_| deleted(rest)))
+    }
+
+    /// The double-encoded run at the cursor, as a span rewritten to the
+    /// character it decodes to. Not run through the map: the next pass judges
+    /// the restored character like any other (`src/lint/hazard:V142`).
+    fn restored<'b>(&self, rest: &'b str) -> Option<(&'b str, Match)> {
+        let at = self
+            .restores
+            .binary_search_by_key(&self.at.byte, |r| r.byte)
+            .ok()?;
+        let run = self.restores.get(at)?;
+        let found = Match {
+            len: run.len,
+            to: run.to.to_string(),
+            word: false,
+        };
+        Some((rest.get(..run.len)?, found))
     }
 
     /// What the map makes of the span here, if anything. A zero-length
@@ -229,7 +258,7 @@ impl Run<'_> {
             allowed: self.allowed,
             budget,
         };
-        Ok(run(to, ground, Vec::new(), Vec::new())?.output)
+        Ok(run(to, ground, Marks::default())?.output)
     }
 
     fn keep(&mut self, ch: char) {

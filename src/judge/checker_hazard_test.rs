@@ -135,3 +135,29 @@ fn fix_keeps_a_selector_after_a_granted_base() {
     let want = "\u{2714}\u{FE0F} \u{2714}\u{FE0E} a\n";
     assert_eq!(fixed.map(|f| f.output).unwrap_or_default(), want);
 }
+
+/// `src/lint/hazard:V142`: UTF-8 read as Latin-1 and saved again is ONE
+/// finding per run, at the run's first character, carrying the character it
+/// decodes to -- not the scatter of lead, C1 controls and Latin-1 letters. Under
+/// `any` too: the C1 controls are hazards whatever the set grants.
+#[test]
+fn a_double_encoded_run_is_one_finding_per_run() {
+    let text = "must \u{e2}\u{8a}\u{a5} share \u{e2}\u{80}\u{94} ok\n";
+    let name = ("double-encoded", Level::Forbid);
+    let expected = vec![(name.0, name.1, 5), (name.0, name.1, 18)];
+    assert_eq!(findings(text, &any()), expected);
+    let ascii: Vec<_> = findings(text, &builtin::ascii())
+        .into_iter()
+        .map(|(n, _, at)| (n, at))
+        .collect();
+    assert_eq!(ascii, vec![(name.0, 5), (name.0, 18)]);
+}
+
+/// The C1 control is what keeps it safe: an accented letter alone, or the
+/// pair a Latin-1 prose file really holds, is no run and is judged as before.
+#[test]
+fn an_accented_letter_without_a_control_is_not_double_encoded() {
+    let fired = findings("caf\u{e9} \u{c3}\u{a9}\n", &builtin::ascii());
+    let names: Vec<&str> = fired.iter().map(|(n, _, _)| *n).collect();
+    assert_eq!(names, ["outside-set"; 3]);
+}

@@ -4,8 +4,10 @@
 //! the one `check` reports -- rather than a second definition of it.
 
 use super::Judge;
-use crate::fix::{Error as FixError, Fixed, Hazard, Law, Map, fix_under};
-use crate::lint::{Levels, carries_no_text};
+use crate::fix::{
+    Error as FixError, Fixed, Hazard, Law, Map, Restore, fix_under,
+};
+use crate::lint::{Levels, carries_no_text, double_encoded};
 use crate::scan::{Hit, scan_str};
 
 impl Judge<'_> {
@@ -26,10 +28,12 @@ impl Judge<'_> {
         let allowed = |c: char| self.set.contains(c) || self.granted(c, levels);
         let hazards = |text: &str| self.hazards_in(text, levels);
         let kept = |text: &str| self.selectors(text);
+        let restores = |text: &str| self.restores(text);
         let law = Law {
             allowed: &allowed,
             hazards: &hazards,
             kept: &kept,
+            restores: &restores,
         };
         fix_under(text, map, law)
     }
@@ -65,5 +69,19 @@ impl Judge<'_> {
             })
         };
         hits.into_iter().filter_map(hazard).collect()
+    }
+}
+
+impl Judge<'_> {
+    /// The double-encoded runs of `text` as `check` reports them
+    /// (`src/lint/hazard:V142`): `fix` re-decodes each, whatever the set
+    /// grants, then judges what it restored like any other character.
+    fn restores(&self, text: &str) -> Vec<Restore> {
+        let restore = |run: crate::lint::Damage| Restore {
+            byte: run.at.byte,
+            len: run.len,
+            to: run.decoded,
+        };
+        double_encoded(text).into_iter().map(restore).collect()
     }
 }

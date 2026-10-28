@@ -16,7 +16,7 @@
 use crate::fix::emoji::{Layer, SETTLE, Trail, itself};
 use crate::fix::map::Map;
 use crate::fix::walk::{Ground, Pass, Span, run};
-use crate::fix::{Error, Law, Rewrite};
+use crate::fix::{Error, Law, Marks, Rewrite};
 use crate::scan::Hit;
 
 /// What `fix` found, with no text to write: the `fix --check` answer.
@@ -103,6 +103,7 @@ pub fn fix(
         allowed: &allowed,
         hazards: &|_| Vec::new(),
         kept: &|_| Vec::new(),
+        restores: &|_| Vec::new(),
     };
     fix_under(text, map, law)
 }
@@ -201,8 +202,7 @@ fn guarded(text: &str, map: &Map, law: Law<'_>) -> Result<Pass, Error> {
         allowed: law.allowed,
         budget: map.budget(),
     };
-    let kept = (law.kept)(text);
-    let pass = run(text, ground, (law.hazards)(text), kept)?;
+    let pass = run(text, ground, Marks::of(text, law))?;
     if untouched_bytes_match(text, &pass) {
         Ok(pass)
     } else {

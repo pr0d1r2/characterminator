@@ -91,3 +91,27 @@ fn a_granted_tag_character_survives_fix_and_the_rest_does_not() {
     assert_eq!(left, "a\u{E0041}bc\n", "{out}");
     assert_eq!(code, 0, "{out}");
 }
+
+/// `src/lint/hazard:V142`: a bare `fix` re-decodes a double-encoded run to the
+/// character it was, losslessly -- in a file granted everything too -- and a
+/// second run changes nothing.
+#[test]
+fn a_double_encoded_run_is_restored_by_fix() {
+    let text = "must \u{e2}\u{8a}\u{a5} share \u{e2}\u{80}\u{94} ok\n";
+    let (left, out, code) = fixed("ctrm-fixhz-mojibake", "* any\n", text);
+    assert_eq!(left, "must \u{22A5} share \u{2014} ok\n", "{out}");
+    assert_eq!(code, 0, "{out}");
+}
+
+/// The restored character is judged like any other: under `ascii` the dash
+/// goes on to the map, and a character nothing maps is KEPT and reported, not
+/// left damaged.
+#[test]
+fn a_restored_character_is_then_judged_by_the_map_and_the_set() {
+    let text = "a \u{e2}\u{80}\u{94} b \u{e2}\u{8a}\u{a5}\n";
+    let (left, out, code) =
+        fixed("ctrm-fixhz-mojibake-ascii", "* ascii\n", text);
+    assert_eq!(left, "a -- b \u{22A5}\n", "{out}");
+    assert_eq!(code, 1, "{out}");
+    assert!(out.ends_with("left: notes.md:1:8 U+22A5 ascii"), "{out}");
+}
