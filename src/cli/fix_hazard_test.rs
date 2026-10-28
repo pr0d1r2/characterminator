@@ -98,9 +98,15 @@ fn a_granted_tag_character_survives_fix_and_the_rest_does_not() {
 #[test]
 fn a_double_encoded_run_is_restored_by_fix() {
     let text = "must \u{e2}\u{8a}\u{a5} share \u{e2}\u{80}\u{94} ok\n";
-    let (left, out, code) = fixed("ctrm-fixhz-mojibake", "* any\n", text);
-    assert_eq!(left, "must \u{22A5} share \u{2014} ok\n", "{out}");
-    assert_eq!(code, 0, "{out}");
+    let restored = "must \u{22A5} share \u{2014} ok\n";
+    let files = [(".ctrm", "* any\n"), ("notes.md", text)];
+    let Some(root) = fixture("ctrm-fixhz-mojibake", &files) else {
+        return;
+    };
+    let (out, code) = ran(&root, true);
+    assert_eq!((read(&root).as_str(), code), (restored, 0), "{out}");
+    let (out, code) = ran(&root, true);
+    assert_eq!((read(&root).as_str(), code), (restored, 0), "{out}");
 }
 
 /// The restored character is judged like any other: under `ascii` the dash
