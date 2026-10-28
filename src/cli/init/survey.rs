@@ -6,7 +6,7 @@ use crate::fix::Map;
 use crate::lint::{
     DOUBLE_ENCODED, Damage as Run, Hazards, double_encoded, inside,
 };
-use crate::scan::{Hit, scan_str};
+use crate::scan::{Hit, Position, scan_str};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 /// One file type's characters, as the draft explains them.
@@ -19,10 +19,22 @@ pub(super) struct Kind {
     /// per file, each character with how often it occurs there.
     tallies: Vec<BTreeMap<char, usize>>,
     /// Each hazard code point, every lint that names it (comma-joined), and
-    /// the first path it was in.
-    pub hazards: BTreeMap<char, (String, String)>,
+    /// every `path:line:col` it was found at.
+    pub hazards: BTreeMap<char, Hazard>,
     /// A joiner inside an RGI emoji sequence was seen: `fix` compresses it.
     pub sequences: bool,
+}
+
+/// One hazard code point: the lints that name it, and where it sits.
+#[derive(Debug, Default)]
+pub(super) struct Hazard {
+    pub lints: String,
+    pub places: Vec<String>,
+}
+
+/// `path:line:col`, as `check` prints a finding's place.
+fn place(shown: &str, at: Position) -> String {
+    format!("{shown}:{}:{}", at.line, at.column)
 }
 
 /// Every file type, keyed by the pattern its `.ctrm` line would use.
@@ -57,7 +69,7 @@ impl Survey {
         kind.begin(&runs, shown);
         for hit in needing(text, &runs) {
             if let Some(lint) = self.hazards.lint_at(hit, &exempt) {
-                kind.hazard(hit.character, lint.name, shown);
+                kind.hazard(hit, lint.name, shown);
             } else if exempt.binary_search(&hit.position.byte).is_ok() {
                 kind.sequences = true;
             } else {
@@ -76,22 +88,24 @@ impl Kind {
         self.files = self.files.saturating_add(1);
         self.tallies.push(BTreeMap::new());
         for run in runs {
-            self.hazard(run.decoded, DOUBLE_ENCODED.name, shown);
+            self.hazard(run.hit(), DOUBLE_ENCODED.name, shown);
         }
     }
 
-    /// A hazard code point, with the first path it was in. A character two
+    /// A hazard code point, with each place it was found. A character two
     /// lints name (a literal U+202E and a run decoding to it) keeps both.
-    fn hazard(&mut self, c: char, lint: &'static str, shown: &str) {
-        let first = (String::new(), shown.to_owned());
-        let (names, _) = self.hazards.entry(c).or_insert(first);
-        if names.split(", ").any(|name| name == lint) {
-            return;
+    fn hazard(&mut self, hit: Hit, lint: &'static str, shown: &str) {
+        let found = self.hazards.entry(hit.character).or_default();
+        let at = place(shown, hit.position);
+        if !found.lints.split(", ").any(|name| name == lint) {
+            if !found.lints.is_empty() {
+                found.lints.push_str(", ");
+            }
+            found.lints.push_str(lint);
         }
-        if !names.is_empty() {
-            names.push_str(", ");
+        if !found.places.contains(&at) {
+            found.places.push(at);
         }
-        names.push_str(lint);
     }
 
     /// A character that is no hazard: rewritten by `fix`, or needed.

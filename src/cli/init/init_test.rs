@@ -86,11 +86,9 @@ fn the_draft_grants_the_need_and_never_a_hazard() {
             .contains("until it runs, check reports 1 finding in 1 file "),
         "{text}"
     );
-    assert!(text.contains("U+202E bidi-control in docs/a.md"), "{text}");
-    assert!(
-        text.contains("Pure ASCII, no line needed: *.rs (1)"),
-        "{text}"
-    );
+    let bidi = "U+202E bidi-control in docs/a.md:1:11";
+    let plain = "Pure ASCII, no line needed: *.rs (1)";
+    assert!(text.contains(bidi) && text.contains(plain), "{text}");
     assert!(!text.contains("hazard-bidi") && !text.contains(" any\n"));
     assert_eq!(text, draft(&surveyed(), &candidates));
 }
@@ -293,7 +291,7 @@ fn a_double_encoded_run_is_listed_not_granted() {
     survey.add("docs/a.md", "must \u{e2}\u{8a}\u{a5} share\n");
     let text = draft(&survey, &Candidates::builtin());
     assert!(
-        text.contains("U+22A5 double-encoded in docs/a.md"),
+        text.contains("U+22A5 double-encoded in docs/a.md:1:6"),
         "{text}"
     );
     assert!(
@@ -310,6 +308,25 @@ fn a_literal_hazard_and_a_run_decoding_to_it_keep_both_lints() {
     let mut survey = Survey::new(false);
     survey.add("docs/a.md", "x\u{202E}y \u{e2}\u{80}\u{ae}\n");
     let text = draft(&survey, &Candidates::builtin());
-    let both = "U+202E double-encoded, bidi-control in docs/a.md";
+    let both =
+        "U+202E double-encoded, bidi-control in docs/a.md:1:5, docs/a.md:1:2";
     assert!(text.contains(both), "{text}");
+}
+
+/// Every file holding a hazard is listed with line:col, not only the first,
+/// and a long list is cut with a count of the rest.
+#[test]
+fn a_hazard_is_listed_in_every_file_and_cut_when_long() {
+    let mut survey = Survey::new(false);
+    survey.add("one.sh", "a \u{8a} b\n");
+    survey.add("two.sh", "c \u{8a} d\n");
+    let text = draft(&survey, &Candidates::builtin());
+    let both = "U+008A control-character in one.sh:1:3, two.sh:1:3";
+    assert!(text.contains(both), "{text}");
+    for n in 0..10 {
+        survey.add(&format!("f{n}.sh"), "x \u{8a}\n");
+    }
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(text.contains(" and 4 more -- ctrm check"), "{text}");
+    assert!(!text.contains("f9.sh"), "{text}");
 }

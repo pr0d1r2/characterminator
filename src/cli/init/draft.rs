@@ -97,13 +97,36 @@ fn notes(kind: &Kind, allowed: &dyn Fn(char) -> bool) -> Vec<String> {
             "# Emoji sequences: `ctrm fix` compresses them to one emoji.",
         ));
     }
-    let hazards: Vec<String> = kind
-        .hazards
-        .iter()
-        .map(|(c, (lint, path))| format!("{} {lint} in {path}", codepoint(*c)))
-        .collect();
-    lines.extend(wrapped("Hazards, never granted -- fix these:", &hazards));
+    lines.extend(wrapped(
+        "Hazards, never granted -- fix these:",
+        &hazards(kind),
+    ));
     lines
+}
+
+/// One entry per hazard code point: its lints and every place it sits.
+fn hazards(kind: &Kind) -> Vec<String> {
+    let each = kind.hazards.iter();
+    each.map(|(c, found)| {
+        let (lints, at) = (&found.lints, listed(&found.places));
+        format!("{} {lints} in {at}", codepoint(*c))
+    })
+    .collect()
+}
+
+/// Most places listed per hazard code point; the rest are counted.
+const PLACES: usize = 8;
+
+/// `a:1:3, b:2:4`, cut at [`PLACES`] with `and K more -- ctrm check`.
+fn listed(places: &[String]) -> String {
+    let shown: Vec<&str> =
+        places.iter().take(PLACES).map(String::as_str).collect();
+    let mut text = shown.join(", ");
+    let more = places.len().saturating_sub(PLACES);
+    if more > 0 {
+        text.push_str(&format!(" and {more} more -- ctrm check"));
+    }
+    text
 }
 
 /// The characters the builtin map rewrites: what `check` reports on them
