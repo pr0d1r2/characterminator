@@ -18,8 +18,9 @@ pub(super) struct Kind {
     /// Rewritten to ASCII by the builtin map: no grant needed. One tally
     /// per file, each character with how often it occurs there.
     tallies: Vec<BTreeMap<char, usize>>,
-    /// Each hazard code point, its lint, and the first path it was in.
-    pub hazards: BTreeMap<char, (&'static str, String)>,
+    /// Each hazard code point, every lint that names it (comma-joined), and
+    /// the first path it was in.
+    pub hazards: BTreeMap<char, (String, String)>,
     /// A joiner inside an RGI emoji sequence was seen: `fix` compresses it.
     pub sequences: bool,
 }
@@ -79,10 +80,18 @@ impl Kind {
         }
     }
 
-    /// A hazard code point, with the first path it was in.
+    /// A hazard code point, with the first path it was in. A character two
+    /// lints name (a literal U+202E and a run decoding to it) keeps both.
     fn hazard(&mut self, c: char, lint: &'static str, shown: &str) {
-        let first = (lint, shown.to_owned());
-        self.hazards.entry(c).or_insert(first);
+        let first = (String::new(), shown.to_owned());
+        let (names, _) = self.hazards.entry(c).or_insert(first);
+        if names.split(", ").any(|name| name == lint) {
+            return;
+        }
+        if !names.is_empty() {
+            names.push_str(", ");
+        }
+        names.push_str(lint);
     }
 
     /// A character that is no hazard: rewritten by `fix`, or needed.
