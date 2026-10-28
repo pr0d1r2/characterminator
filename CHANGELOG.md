@@ -19,6 +19,15 @@ use, so one reading serves the whole family of tools.
 
 ### Added
 
+- **`double-encoded`** (#32): text that was UTF-8, read as Latin-1 and saved as
+  UTF-8 again ("mojibake") is one finding per run, naming the character it
+  decodes to (`a.md:1:15 double-encoded "⊥" (U+22A5)`), instead of a scatter of
+  unrelated findings. The run is a lead U+00C2-U+00F4 plus its continuations
+  with at least one C1 control, so an accented letter on its own, or U+00C3
+  U+00A9 in Latin-1 prose, is left alone. `ctrm fix` re-decodes it losslessly,
+  and `ctrm init` lists it under "fix these" instead of widening the file type
+  to `any`.
+
 - A VS15/VS16 (U+FE0E/U+FE0F) right after a granted character that has a
   standardized variation sequence (`✔️`) is no longer reported, and `fix`
   leaves it, so text matching a tool's emoji output stays byte-exact (#34). A

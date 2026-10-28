@@ -3,8 +3,10 @@
 //! hazards, which no line of a `.ctrm` should ever grant.
 
 use crate::fix::Map;
-use crate::lint::Hazards;
-use crate::scan::scan_str;
+use crate::lint::{
+    DOUBLE_ENCODED, Damage as Run, Hazards, double_encoded, inside,
+};
+use crate::scan::{Hit, scan_str};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 /// One file type's characters, as the draft explains them.
@@ -43,30 +45,44 @@ impl Survey {
         }
     }
 
-    /// One file's text, filed under its type.
+    /// One file's text, filed under its type. A double-encoded run is damage
+    /// to fix, never characters the type needs (`src/lint/hazard:V142`): it is
+    /// filed under what it decodes to, and the code points it is made of are
+    /// left out.
     pub(super) fn add(&mut self, shown: &str, text: &str) {
         let exempt = self.hazards.exempt(text);
+        let runs = double_encoded(text);
         let kind = self.kinds.entry(pattern_of(shown)).or_default();
-        kind.begin();
-        for hit in scan_str(text, plain) {
-            let c = hit.character;
+        kind.begin(&runs, shown);
+        for hit in needing(text, &runs) {
             if let Some(lint) = self.hazards.lint_at(hit, &exempt) {
-                let first = (lint.name, shown.to_owned());
-                kind.hazards.entry(c).or_insert(first);
+                kind.hazard(hit.character, lint.name, shown);
             } else if exempt.binary_search(&hit.position.byte).is_ok() {
                 kind.sequences = true;
             } else {
-                kind.file(c, !self.keep && self.map.contains(&c));
+                let mapped = !self.keep && self.map.contains(&hit.character);
+                kind.file(hit.character, mapped);
             }
         }
     }
 }
 
 impl Kind {
-    /// A file of this type is read: its own tally of what `fix` rewrites.
-    fn begin(&mut self) {
+    /// A file of this type is read: its own tally of what `fix` rewrites,
+    /// and its double-encoded runs, listed as hazards by the character each
+    /// decodes to.
+    fn begin(&mut self, runs: &[Run], shown: &str) {
         self.files = self.files.saturating_add(1);
         self.tallies.push(BTreeMap::new());
+        for run in runs {
+            self.hazard(run.decoded, DOUBLE_ENCODED.name, shown);
+        }
+    }
+
+    /// A hazard code point, with the first path it was in.
+    fn hazard(&mut self, c: char, lint: &'static str, shown: &str) {
+        let first = (lint, shown.to_owned());
+        self.hazards.entry(c).or_insert(first);
     }
 
     /// A character that is no hazard: rewritten by `fix`, or needed.
@@ -134,4 +150,12 @@ pub(super) fn pattern_of(shown: &str) -> String {
         }
         _ => name.to_owned(),
     }
+}
+
+/// The characters of `text` outside `ascii`, less the double-encoded runs
+/// (`src/lint/hazard:V142`), which are no character the file type needs.
+fn needing(text: &str, runs: &[Run]) -> Vec<Hit> {
+    let mut hits = scan_str(text, plain);
+    hits.retain(|hit| !inside(runs, hit.position.byte));
+    hits
 }

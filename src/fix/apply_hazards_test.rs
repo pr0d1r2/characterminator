@@ -43,6 +43,7 @@ fn fixed(text: &str, allowed: &dyn Fn(char) -> bool) -> String {
         allowed,
         hazards: &hazards,
         kept: &|_| Vec::new(),
+        restores: &|_| Vec::new(),
     };
     fix_under(text, &map(), law)
         .map(|fixed| fixed.output)
@@ -116,6 +117,7 @@ fn a_mapped_hazard_follows_the_map_even_where_granted() {
         allowed: &anything,
         hazards: &hazards,
         kept: &|_| Vec::new(),
+        restores: &|_| Vec::new(),
     };
     let out = fix_under("a\u{7}b", &bell, law).map(|f| f.output);
     assert_eq!(out.unwrap_or_default(), "a!b");

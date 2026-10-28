@@ -282,3 +282,23 @@ fn keep_fixable_still_leaves_a_hazard_for_check() {
     assert_eq!(code, 1, "{note}");
     assert!(note.starts_with("1 finding in 1 file;"), "{note}");
 }
+
+/// `src/lint/hazard:V142`: a double-encoded run is damage to fix, not a need.
+/// Its pieces (a lead letter, a Latin-1 symbol) are left out of the grant,
+/// so the type is not widened to `any`, and the run is listed under "fix
+/// these" by what it decodes to.
+#[test]
+fn a_double_encoded_run_is_listed_not_granted() {
+    let mut survey = Survey::new(false);
+    survey.add("docs/a.md", "must \u{e2}\u{8a}\u{a5} share\n");
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(
+        text.contains("U+22A5 double-encoded in docs/a.md"),
+        "{text}"
+    );
+    assert!(
+        !text.contains("U+00E2") && !text.contains(" any\n"),
+        "{text}"
+    );
+    assert!(!text.contains("\n*.md "), "{text}");
+}

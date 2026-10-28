@@ -6,7 +6,11 @@
 //! `src/lint` re-exports what a sibling node may name.
 
 mod hazards;
+mod mojibake;
 mod sequence;
 
 pub use hazards::Hazards;
 pub(crate) use hazards::carries_no_text;
+pub(crate) use mojibake::{
+    DOUBLE_ENCODED, Run, inside, runs as double_encoded,
+};
