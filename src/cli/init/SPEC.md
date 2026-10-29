@@ -30,3 +30,4 @@ id|date|cause|fix
 B80|2026-10-04|1 locale ! held all letters ∴ Polish + U+00E9 → `fi-FI-aux` ⊥ `pl+en-aux` (#5)|V128
 B81|2026-10-23|draft counted U+2014 its own `any` line granted|V128
 B82|2026-10-25|draft said `1 findings in 1 files` (#37)|V128
+B84|2026-10-29|draft named a hazard by its first file only, ⊥ line:col ∴ ∀ other place → `check` alone (#33)|V128
