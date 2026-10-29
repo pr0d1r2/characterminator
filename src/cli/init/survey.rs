@@ -66,10 +66,10 @@ impl Survey {
         let exempt = self.hazards.exempt(text);
         let runs = double_encoded(text);
         let kind = self.kinds.entry(pattern_of(shown)).or_default();
-        kind.begin(&runs, shown);
+        let mut found = kind.begin(&runs);
         for hit in needing(text, &runs) {
             if let Some(lint) = self.hazards.lint_at(hit, &exempt) {
-                kind.hazard(hit, lint.name, shown);
+                found.push((hit, lint.name));
             } else if exempt.binary_search(&hit.position.byte).is_ok() {
                 kind.sequences = true;
             } else {
@@ -77,18 +77,27 @@ impl Survey {
                 kind.file(hit.character, mapped);
             }
         }
+        kind.hazards_in(shown, found);
     }
 }
 
 impl Kind {
     /// A file of this type is read: its own tally of what `fix` rewrites,
-    /// and its double-encoded runs, listed as hazards by the character each
+    /// and its double-encoded runs, as hazards by the character each
     /// decodes to.
-    fn begin(&mut self, runs: &[Run], shown: &str) {
+    fn begin(&mut self, runs: &[Run]) -> Vec<(Hit, &'static str)> {
         self.files = self.files.saturating_add(1);
         self.tallies.push(BTreeMap::new());
-        for run in runs {
-            self.hazard(run.hit(), DOUBLE_ENCODED.name, shown);
+        let each = runs.iter().map(|run| (run.hit(), DOUBLE_ENCODED.name));
+        each.collect()
+    }
+
+    /// One file's hazards, listed in the order `check` reports them: a run
+    /// is not listed ahead of a literal hit that comes before it.
+    fn hazards_in(&mut self, shown: &str, mut found: Vec<(Hit, &'static str)>) {
+        found.sort_by_key(|(hit, _)| hit.position.byte);
+        for (hit, lint) in found {
+            self.hazard(hit, lint, shown);
         }
     }
 

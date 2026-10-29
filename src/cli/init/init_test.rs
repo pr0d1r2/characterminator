@@ -302,14 +302,15 @@ fn a_double_encoded_run_is_listed_not_granted() {
 }
 
 /// A literal U+202E and a run decoding to it are one character two lints
-/// name: the draft lists both, not whichever was seen first.
+/// name: the draft lists both, not whichever was seen first, and each
+/// place in the order `check` reports it.
 #[test]
 fn a_literal_hazard_and_a_run_decoding_to_it_keep_both_lints() {
     let mut survey = Survey::new(false);
     survey.add("docs/a.md", "x\u{202E}y \u{e2}\u{80}\u{ae}\n");
     let text = draft(&survey, &Candidates::builtin());
     let both =
-        "U+202E double-encoded, bidi-control in docs/a.md:1:5, docs/a.md:1:2";
+        "U+202E bidi-control, double-encoded in docs/a.md:1:2, docs/a.md:1:5";
     assert!(text.contains(both), "{text}");
 }
 
