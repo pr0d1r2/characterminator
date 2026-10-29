@@ -216,7 +216,8 @@ The hazard is never granted; it is listed to fix:
 
 # *.rs, files: 1.
 # Needs no grant.
-# Hazards, never granted -- fix these: U+202E bidi-control in main.rs
+# Hazards, never granted -- fix these:
+#   U+202E bidi-control in main.rs:1:17
 ```
 
 ```text
