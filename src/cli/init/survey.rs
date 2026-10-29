@@ -103,9 +103,7 @@ impl Kind {
             }
             found.lints.push_str(lint);
         }
-        if !found.places.contains(&at) {
-            found.places.push(at);
-        }
+        found.places.push(at);
     }
 
     /// A character that is no hazard: rewritten by `fix`, or needed.
