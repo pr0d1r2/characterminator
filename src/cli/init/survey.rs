@@ -33,8 +33,18 @@ pub(super) struct Hazard {
 }
 
 /// `path:line:col`, as `check` prints a finding's place.
+/// A control character in the path (a newline above all) is escaped: the
+/// place lands in a `.ctrm` comment, and a raw line break would start a rule.
 fn place(shown: &str, at: Position) -> String {
-    format!("{shown}:{}:{}", at.line, at.column)
+    let mut path = String::new();
+    for c in shown.chars() {
+        if c.is_control() {
+            path.extend(c.escape_default());
+        } else {
+            path.push(c);
+        }
+    }
+    format!("{path}:{}:{}", at.line, at.column)
 }
 
 /// Every file type, keyed by the pattern its `.ctrm` line would use.

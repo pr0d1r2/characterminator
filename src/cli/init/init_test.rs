@@ -331,3 +331,14 @@ fn a_hazard_is_listed_in_every_file_and_cut_when_long() {
     assert!(text.contains(" and 4 more -- ctrm check"), "{text}");
     assert!(!text.contains("f9.sh"), "{text}");
 }
+
+/// A tracked path may hold a newline: the place is escaped, so the hazard
+/// note stays one comment line and cannot start a `.ctrm` rule.
+#[test]
+fn a_path_with_a_newline_cannot_start_a_rule() {
+    let mut survey = Survey::new(false);
+    survey.add("z\n* any\n# .sh", "a \u{8a} b\n");
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(text.contains(r"z\n* any\n# .sh:1:3"), "{text}");
+    assert!(text.lines().all(|l| !l.starts_with("* any")), "{text}");
+}
