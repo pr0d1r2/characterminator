@@ -3,7 +3,7 @@
 //! work to do, never granted.
 
 use super::cover::{Candidates, Grant};
-use super::survey::{Kind, Survey};
+use super::survey::{Hazard, Kind, Survey};
 use crate::render::codepoint;
 
 const HEADER: &str = "\
@@ -108,21 +108,16 @@ fn notes(kind: &Kind, allowed: &dyn Fn(char) -> bool) -> Vec<String> {
 fn hazards(kind: &Kind) -> Vec<String> {
     let each = kind.hazards.iter();
     each.map(|(c, found)| {
-        let (lints, at) = (&found.lints, listed(&found.places));
+        let (lints, at) = (&found.lints, listed(found));
         format!("{} {lints} in {at}", codepoint(*c))
     })
     .collect()
 }
 
-/// Most places listed per hazard code point; the rest are counted.
-const PLACES: usize = 8;
-
-/// `a:1:3, b:2:4`, cut at [`PLACES`] with `and K more -- ctrm check`.
-fn listed(places: &[String]) -> String {
-    let shown: Vec<&str> =
-        places.iter().take(PLACES).map(String::as_str).collect();
-    let mut text = shown.join(", ");
-    let more = places.len().saturating_sub(PLACES);
+/// `a:1:3, b:2:4`, cut at `PLACES` with `and K more -- ctrm check`.
+fn listed(found: &Hazard) -> String {
+    let mut text = found.places.join(", ");
+    let more = found.total.saturating_sub(found.places.len());
     if more > 0 {
         text.push_str(&format!(" and {more} more -- ctrm check"));
     }
