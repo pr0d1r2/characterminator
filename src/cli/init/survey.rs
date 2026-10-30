@@ -29,8 +29,13 @@ pub(super) struct Kind {
 #[derive(Debug, Default)]
 pub(super) struct Hazard {
     pub lints: String,
+    /// The first [`PLACES`] only; `total` counts them all.
     pub places: Vec<String>,
+    pub total: usize,
 }
+
+/// Most places kept per hazard code point; the rest are counted.
+pub(super) const PLACES: usize = 8;
 
 /// `path:line:col`, as `check` prints a finding's place.
 /// A control character in the path (a newline above all) is escaped: the
@@ -115,14 +120,16 @@ impl Kind {
     /// lints name (a literal U+202E and a run decoding to it) keeps both.
     fn hazard(&mut self, hit: Hit, lint: &'static str, shown: &str) {
         let found = self.hazards.entry(hit.character).or_default();
-        let at = place(shown, hit.position);
         if !found.lints.split(", ").any(|name| name == lint) {
             if !found.lints.is_empty() {
                 found.lints.push_str(", ");
             }
             found.lints.push_str(lint);
         }
-        found.places.push(at);
+        found.total = found.total.saturating_add(1);
+        if found.places.len() < PLACES {
+            found.places.push(place(shown, hit.position));
+        }
     }
 
     /// A character that is no hazard: rewritten by `fix`, or needed.
