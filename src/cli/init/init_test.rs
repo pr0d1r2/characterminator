@@ -14,6 +14,8 @@ fn a_file_type_is_its_extension_glob_or_its_own_name() {
     assert_eq!(pattern_of("docs/x.tar.gz"), "*.gz");
     assert_eq!(pattern_of("Makefile"), "Makefile");
     assert_eq!(pattern_of("sub/.gitignore"), ".gitignore");
+    assert_eq!(pattern_of("a.b\nc"), r"*.b\nc");
+    assert_eq!(pattern_of("sub/a\nb"), r"a\nb");
 }
 
 fn covered(chars: &[char]) -> Grant {
@@ -333,12 +335,27 @@ fn a_hazard_is_listed_in_every_file_and_cut_when_long() {
 }
 
 /// A tracked path may hold a newline: the place is escaped, so the hazard
-/// note stays one comment line and cannot start a `.ctrm` rule.
+/// note stays one comment line.
 #[test]
-fn a_path_with_a_newline_cannot_start_a_rule() {
+fn a_hazard_in_a_path_with_a_newline_keeps_one_line() {
     let mut survey = Survey::new(false);
     survey.add("z\n* any\n# .sh", "a \u{8a} b\n");
     let text = draft(&survey, &Candidates::builtin());
     assert!(text.contains(r"z\n* any\n# .sh:1:3"), "{text}");
-    assert!(text.lines().all(|l| !l.starts_with("* any")), "{text}");
+}
+
+/// B85: wherever the draft names such a path it is escaped -- a hazard's
+/// place, a section header, the pure-ASCII list, the rule line -- so it
+/// cannot start a `.ctrm` rule, with the newline before the last dot, after
+/// it, or in a name with no dot at all.
+#[test]
+fn a_path_with_a_newline_cannot_start_a_rule() {
+    let paths = ["z\n* any\n# .sh", "z.b\n* any\n# x", "z\n* any\n#"];
+    let texts = ["a \u{8a} b\n", "caf\u{e9}\n", "plain\n"];
+    for (path, text) in paths.iter().flat_map(|p| texts.map(|t| (p, t))) {
+        let mut survey = Survey::new(false);
+        survey.add(path, text);
+        let ctrm = draft(&survey, &Candidates::builtin());
+        assert!(ctrm.lines().all(|l| !l.starts_with("* any")), "{ctrm}");
+    }
 }
