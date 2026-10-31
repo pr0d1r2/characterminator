@@ -91,7 +91,7 @@ src/charset/locale/SPEC.md 1570
 # `words` sub-nodes took V31, V51, V60, V62, V65, V76, R8, R9, R11 and
 # their bug rows with them. ~12% over the measured 1695, so the parent
 # cannot quietly regrow into the room its children took.
-src/fix/SPEC.md      1900
+src/fix/SPEC.md      2100
 # Set 2026-10-03 with the split, ~12% over each measured spec: the emoji
 # compression (five invariants, four bug rows) and the `words` map (V51
 # and the three research rows that measured it).
