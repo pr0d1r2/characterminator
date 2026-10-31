@@ -14,6 +14,7 @@
 //! the empty string, so the caller owns its own line endings.
 
 use crate::charset::{CharRange, CharSet};
+use crate::fix::LOST;
 use crate::lint::{DOUBLE_ENCODED, Group, Level};
 #[cfg(test)]
 use crate::render::Violation;
@@ -137,11 +138,25 @@ fn violation(out: &mut String, path: &str, item: Line<'_>) {
             at.line, at.column, DOUBLE_ENCODED.name
         )
     } else {
-        let last = verdict(item);
+        let last = lost_or(item);
         write!(out, "{path}:{}:{} {code} {last}", at.line, at.column)
     };
     level_note(out, item.finding.level);
 }
+
+/// The last word of the row, or, for U+FFFD, what it is (`src/render:V128`).
+fn lost_or<'v>(item: Line<'v>) -> &'v str {
+    let lost = item.finding.hit.character == LOST;
+    if lost && item.finding.lint.group != Group::Pedantic {
+        return LOST_SAID;
+    }
+    verdict(item)
+}
+
+/// What U+FFFD is said to be (`src/render:V128`): not a character outside the
+/// set, but the place where one was lost, which no map can name.
+const LOST_SAID: &str = "replacement character: the original was lost on \
+     decoding; only `fix --from-git` can restore it";
 
 /// A `warn` row read exactly like a `deny` row, so a reader could not tell
 /// which findings fail the run. Only `warn` is named: `deny` and `forbid`
@@ -553,6 +568,18 @@ mod tests {
         item.finding.lint = Lint::new("trailing-whitespace", Group::Pedantic);
         item.finding.hit.character = ' ';
         let expected = "src/a.rs:2:5 U+0020 trailing-whitespace";
+        assert_eq!(check(&[item], &[]), expected);
+    }
+
+    /// `src/render:V128`: U+FFFD is said to be lost data, not a plain
+    /// character outside the set; a neighbour is still told by its set.
+    #[test]
+    fn the_replacement_character_is_said_to_be_lost() {
+        let mut item = em_dash();
+        item.finding.hit.character = '\u{FFFD}';
+        let expected = "src/a.rs:2:5 U+FFFD replacement character: the \
+             original was lost on decoding; only `fix --from-git` can \
+             restore it";
         assert_eq!(check(&[item], &[]), expected);
     }
 
