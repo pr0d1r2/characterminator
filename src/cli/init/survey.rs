@@ -19,7 +19,7 @@ pub(super) struct Kind {
     /// per file, each character with how often it occurs there.
     tallies: Vec<BTreeMap<char, usize>>,
     /// Each hazard code point, every lint that names it (comma-joined), and
-    /// every `path:line:col` it was found at.
+    /// the `path:line:col` places it was found at.
     pub hazards: BTreeMap<char, Hazard>,
     /// A joiner inside an RGI emoji sequence was seen: `fix` compresses it.
     pub sequences: bool,

@@ -330,8 +330,37 @@ fn a_hazard_is_listed_in_every_file_and_cut_when_long() {
         survey.add(&format!("f{n}.sh"), "x \u{8a}\n");
     }
     let text = draft(&survey, &Candidates::builtin());
-    assert!(text.contains(" and 4 more -- ctrm check"), "{text}");
+    assert!(prose(&text).contains(" and 4 more -- ctrm check"), "{text}");
     assert!(!text.contains("f9.sh"), "{text}");
+}
+
+/// Eight places is the whole list: nothing is cut, so nothing says so.
+#[test]
+fn exactly_eight_places_are_not_cut() {
+    let mut survey = Survey::new(false);
+    for n in 0..8 {
+        survey.add(&format!("f{n}.sh"), "x \u{8a}\n");
+    }
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(text.contains("f7.sh:1:3"), "{text}");
+    assert!(!text.contains("more"), "{text}");
+}
+
+/// A full list wraps at 72 columns like the rest of the draft, every
+/// continuation still a comment, and each hazard starts its own line.
+#[test]
+fn a_long_hazard_list_wraps_between_places() {
+    let mut survey = Survey::new(false);
+    for n in 0..9 {
+        survey.add(&format!("some-long-file-{n}.sh"), "x \u{8a} \u{202E}\n");
+    }
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(text.lines().all(|line| line.len() <= 72), "{text}");
+    let said = prose(&text);
+    let run = "some-long-file-0.sh:1:3, some-long-file-1.sh:1:3,";
+    assert!(said.contains(run), "{text}");
+    assert!(said.contains(".sh:1:3 and 1 more -- ctrm check"), "{text}");
+    assert!(text.contains("\n#   U+202E bidi-control in"), "{text}");
 }
 
 /// A tracked path may hold a newline: the place is escaped, so the hazard
