@@ -38,9 +38,13 @@ pub(super) struct Hazard {
 pub(super) const PLACES: usize = 8;
 
 /// `path:line:col`, as `check` prints a finding's place.
-/// A control character in the path (a newline above all) is escaped: the
-/// place lands in a `.ctrm` comment, and a raw line break would start a rule.
 fn place(shown: &str, at: Position) -> String {
+    format!("{}:{}:{}", one_line(shown), at.line, at.column)
+}
+
+/// `shown` with each control character escaped (a newline above all): a
+/// path lands in the `.ctrm`, and a raw line break would start a rule.
+fn one_line(shown: &str) -> String {
     let mut path = String::new();
     for c in shown.chars() {
         if c.is_control() {
@@ -49,7 +53,7 @@ fn place(shown: &str, at: Position) -> String {
             path.push(c);
         }
     }
-    format!("{path}:{}:{}", at.line, at.column)
+    path
 }
 
 /// Every file type, keyed by the pattern its `.ctrm` line would use.
@@ -188,14 +192,15 @@ fn plain(c: char) -> bool {
 }
 
 /// `*.<ext>` for a file with an extension, else its own name: a pattern
-/// with no `/` matches at any depth (`src/rules:V2`).
+/// with no `/` matches at any depth (`src/rules:V2`). One line whatever the
+/// path holds: the draft prints it in comments and in the rule line.
 pub(super) fn pattern_of(shown: &str) -> String {
     let name = shown.rsplit('/').next().unwrap_or(shown);
     match name.rsplit_once('.') {
         Some((stem, ext)) if !stem.is_empty() && !ext.is_empty() => {
-            format!("*.{ext}")
+            format!("*.{}", one_line(ext))
         }
-        _ => name.to_owned(),
+        _ => one_line(name),
     }
 }
 

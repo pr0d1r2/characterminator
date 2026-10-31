@@ -17,7 +17,7 @@ sib|src/cli/usage|help text, verb detection, did-you-mean, message style
 
 ## §V INVARIANTS
 
-V128: `init [--print]` reads the git-tracked fileset (`src/tokens:V9`), 1 group per file type (`*.<ext>`, else the file name). per group: hazard (`check`'s verdict, RGI joiners exempt) → named "fix these" with ∀ `path:line:col` it sits at (cut at 8, then `and K more -- ctrm check`), ⊥ EVER granted · builtin map → ASCII (`src/fix:V26`) → "`ctrm fix` rewrites" + `check`'s N finding(s) in M file(s) until it runs, ⊥ granted unless `--keep-fixable` (then needed, typography), ⊥ counted if its line grants it (B81) · rest = needed → greedy cover over `caveman typography math legal marks box emoji cr` (max gain, tie → smaller set, then that order), then locales: 1 holding all if `en-aux` | base code, else base holding most + 1 for rest (B80), else 1 variant holding all, else `any` + comment naming what nothing covers. ∀ set line carries a comment of what it covers; pure-ASCII types listed, ⊥ line. same files → same bytes. `.ctrm` exists → exit 2 naming `--print`, ⊥ overwrite; `--print` → stdout, writes ⊥. runner `init_test.rs`.
+V128: `init [--print]` reads the git-tracked fileset (`src/tokens:V9`), 1 group per file type (`*.<ext>`, else file name). per group: hazard (`check`'s verdict, RGI joiners exempt) → named "fix these" + ∀ `path:line:col` (cut at 8, then `and K more -- ctrm check`), ⊥ EVER granted · builtin map → ASCII (`src/fix:V26`) → "`ctrm fix` rewrites" + `check`'s N finding(s) in M file(s) until it runs, ⊥ granted unless `--keep-fixable` (then needed, typography), ⊥ counted if its line grants it (B81) · rest = needed → greedy cover over `caveman typography math legal marks box emoji cr` (max gain, tie → smaller set, then that order), then locales: 1 with all if `en-aux` | base code, else base holding most + 1 for rest (B80), else 1 variant with all, else `any` + comment of what is left. ∀ set line comments what it covers; pure-ASCII types listed, ⊥ line. paths: control chars escaped (B85). same files → same bytes. `.ctrm` exists → exit 2 naming `--print`, ⊥ overwrite; `--print` → stdout, writes ⊥. runner `init_test.rs`.
 
 ## §T TASKS
 
@@ -30,4 +30,5 @@ id|date|cause|fix
 B80|2026-10-04|1 locale ! held all letters ∴ Polish + U+00E9 → `fi-FI-aux` ⊥ `pl+en-aux` (#5)|V128
 B81|2026-10-23|draft counted U+2014 its own `any` line granted|V128
 B82|2026-10-25|draft said `1 findings in 1 files` (#37)|V128
-B84|2026-10-29|draft named a hazard by its first file only, ⊥ line:col ∴ ∀ other place → `check` alone (#33)|V128
+B84|2026-10-29|draft named a hazard's first file only, ⊥ line:col (#33)|V128
+B85|2026-10-31|newline in pattern → raw `* any` in draft|V128
