@@ -14,8 +14,15 @@ fn a_file_type_is_its_extension_glob_or_its_own_name() {
     assert_eq!(pattern_of("docs/x.tar.gz"), "*.gz");
     assert_eq!(pattern_of("Makefile"), "Makefile");
     assert_eq!(pattern_of("sub/.gitignore"), ".gitignore");
-    assert_eq!(pattern_of("a.b\nc"), r"*.b\nc");
-    assert_eq!(pattern_of("sub/a\nb"), r"a\nb");
+}
+
+/// B85: a control character is spelled, so a pattern stays on its line. A
+/// letter is not: a rule for `za\u{17c}` has to go on matching that file.
+#[test]
+fn a_pattern_spells_controls_and_keeps_letters() {
+    assert_eq!(pattern_of("a.b\nc"), "*.b<U+000A>c");
+    assert_eq!(pattern_of("sub/a\nb"), "a<U+000A>b");
+    assert_eq!(pattern_of("za\u{17c}"), "za\u{17c}");
 }
 
 fn covered(chars: &[char]) -> Grant {
@@ -363,14 +370,17 @@ fn a_long_hazard_list_wraps_between_places() {
     assert!(text.contains("\n#   U+202E bidi-control in"), "{text}");
 }
 
-/// A tracked path may hold a newline: the place is escaped, so the hazard
-/// note stays one comment line.
+/// A place is spelled as `check` prints it (`src/render:V11`), so one can be
+/// searched for in the other: an escape, a bidi override and a letter alike,
+/// and the draft of a type with a plain pattern stays pure ASCII.
 #[test]
-fn a_hazard_in_a_path_with_a_newline_keeps_one_line() {
+fn a_place_is_spelled_as_check_prints_it() {
     let mut survey = Survey::new(false);
-    survey.add("z\n* any\n# .sh", "a \u{8a} b\n");
+    survey.add("e\u{1b}x\u{202E}\u{17c}\n.sh", "a \u{8a} b\n");
     let text = draft(&survey, &Candidates::builtin());
-    assert!(text.contains(r"z\n* any\n# .sh:1:3"), "{text}");
+    let place = "e<U+001B>x<U+202E><U+017C><U+000A>.sh:1:3";
+    assert!(text.contains(place), "{text}");
+    assert!(text.is_ascii(), "{text}");
 }
 
 /// B85: wherever the draft names such a path it is escaped -- a hazard's

@@ -6,6 +6,7 @@ use crate::fix::Map;
 use crate::lint::{
     DOUBLE_ENCODED, Damage as Run, Hazards, double_encoded, inside,
 };
+use crate::render::{codepoint, shown_path};
 use crate::scan::{Hit, Position, scan_str};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
@@ -37,23 +38,25 @@ pub(super) struct Hazard {
 /// Most places kept per hazard code point; the rest are counted.
 pub(super) const PLACES: usize = 8;
 
-/// `path:line:col`, as `check` prints a finding's place.
+/// `path:line:col`, spelled as `check` prints a finding's place, so one
+/// finds the other (`src/render:V11`).
 fn place(shown: &str, at: Position) -> String {
-    format!("{}:{}:{}", one_line(shown), at.line, at.column)
+    format!("{}:{}:{}", shown_path(shown), at.line, at.column)
 }
 
-/// `shown` with each control character escaped (a newline above all): a
-/// path lands in the `.ctrm`, and a raw line break would start a rule.
-fn one_line(shown: &str) -> String {
-    let mut path = String::new();
-    for c in shown.chars() {
+/// `name` with each control character spelled `<U+XXXX>`, as a place is: a
+/// newline above all, since a raw line break in a `.ctrm` would start a
+/// rule. Only controls: a pattern's other characters are what it matches.
+fn one_line(name: &str) -> String {
+    let mut line = String::new();
+    for c in name.chars() {
         if c.is_control() {
-            path.extend(c.escape_default());
+            line.push_str(&format!("<{}>", codepoint(c)));
         } else {
-            path.push(c);
+            line.push(c);
         }
     }
-    path
+    line
 }
 
 /// Every file type, keyed by the pattern its `.ctrm` line would use.

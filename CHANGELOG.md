@@ -53,9 +53,11 @@ use, so one reading serves the whole family of tools.
   in the order `check` reports them, instead of only the first file that
   held it (#33). A list past eight places is cut with `and K more -- ctrm
   check`.
-- **`ctrm init`** escapes control characters in every path the draft names.
-  A tracked file with a newline in its name could otherwise write a rule of
-  its own, such as `* any`, into the draft.
+- **`ctrm init`** spells a hazard's path as `check` prints it, `<U+XXXX>`
+  for anything outside printable ASCII, and spells control characters the
+  same way in a file type's pattern. A tracked file with a newline in its
+  name could otherwise write a rule of its own, such as `* any`, into the
+  draft.
 
 ## [0.1.2] - 2026-10-18
 

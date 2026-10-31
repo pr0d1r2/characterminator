@@ -161,7 +161,7 @@ fn level_note(out: &mut String, level: Level) {
 ///
 /// A path that is printable ASCII already -- nearly every one -- is
 /// BORROWED rather than copied (R17).
-fn shown(path: &str) -> Cow<'_, str> {
+pub(crate) fn shown(path: &str) -> Cow<'_, str> {
     if path.bytes().all(|b| matches!(b, b' '..=b'~')) {
         return Cow::Borrowed(path);
     }
