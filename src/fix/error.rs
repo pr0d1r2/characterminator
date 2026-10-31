@@ -14,6 +14,9 @@ pub enum Error {
     /// A map line whose source every set grants, so it can never be
     /// rewritten (`src/judge:V116`).
     NeverRewritten { line: usize },
+    /// A map line whose source is U+FFFD, which stands for any lost
+    /// character, so a map from it can never be right (`src/fix:V105`).
+    LostSource { line: usize },
     /// A replacement is rewritten again without ever settling, so the map
     /// chains back to a source it already used.
     MapCycle,
@@ -38,7 +41,9 @@ impl Error {
     /// the fault belongs to the map as a whole.
     fn subject(&self) -> String {
         match self {
-            Self::Syntax { line } | Self::NeverRewritten { line } => {
+            Self::Syntax { line }
+            | Self::NeverRewritten { line }
+            | Self::LostSource { line } => {
                 format!("map line {line}")
             }
             Self::UnknownFamily { name }
@@ -72,13 +77,18 @@ impl Error {
          every set grants, so it would never be rewritten -- a source needs \
          a character outside `ascii`";
 
+    /// A source that is U+FFFD: it says nothing of the character it replaced.
+    const LOST: &'static str = "maps U+FFFD, the replacement character, \
+         which stands for ANY lost character, so it could be right for only \
+         one of them -- restore the originals with `ctrm fix --from-git`";
+
     /// The 1-based line a refusal is about, when it is about one.
     #[must_use]
     pub(crate) const fn line(&self) -> Option<usize> {
         match self {
-            Self::Syntax { line } | Self::NeverRewritten { line } => {
-                Some(*line)
-            }
+            Self::Syntax { line }
+            | Self::NeverRewritten { line }
+            | Self::LostSource { line } => Some(*line),
             _ => None,
         }
     }
@@ -93,6 +103,7 @@ impl Error {
         match self {
             Self::Syntax { .. } => Self::FORMS,
             Self::NeverRewritten { .. } => Self::NEVER,
+            Self::LostSource { .. } => Self::LOST,
             Self::MapCycle => "rewrites in a cycle and never settles",
             Self::UnknownFamily { .. } => "is not declared",
             Self::UnknownMap { .. } => "is not a builtin map",
@@ -136,5 +147,14 @@ mod tests {
             let said = refusal.to_string();
             assert!(!said.contains("(V"), "{said}");
         }
+    }
+
+    /// The same rule for the refusal of a map from U+FFFD (`src/fix:V105`),
+    /// which also points at the flag that restores the original.
+    #[test]
+    fn the_lost_source_refusal_names_the_flag_not_a_spec_id() {
+        let said = Error::LostSource { line: 3 }.to_string();
+        assert!(said.starts_with("map line 3 "), "{said}");
+        assert!(said.contains("--from-git") && !said.contains("(V"));
     }
 }

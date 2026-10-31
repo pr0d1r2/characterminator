@@ -30,6 +30,17 @@ fn a_source_made_only_of_ascii_is_refused() {
     assert!(parse("U+000D\nfoo\u{2014} x\n").is_ok());
 }
 
+/// `src/fix:V105`: U+FFFD stands for any lost character, so a map from it
+/// is wrong for all but one of them.
+#[test]
+fn a_source_holding_the_replacement_character_is_refused() {
+    let lost = Err(Error::LostSource { line: 2 });
+    assert_eq!(parse("U+2014 -\nU+FFFD \u{A7}\n"), lost);
+    assert_eq!(parse("U+2014 -\n\u{FFFD} \u{A7}\n"), lost);
+    assert_eq!(parse("U+2014 -\nword \u{FFFD}x y\n"), lost);
+    assert!(parse("U+2014 \u{FFFD}\n").is_ok());
+}
+
 #[test]
 fn an_absent_replacement_is_an_explicit_delete() {
     let map = parsed("U+200B\n");

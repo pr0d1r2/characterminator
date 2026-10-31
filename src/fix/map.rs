@@ -302,6 +302,9 @@ impl Map {
         number: usize,
     ) -> Result<(), Error> {
         let entry = entry.ok_or(Error::Syntax { line: number })?;
+        if entry.from.contains(crate::fix::LOST) {
+            return Err(Error::LostSource { line: number });
+        }
         if never_withheld(&entry.from) {
             return Err(Error::NeverRewritten { line: number });
         }

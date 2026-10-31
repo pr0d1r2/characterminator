@@ -246,7 +246,7 @@ with other tools, [the json contract](docs/JSON.md), and the rest in
 | | |
 |---|---|
 | `ctrm check [--summary] [--max <n>] [<path>...]` | report characters outside the set. Exit 1 on a violation. `--summary` folds the rows to one per file and code point, with a count; `--max` cuts them at n |
-| `ctrm fix [--check] [<path>...]` | rewrite them. `--check` reports and writes nothing |
+| `ctrm fix [--check] [--from-git] [<path>...]` | rewrite them. `--check` reports and writes nothing. `--from-git` also puts back each U+FFFD (a character a lossy decode destroyed; `check` reports it as lost, and no map can name the original) from the staged copy or `HEAD`, where that copy shows the same line with a real character there; otherwise the U+FFFD stays and is reported |
 | `ctrm stats [--bpe] [<path>...]` | what the files cost now, and after a fix |
 | `ctrm explain [<path>]` | the set in force, and the config line that decided it |
 | `ctrm explain [<path>] --as args\|lines\|prompt` | the whole configuration as flags, as data files, or as an agent prompt |

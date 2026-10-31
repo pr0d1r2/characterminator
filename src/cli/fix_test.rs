@@ -279,3 +279,6 @@ fn two_files_report_in_path_order_rewrites_then_leftovers() {
 
 #[path = "fix_hazard_test.rs"]
 mod hazards;
+
+#[path = "fix_git_test.rs"]
+mod git;

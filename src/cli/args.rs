@@ -40,6 +40,7 @@ const SWITCHES: &[&str] = &[
     "--locales",
     "--print",
     "--keep-fixable",
+    "--from-git",
     // Accepted on every verb and changes nothing: ctrm never prints colour,
     // so there is none to turn off. It is in the table because unknown
     // flags are REFUSED, and a wrapper that passes `--no-color` to every
@@ -62,6 +63,7 @@ const SWITCHES: &[&str] = &[
 /// refuse: `ctrm check --bpe` looks like it asked for something.
 const OWNED: &[(&str, &str)] = &[
     ("--check", "fix"),
+    ("--from-git", "fix"),
     ("--bpe", "stats"),
     ("--as", "explain"),
     ("--summary", "check"),
@@ -270,6 +272,8 @@ mod tests {
         assert!(refused(&["stats", "--check"]).contains("`fix`"));
         assert!(refused(&["check", "--as", "args"]).contains("`explain`"));
         assert!(parsed(&["stats", "--bpe"]).has("--bpe"));
+        assert!(refused(&["check", "--from-git"]).contains("`fix`"));
+        assert!(parsed(&["fix", "--from-git"]).has("--from-git"));
     }
 
     /// B70 / `src/cli/usage:V119`: a flag before the verb is a flag, the

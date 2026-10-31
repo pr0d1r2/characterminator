@@ -6,6 +6,7 @@
 mod args;
 mod check;
 mod config;
+mod copies;
 mod dispatch;
 mod explain;
 mod fix;

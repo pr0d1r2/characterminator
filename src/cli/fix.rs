@@ -17,13 +17,14 @@
 use super::check::{
     Row, Skip, batches, found_code, judged_against, skip, unreadable_code,
 };
+use super::copies;
 use super::remedy::Case;
 use crate::fix::{self as engine, Map};
 use crate::judge::{Checker, Config, File, files, judged};
 use crate::lint::{Finding, Level, Lint, OUTSIDE_SET};
 use crate::render::{self, Batch, Change, Format, Skipped};
 use crate::scan::Unreadable;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// What a run of `fix` produced.
 pub(super) struct Report {
@@ -51,6 +52,17 @@ impl Changed {
             rewrites: Vec::new(),
             verdicts: Vec::new(),
         }
+    }
+
+    /// Put the characters restored from git first, each judged as `check`
+    /// judged the `U+FFFD` it stood on: outside the set, at `deny`.
+    fn prepend(&mut self, mut restored: Vec<engine::Rewrite>) {
+        let verdict = (OUTSIDE_SET, Level::Deny);
+        let mut verdicts = vec![verdict; restored.len()];
+        restored.append(&mut self.rewrites);
+        verdicts.append(&mut self.verdicts);
+        self.rewrites = restored;
+        self.verdicts = verdicts;
     }
 }
 
@@ -87,15 +99,35 @@ pub(super) fn run(
     config: &Config,
     paths: &[String],
     format: Format,
-    write: bool,
+    mode: impl Into<Mode>,
 ) -> Result<Report, String> {
-    let pass = Pass::new(config, write)?;
+    let pass = Pass::new(config, mode.into())?;
     let mut found = Found::default();
     for file in files(&config.root, paths)? {
         pass.visit(file?, &mut found)?;
     }
     written(&found.pending)?;
     Ok(report_of(&found, format, pass.write))
+}
+
+/// What a run of `fix` is asked to do besides rewriting.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Mode {
+    /// False is `--check`: nothing is written.
+    pub write: bool,
+    /// `--from-git`: put back the characters a lossy decode destroyed,
+    /// from the staged copy or `HEAD` (`src/fix:V106`).
+    pub from_git: bool,
+}
+
+/// A bare `bool` is "write or not", as it was before the flag existed.
+impl From<bool> for Mode {
+    fn from(write: bool) -> Self {
+        Self {
+            write,
+            from_git: false,
+        }
+    }
 }
 
 /// The second phase (V72): every file was judged and none refused, so
@@ -114,33 +146,61 @@ struct Pass {
     checker: Checker,
     map: Map,
     write: bool,
+    from_git: bool,
 }
 
 impl Pass {
-    fn new(config: &Config, write: bool) -> Result<Self, String> {
+    fn new(config: &Config, mode: Mode) -> Result<Self, String> {
         Ok(Self {
             checker: Checker::configured(config)?,
             map: config.map()?,
-            write,
+            write: mode.write,
+            from_git: mode.from_git,
         })
     }
 
-    /// One file: judge it, rewrite it, queue the write when asked.
+    /// One file: restore what git still holds when asked, judge it, rewrite
+    /// it, queue the write when asked.
     fn visit(&self, file: File, found: &mut Found) -> Result<(), String> {
         let File { full, shown, text } = file;
-        let Some(text) = text_of(text, &shown, found) else {
+        let Some(disk) = text_of(text, &shown, found) else {
             return Ok(());
         };
+        let (recovered, lost) = self.recovered(&full, &disk);
+        let text = recovered.as_deref().unwrap_or(&disk);
         let (set, levels) = self.checker.shared_law(&shown)?;
         let judge = self.checker.judge(&set);
-        let case = Case::new(&judge, &levels, &text);
+        let case = Case::new(&judge, &levels, text);
         let mut changed = Changed::new(shown, &set.name);
         let output = self.rewritten(&case, &mut changed, found)?;
-        if self.write && output != text {
-            found.pending.push((full, output));
-        }
+        changed.prepend(lost);
+        self.queue(full, (output, &disk), found);
         found.absorb(changed);
         Ok(())
+    }
+
+    /// Queue the write when asked and the file is not what is on disk.
+    fn queue(&self, full: PathBuf, texts: (String, &str), found: &mut Found) {
+        let (output, disk) = texts;
+        if self.write && output != disk {
+            found.pending.push((full, output));
+        }
+    }
+
+    /// `disk` with its `U+FFFD` put back from git's copies, when asked and
+    /// when any could be (`src/fix:V106`), and the rewrites that did it.
+    fn recovered(
+        &self,
+        full: &Path,
+        disk: &str,
+    ) -> (Option<String>, Vec<engine::Rewrite>) {
+        if !self.from_git || !disk.contains(engine::LOST) {
+            return (None, Vec::new());
+        }
+        let copies = copies::of(full);
+        let refs: Vec<&str> = copies.iter().map(String::as_str).collect();
+        let (text, lost) = engine::recover(disk, &refs);
+        (Some(text).filter(|_| !lost.is_empty()), lost)
     }
 
     /// One text's rewrite: what is left is kept, the rewrites are MOVED
