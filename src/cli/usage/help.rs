@@ -42,9 +42,8 @@ output and place:
   --version, -V         the version
   --                    every word after it is a path
 
-  check --summary --max <n>    fix --check --from-git
-  stats --bpe
-  check --summary --max <n>    fix --check --from-gitstats --bpe
+verb flags (see the verb's page):
+  check --summary --max <n>    fix --check --from-git    stats --bpe
   explain --as <form>    sets --locales --containing <c>
   init --print --keep-fixable
 
