@@ -16,6 +16,15 @@ fn a_file_type_is_its_extension_glob_or_its_own_name() {
     assert_eq!(pattern_of("sub/.gitignore"), ".gitignore");
 }
 
+/// B85: a control character is spelled, so a pattern stays on its line. A
+/// letter is not: a rule for `za\u{17c}` has to go on matching that file.
+#[test]
+fn a_pattern_spells_controls_and_keeps_letters() {
+    assert_eq!(pattern_of("a.b\nc"), "*.b<U+000A>c");
+    assert_eq!(pattern_of("sub/a\nb"), "a<U+000A>b");
+    assert_eq!(pattern_of("za\u{17c}"), "za\u{17c}");
+}
+
 fn covered(chars: &[char]) -> Grant {
     let needed: BTreeSet<char> = chars.iter().copied().collect();
     Candidates::builtin().cover(&needed)
@@ -86,11 +95,9 @@ fn the_draft_grants_the_need_and_never_a_hazard() {
             .contains("until it runs, check reports 1 finding in 1 file "),
         "{text}"
     );
-    assert!(text.contains("U+202E bidi-control in docs/a.md"), "{text}");
-    assert!(
-        text.contains("Pure ASCII, no line needed: *.rs (1)"),
-        "{text}"
-    );
+    let bidi = "U+202E bidi-control in docs/a.md:1:11";
+    let plain = "Pure ASCII, no line needed: *.rs (1)";
+    assert!(text.contains(bidi) && text.contains(plain), "{text}");
     assert!(!text.contains("hazard-bidi") && !text.contains(" any\n"));
     assert_eq!(text, draft(&surveyed(), &candidates));
 }
@@ -293,7 +300,7 @@ fn a_double_encoded_run_is_listed_not_granted() {
     survey.add("docs/a.md", "must \u{e2}\u{8a}\u{a5} share\n");
     let text = draft(&survey, &Candidates::builtin());
     assert!(
-        text.contains("U+22A5 double-encoded in docs/a.md"),
+        text.contains("U+22A5 double-encoded in docs/a.md:1:6"),
         "{text}"
     );
     assert!(
@@ -304,12 +311,90 @@ fn a_double_encoded_run_is_listed_not_granted() {
 }
 
 /// A literal U+202E and a run decoding to it are one character two lints
-/// name: the draft lists both, not whichever was seen first.
+/// name: the draft lists both, not whichever was seen first, and each
+/// place in the order `check` reports it.
 #[test]
 fn a_literal_hazard_and_a_run_decoding_to_it_keep_both_lints() {
     let mut survey = Survey::new(false);
     survey.add("docs/a.md", "x\u{202E}y \u{e2}\u{80}\u{ae}\n");
     let text = draft(&survey, &Candidates::builtin());
-    let both = "U+202E double-encoded, bidi-control in docs/a.md";
+    let both =
+        "U+202E bidi-control, double-encoded in docs/a.md:1:2, docs/a.md:1:5";
     assert!(text.contains(both), "{text}");
+}
+
+/// Every file holding a hazard is listed with line:col, not only the first,
+/// and a long list is cut with a count of the rest.
+#[test]
+fn a_hazard_is_listed_in_every_file_and_cut_when_long() {
+    let mut survey = Survey::new(false);
+    survey.add("one.sh", "a \u{8a} b\n");
+    survey.add("two.sh", "c \u{8a} d\n");
+    let text = draft(&survey, &Candidates::builtin());
+    let both = "U+008A control-character in one.sh:1:3, two.sh:1:3";
+    assert!(text.contains(both), "{text}");
+    for n in 0..10 {
+        survey.add(&format!("f{n}.sh"), "x \u{8a}\n");
+    }
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(prose(&text).contains(" and 4 more -- ctrm check"), "{text}");
+    assert!(!text.contains("f9.sh"), "{text}");
+}
+
+/// Eight places is the whole list: nothing is cut, so nothing says so.
+#[test]
+fn exactly_eight_places_are_not_cut() {
+    let mut survey = Survey::new(false);
+    for n in 0..8 {
+        survey.add(&format!("f{n}.sh"), "x \u{8a}\n");
+    }
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(text.contains("f7.sh:1:3"), "{text}");
+    assert!(!text.contains("more"), "{text}");
+}
+
+/// A full list wraps at 72 columns like the rest of the draft, every
+/// continuation still a comment, and each hazard starts its own line.
+#[test]
+fn a_long_hazard_list_wraps_between_places() {
+    let mut survey = Survey::new(false);
+    for n in 0..9 {
+        survey.add(&format!("some-long-file-{n}.sh"), "x \u{8a} \u{202E}\n");
+    }
+    let text = draft(&survey, &Candidates::builtin());
+    assert!(text.lines().all(|line| line.len() <= 72), "{text}");
+    let said = prose(&text);
+    let run = "some-long-file-0.sh:1:3, some-long-file-1.sh:1:3,";
+    assert!(said.contains(run), "{text}");
+    assert!(said.contains(".sh:1:3 and 1 more -- ctrm check"), "{text}");
+    assert!(text.contains("\n#   U+202E bidi-control in"), "{text}");
+}
+
+/// A place is spelled as `check` prints it (`src/render:V11`), so one can be
+/// searched for in the other: an escape, a bidi override and a letter alike,
+/// and the draft of a type with a plain pattern stays pure ASCII.
+#[test]
+fn a_place_is_spelled_as_check_prints_it() {
+    let mut survey = Survey::new(false);
+    survey.add("e\u{1b}x\u{202E}\u{17c}\n.sh", "a \u{8a} b\n");
+    let text = draft(&survey, &Candidates::builtin());
+    let place = "e<U+001B>x<U+202E><U+017C><U+000A>.sh:1:3";
+    assert!(text.contains(place), "{text}");
+    assert!(text.is_ascii(), "{text}");
+}
+
+/// B85: wherever the draft names such a path it is escaped -- a hazard's
+/// place, a section header, the pure-ASCII list, the rule line -- so it
+/// cannot start a `.ctrm` rule, with the newline before the last dot, after
+/// it, or in a name with no dot at all.
+#[test]
+fn a_path_with_a_newline_cannot_start_a_rule() {
+    let paths = ["z\n* any\n# .sh", "z.b\n* any\n# x", "z\n* any\n#"];
+    let texts = ["a \u{8a} b\n", "caf\u{e9}\n", "plain\n"];
+    for (path, text) in paths.iter().flat_map(|p| texts.map(|t| (p, t))) {
+        let mut survey = Survey::new(false);
+        survey.add(path, text);
+        let ctrm = draft(&survey, &Candidates::builtin());
+        assert!(ctrm.lines().all(|l| !l.starts_with("* any")), "{ctrm}");
+    }
 }

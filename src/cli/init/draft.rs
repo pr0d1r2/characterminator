@@ -3,7 +3,7 @@
 //! work to do, never granted.
 
 use super::cover::{Candidates, Grant};
-use super::survey::{Kind, Survey};
+use super::survey::{Hazard, Kind, Survey};
 use crate::render::codepoint;
 
 const HEADER: &str = "\
@@ -97,13 +97,37 @@ fn notes(kind: &Kind, allowed: &dyn Fn(char) -> bool) -> Vec<String> {
             "# Emoji sequences: `ctrm fix` compresses them to one emoji.",
         ));
     }
-    let hazards: Vec<String> = kind
-        .hazards
-        .iter()
-        .map(|(c, (lint, path))| format!("{} {lint} in {path}", codepoint(*c)))
-        .collect();
-    lines.extend(wrapped("Hazards, never granted -- fix these:", &hazards));
+    if !kind.hazards.is_empty() {
+        lines.push(String::from("# Hazards, never granted -- fix these:"));
+    }
+    lines.extend(hazards(kind));
     lines
+}
+
+/// One entry per hazard code point, each starting a line: its lints, then
+/// where it sits, wrapped at 72 columns between places.
+fn hazards(kind: &Kind) -> Vec<String> {
+    let mut lines = Vec::new();
+    for (c, found) in &kind.hazards {
+        lines.push(format!("#   {} {} in", codepoint(*c), found.lints));
+        for item in listed(found) {
+            appended(&mut lines, &item);
+        }
+    }
+    lines
+}
+
+/// `a:1:3,` `b:2:4`, cut at `PLACES` with `and K more -- ctrm check`: the
+/// pieces a line may break between.
+fn listed(found: &Hazard) -> Vec<String> {
+    let mut items = found.places.clone();
+    let last = items.len().saturating_sub(1);
+    items.iter_mut().take(last).for_each(|at| at.push(','));
+    let more = found.total.saturating_sub(found.places.len());
+    if more > 0 {
+        items.push(format!("and {more} more -- ctrm check"));
+    }
+    items
 }
 
 /// The characters the builtin map rewrites: what `check` reports on them

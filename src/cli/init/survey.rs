@@ -6,7 +6,8 @@ use crate::fix::Map;
 use crate::lint::{
     DOUBLE_ENCODED, Damage as Run, Hazards, double_encoded, inside,
 };
-use crate::scan::{Hit, scan_str};
+use crate::render::{codepoint, shown_path};
+use crate::scan::{Hit, Position, scan_str};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 /// One file type's characters, as the draft explains them.
@@ -19,10 +20,43 @@ pub(super) struct Kind {
     /// per file, each character with how often it occurs there.
     tallies: Vec<BTreeMap<char, usize>>,
     /// Each hazard code point, every lint that names it (comma-joined), and
-    /// the first path it was in.
-    pub hazards: BTreeMap<char, (String, String)>,
+    /// the `path:line:col` places it was found at.
+    pub hazards: BTreeMap<char, Hazard>,
     /// A joiner inside an RGI emoji sequence was seen: `fix` compresses it.
     pub sequences: bool,
+}
+
+/// One hazard code point: the lints that name it, and where it sits.
+#[derive(Debug, Default)]
+pub(super) struct Hazard {
+    pub lints: String,
+    /// The first [`PLACES`] only; `total` counts them all.
+    pub places: Vec<String>,
+    pub total: usize,
+}
+
+/// Most places kept per hazard code point; the rest are counted.
+pub(super) const PLACES: usize = 8;
+
+/// `path:line:col`, spelled as `check` prints a finding's place, so one
+/// finds the other (`src/render:V11`).
+fn place(shown: &str, at: Position) -> String {
+    format!("{}:{}:{}", shown_path(shown), at.line, at.column)
+}
+
+/// `name` with each control character spelled `<U+XXXX>`, as a place is: a
+/// newline above all, since a raw line break in a `.ctrm` would start a
+/// rule. Only controls: a pattern's other characters are what it matches.
+fn one_line(name: &str) -> String {
+    let mut line = String::new();
+    for c in name.chars() {
+        if c.is_control() {
+            line.push_str(&format!("<{}>", codepoint(c)));
+        } else {
+            line.push(c);
+        }
+    }
+    line
 }
 
 /// Every file type, keyed by the pattern its `.ctrm` line would use.
@@ -54,10 +88,10 @@ impl Survey {
         let exempt = self.hazards.exempt(text);
         let runs = double_encoded(text);
         let kind = self.kinds.entry(pattern_of(shown)).or_default();
-        kind.begin(&runs, shown);
+        let mut found = kind.begin(&runs);
         for hit in needing(text, &runs) {
             if let Some(lint) = self.hazards.lint_at(hit, &exempt) {
-                kind.hazard(hit.character, lint.name, shown);
+                found.push((hit, lint.name));
             } else if exempt.binary_search(&hit.position.byte).is_ok() {
                 kind.sequences = true;
             } else {
@@ -65,33 +99,44 @@ impl Survey {
                 kind.file(hit.character, mapped);
             }
         }
+        kind.hazards_in(shown, found);
     }
 }
 
 impl Kind {
     /// A file of this type is read: its own tally of what `fix` rewrites,
-    /// and its double-encoded runs, listed as hazards by the character each
+    /// and its double-encoded runs, as hazards by the character each
     /// decodes to.
-    fn begin(&mut self, runs: &[Run], shown: &str) {
+    fn begin(&mut self, runs: &[Run]) -> Vec<(Hit, &'static str)> {
         self.files = self.files.saturating_add(1);
         self.tallies.push(BTreeMap::new());
-        for run in runs {
-            self.hazard(run.decoded, DOUBLE_ENCODED.name, shown);
+        let each = runs.iter().map(|run| (run.hit(), DOUBLE_ENCODED.name));
+        each.collect()
+    }
+
+    /// One file's hazards, listed in the order `check` reports them: a run
+    /// is not listed ahead of a literal hit that comes before it.
+    fn hazards_in(&mut self, shown: &str, mut found: Vec<(Hit, &'static str)>) {
+        found.sort_by_key(|(hit, _)| hit.position.byte);
+        for (hit, lint) in found {
+            self.hazard(hit, lint, shown);
         }
     }
 
-    /// A hazard code point, with the first path it was in. A character two
+    /// A hazard code point, with each place it was found. A character two
     /// lints name (a literal U+202E and a run decoding to it) keeps both.
-    fn hazard(&mut self, c: char, lint: &'static str, shown: &str) {
-        let first = (String::new(), shown.to_owned());
-        let (names, _) = self.hazards.entry(c).or_insert(first);
-        if names.split(", ").any(|name| name == lint) {
-            return;
+    fn hazard(&mut self, hit: Hit, lint: &'static str, shown: &str) {
+        let found = self.hazards.entry(hit.character).or_default();
+        if !found.lints.split(", ").any(|name| name == lint) {
+            if !found.lints.is_empty() {
+                found.lints.push_str(", ");
+            }
+            found.lints.push_str(lint);
         }
-        if !names.is_empty() {
-            names.push_str(", ");
+        found.total = found.total.saturating_add(1);
+        if found.places.len() < PLACES {
+            found.places.push(place(shown, hit.position));
         }
-        names.push_str(lint);
     }
 
     /// A character that is no hazard: rewritten by `fix`, or needed.
@@ -150,14 +195,15 @@ fn plain(c: char) -> bool {
 }
 
 /// `*.<ext>` for a file with an extension, else its own name: a pattern
-/// with no `/` matches at any depth (`src/rules:V2`).
+/// with no `/` matches at any depth (`src/rules:V2`). One line whatever the
+/// path holds: the draft prints it in comments and in the rule line.
 pub(super) fn pattern_of(shown: &str) -> String {
     let name = shown.rsplit('/').next().unwrap_or(shown);
     match name.rsplit_once('.') {
         Some((stem, ext)) if !stem.is_empty() && !ext.is_empty() => {
-            format!("*.{ext}")
+            format!("*.{}", one_line(ext))
         }
-        _ => name.to_owned(),
+        _ => one_line(name),
     }
 }
 
