@@ -9,10 +9,12 @@
 //! own nodes, `src/fix/words` and `src/fix/emoji`.
 
 use super::{Cut, Fixed, Pass, Span, check, fix, untouched_bytes_match};
+use crate::charset::builtin;
 use crate::fix::Error;
 use crate::fix::emoji::Layer;
 use crate::fix::map::Map;
-use crate::rules::Origin;
+use crate::judge::{Checker, Config};
+use crate::rules::{Origin, Sources};
 use crate::scan::{Hit, Position};
 
 #[path = "apply_class_test.rs"]
@@ -193,6 +195,33 @@ fn a_granted_locale_quote_is_left_and_another_is_straightened() {
     let kept = builtin(text, &ascii_or_polish_quotes).unwrap_or_default();
     assert_eq!(kept, expected);
     assert_eq!(builtin(text, &ascii).unwrap_or_default(), "\"a\" \"b\"");
+}
+
+/// A run whose one rule grants `ascii+typography-pl` to markdown.
+fn polish_typography() -> Config {
+    Config {
+        rules: Sources::new().dotfile(".ctrm", "*.md ascii+typography-pl\n"),
+        sets: Sources::new().builtin(builtin::SETS),
+        map: Sources::new().builtin(crate::fix::BUILTIN),
+        ..Config::default()
+    }
+}
+
+/// T61, end to end: `ascii+typography-pl` asked by a rule resolves through
+/// the checker and `Judge`, which leaves the Polish quotes and the shared
+/// `U+2010` and `U+2026` it grants, and straightens the curly pair it does not.
+#[test]
+fn a_requested_locale_typography_set_is_kept_through_the_judge() {
+    let checker = Checker::configured(&polish_typography());
+    assert!(checker.is_ok());
+    let Ok(checker) = checker else { return };
+    let law = checker.shared_law("a.md");
+    assert!(law.is_ok());
+    let Ok((set, levels)) = law else { return };
+    let text = "\u{201E}a\u{201D}\u{2010}\u{2026} \u{201C}b";
+    let fixed = checker.judge(&set).fix(text, &Map::builtin(), &levels);
+    let kept = fixed.map(|done| done.output).unwrap_or_default();
+    assert_eq!(kept, "\u{201E}a\u{201D}\u{2010}\u{2026} \"b");
 }
 #[test]
 fn a_character_with_no_mapping_is_kept_and_reported() {
