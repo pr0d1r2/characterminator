@@ -11,6 +11,8 @@
 //! (`src/cli`), and a line that cannot be recovered is left alone, so the
 //! walk reports its `U+FFFD` as it always did.
 
+use std::collections::HashMap;
+
 use crate::fix::Rewrite;
 use crate::scan::{Hit, Position};
 
@@ -25,15 +27,30 @@ pub(crate) fn recover(
     text: &str,
     references: &[&str],
 ) -> (String, Vec<Rewrite>) {
-    let copies: Vec<Vec<&str>> = references
-        .iter()
-        .map(|r| r.split_inclusive('\n').collect())
-        .collect();
+    let copies: Vec<Copy> = references.iter().map(|r| Copy::new(r)).collect();
     let mut done = Recovery::default();
     for (at, line) in text.split_inclusive('\n').enumerate() {
         done.line(line, at, original_of(line, at, &copies));
     }
     (done.output, done.rewrites)
+}
+
+/// One reference copy: its lines, and the same lines grouped by length in
+/// characters, so a line is only compared with those that can fit it.
+struct Copy<'r> {
+    lines: Vec<&'r str>,
+    by_len: HashMap<usize, Vec<&'r str>>,
+}
+
+impl<'r> Copy<'r> {
+    fn new(text: &'r str) -> Self {
+        let lines: Vec<&str> = text.split_inclusive('\n').collect();
+        let mut by_len: HashMap<usize, Vec<&str>> = HashMap::new();
+        for l in &lines {
+            by_len.entry(l.chars().count()).or_default().push(l);
+        }
+        Self { lines, by_len }
+    }
 }
 
 /// What the walk over the lines has produced so far.
@@ -71,7 +88,7 @@ struct Place {
 fn original_of<'r>(
     line: &str,
     at: usize,
-    references: &[Vec<&'r str>],
+    references: &[Copy<'r>],
 ) -> Option<&'r str> {
     if !line.contains(LOST) {
         return None;
@@ -83,11 +100,12 @@ fn original_of<'r>(
 
 /// The line of one copy that `line` is a lossy reading of: the one at the
 /// same line number, else the only distinct one anywhere in the copy.
-fn in_lines<'r>(line: &str, at: usize, lines: &[&'r str]) -> Option<&'r str> {
-    if let Some(same) = lines.get(at).filter(|c| fits(line, c)) {
+fn in_lines<'r>(line: &str, at: usize, copy: &Copy<'r>) -> Option<&'r str> {
+    if let Some(same) = copy.lines.get(at).filter(|c| fits(line, c)) {
         return Some(same);
     }
-    let mut fitting = lines.iter().copied().filter(|c| fits(line, c));
+    let same_len = copy.by_len.get(&line.chars().count())?;
+    let mut fitting = same_len.iter().copied().filter(|c| fits(line, c));
     let first = fitting.next()?;
     fitting.all(|c| c == first).then_some(first)
 }
