@@ -19,6 +19,11 @@ use, so one reading serves the whole family of tools.
 
 ### Added
 
+- **`ctrm fix --from-git`** (#16): puts back each U+FFFD, the mark a lossy
+  decode leaves where it destroyed a character, from the staged copy or else
+  `HEAD`, where that copy shows the same line with a real character at every
+  U+FFFD. Otherwise the U+FFFD stays and is reported. `check` now calls it what
+  it is in its human output: the original was lost on decoding.
 - **`double-encoded`** (#32): text that was UTF-8, read as Latin-1 and saved as
   UTF-8 again ("mojibake") is one finding per run, naming the character it
   decodes to (`a.md:1:15 double-encoded "⊥" (U+22A5)`), instead of a scatter of
@@ -46,6 +51,13 @@ use, so one reading serves the whole family of tools.
   each file type's draft now says how many findings in how many files
   `check` reports until `ctrm fix` runs, counting only what the drafted
   line leaves ungranted.
+
+### Changed
+
+- A `.ctrm-map` or `--map` line with U+FFFD as a source is now a configuration
+  error, exit 2 (#16): a map entry, `word` or class member from it, which used
+  to be accepted and wrote the same character over every lost one. Remove the
+  line and restore the originals with `ctrm fix --from-git`.
 
 ## [0.1.2] - 2026-10-18
 
