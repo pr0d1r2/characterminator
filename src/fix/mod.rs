@@ -19,7 +19,7 @@ mod words;
 pub(crate) use apply::fix_under;
 pub use apply::{Fixed, Report, fix};
 pub use error::Error;
-pub(crate) use lost::{LOST, recover};
+pub(crate) use lost::{LOST, recover, to_lossy};
 pub(crate) use map::BUILTIN;
 pub use map::Map;
 

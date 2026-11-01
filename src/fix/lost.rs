@@ -111,16 +111,16 @@ fn in_lines<'r>(line: &str, at: usize, copy: &Copy<'r>) -> Option<&'r str> {
 }
 
 /// Whether `lossy` reads as `original`: the same characters throughout,
-/// except that a `U+FFFD` stands where the original has a real character.
+/// except that EVERY `U+FFFD` stands where the original has a real character.
+/// A copy lossy at the same place restores nothing, so it is no fit: taken
+/// for one, a staged copy of the damage would hide `HEAD`.
 fn fits(lossy: &str, original: &str) -> bool {
+    let real = |(l, o)| if l == LOST { o != LOST } else { l == o };
     lossy.chars().count() == original.chars().count()
-        && lossy
-            .chars()
-            .zip(original.chars())
-            .all(|(l, o)| l == o || (l == LOST && o != LOST))
+        && lossy.chars().zip(original.chars()).all(real)
 }
 
-/// One rewrite per `U+FFFD` of `line` that `original` restores.
+/// One rewrite per `U+FFFD` of `line`, which `original` [`fits`].
 fn restored(
     line: &str,
     original: &str,
@@ -129,8 +129,21 @@ fn restored(
     let chars = line.char_indices().zip(original.chars());
     chars
         .enumerate()
-        .filter(|(_, ((_, l), o))| *l == LOST && *o != LOST)
+        .filter(|(_, ((_, l), _))| *l == LOST)
         .map(move |(column, ((offset, _), o))| place.rewrite(column, offset, o))
+}
+
+/// `hit`, found in the text [`recover`] returned, moved to the byte it sits
+/// at in the lossy text: `restored` are that call's rewrites, in order. Line
+/// and column hold, since a restore swaps one character for one, but a
+/// `U+FFFD` is three bytes and what it hid need not be.
+pub(crate) fn to_lossy(hit: &mut Hit, restored: &[Rewrite]) {
+    for rewrite in restored {
+        if rewrite.hit.position.byte < hit.position.byte {
+            let grown = hit.position.byte.saturating_add(LOST.len_utf8());
+            hit.position.byte = grown.saturating_sub(rewrite.to.len());
+        }
+    }
 }
 
 impl Place {

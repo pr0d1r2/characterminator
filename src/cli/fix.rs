@@ -42,27 +42,46 @@ struct Changed {
     rewrites: Vec<engine::Rewrite>,
     /// Parallel to `rewrites`: the verdict each character was judged at.
     verdicts: Vec<Verdict>,
+    /// What `--from-git` put back before the engine ran, at its place in
+    /// the file as it stands; the engine's rows are in the text it was given.
+    lost: Vec<engine::Rewrite>,
 }
 
 impl Changed {
-    fn new(path: String, set: &str) -> Self {
+    fn new(path: String, set: &str, lost: Vec<engine::Rewrite>) -> Self {
         Self {
             path,
             set: set.to_owned(),
             rewrites: Vec::new(),
             verdicts: Vec::new(),
+            lost,
         }
     }
 
-    /// Put the characters restored from git first, each judged as `check`
-    /// judged the `U+FFFD` it stood on: outside the set, at `deny`.
-    fn prepend(&mut self, mut restored: Vec<engine::Rewrite>) {
-        let verdict = (OUTSIDE_SET, Level::Deny);
-        let mut verdicts = vec![verdict; restored.len()];
-        restored.append(&mut self.rewrites);
+    /// Put the characters restored from git first, each with the verdict
+    /// `check` gives the `U+FFFD` in `disk`, and bring the engine's rows to
+    /// the file as it stands, where a report's `byte` points.
+    fn restore(&mut self, disk: &Case<'_>) {
+        if self.lost.is_empty() {
+            return;
+        }
+        for rewrite in &mut self.rewrites {
+            engine::to_lossy(&mut rewrite.hit, &self.lost);
+        }
+        let mut verdicts = verdicts(disk, &self.lost);
         verdicts.append(&mut self.verdicts);
-        self.rewrites = restored;
         self.verdicts = verdicts;
+        self.lost.append(&mut self.rewrites);
+        self.rewrites = std::mem::take(&mut self.lost);
+    }
+
+    /// `findings` in the text the engine was given, moved to the file as it
+    /// stands, for a run that writes nothing.
+    fn unwritten(&self, mut findings: Vec<Finding>) -> Vec<Finding> {
+        for finding in &mut findings {
+            engine::to_lossy(&mut finding.hit, &self.lost);
+        }
+        findings
     }
 }
 
@@ -171,9 +190,9 @@ impl Pass {
         let (set, levels) = self.checker.shared_law(&shown)?;
         let judge = self.checker.judge(&set);
         let case = Case::new(&judge, &levels, text);
-        let mut changed = Changed::new(shown, &set.name);
+        let mut changed = Changed::new(shown, &set.name, lost);
         let output = self.rewritten(&case, &mut changed, found)?;
-        changed.prepend(lost);
+        changed.restore(&Case::new(&judge, &levels, &disk));
         self.queue(full, (output, &disk), found);
         found.absorb(changed);
         Ok(())
@@ -213,11 +232,13 @@ impl Pass {
         found: &mut Found,
     ) -> Result<String, String> {
         let fixed = self.fixed(case, &changed.path)?;
-        found.keep(
-            &changed.path,
-            &changed.set,
-            case.left_on_disk(&fixed, self.write),
-        );
+        let left = case.left_on_disk(&fixed, self.write);
+        let left = if self.write {
+            left
+        } else {
+            changed.unwritten(left)
+        };
+        found.keep(&changed.path, &changed.set, left);
         changed.verdicts = verdicts(case, &fixed.report.rewrites);
         let engine::Fixed { output, report, .. } = fixed;
         changed.rewrites = report.rewrites;

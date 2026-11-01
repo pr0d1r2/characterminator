@@ -44,7 +44,7 @@ V27: character families = open tree, declared by map line `family <name> <parent
 V28: map line `= <class> <family>:<member>[,<member>...] ...` declares equivalence class; members labelled by family, first per family preferred. disallowed member → preferred member of rule's fidelity family if allowed, else along its fallback path (V27) → `ascii`; none allowed → unmapped (V4). `--map` twin takes this form (`src/rules:V18`). multi-codepoint members per `src/fix/emoji:V31`.
 V104: a hazard IN THAT FILE (= `check`'s verdict: `src/lint/hazard:V57`, `src/lint/hazard:V63`, byte-0 BOM; `src/judge` `Judge::fix` per pass (`src/fix/emoji:V65`)) → rewritten even where granted: map entry first, else DELETED if its class draws ⊥ text; `control-character` ? carry meaning ∴ w/o entry kept & reported. REJECTED: delete only map-covered (bidi ∉ map: B59); delete controls (guesses meaning). `stats` after = same. runners `apply_hazards_test.rs`, `src/cli/fix_hazard_test.rs`.
 V105: U+FFFD ∈ map `from` → config error, exit 2: it names no char, so `U+FFFD §` would write `§` for ALL lost ones.
-V106: `fix --from-git` puts a lost char back from staged copy, else `HEAD`, iff that line = this one but at U+FFFD (same line no., else the one distinct fit). else kept & reported (V4). ⊥ flag ⊥ git.
+V106: `fix --from-git` puts a lost char back from staged copy, else `HEAD`, iff that line = this one but real at ∀ U+FFFD (same line no., else the one distinct fit). else kept & reported (V4). ⊥ flag ⊥ git. row: `check`'s verdict, byte on disk.
 
 ## §T TASKS
 
@@ -63,3 +63,4 @@ B59|2026-10-03|`* any` + U+202E: V6 shielded a granted hazard from `fix` while `
 B73|2026-10-03|U+201E U+201A ∉ map ∴ `Cytat „to”` under `ascii+pl`: `fix` straightened `”` only, left `„to"` ∴ ⊥ reach clean. via DX review|V26
 B79|2026-10-04|U+2011 ∉ map ∴ `fix` left it & `init` drafted `*.rs any` for 3 in comments (issue #4). via adoption round|V26
 B84|2026-10-31|lossy decode wrote U+FFFD over `§`: reported as any ∉-set char, `fix` ⊥ recover, map `U+FFFD §` accepted (#16). via user|V105,V106
+B85|2026-11-01|lossy line "fit" itself ∴ staged damage hid `HEAD`; rows `deny` hard-coded, byte off disk. via review|V106
