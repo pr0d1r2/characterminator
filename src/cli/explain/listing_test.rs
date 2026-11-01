@@ -131,7 +131,7 @@ fn the_json_carries_kind_description_and_the_locale_count() {
     };
     let said = sets(&found(&root), Format::Json, &NONE).unwrap_or_default();
     assert!(said.contains(r#""name":"caveman","kind":"preset","#));
-    assert!(said.contains(r#""unlisted_locales":1831"#), "{said}");
+    assert!(said.contains(r#""unlisted_locales":2952"#), "{said}");
     assert!(said.contains(r#""containing":null"#), "{said}");
 }
 

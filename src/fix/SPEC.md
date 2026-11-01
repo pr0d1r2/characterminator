@@ -39,7 +39,7 @@ R18|`fix --check` peak memory|5.5 M chars drawn from `a` `b` space U+00E9 U+2014
 V4: `fix` replaces only via declared transliteration map. char w/o mapping → kept & reported as `check` row (json `unmapped`), exit 1. ⊥ silent drop. target judged AFTER its whole chain (V5): ∃ char ∉ set → match refused ∴ source kept & reported, ⊥ written (B40).
 V5: `fix` idempotent: `fix(fix(x)) == fix(x)`, property-tested.
 V6: `fix` touches ⊥ allowed char that is ⊥ a hazard in that file (V104): bytes outside violations & hazards ! identical pre/post, asserted before write.
-V26: typography = builtin map targets, ⊥ default grant (`src/charset:R4`: 45.1% of non-ASCII files need no grant after map): `—`→`--` · `–` `−` U+2010 U+2011→`-` (B79) · curly quotes → straight, low-9 & reversed-9 too (U+201A U+201B → `'`, U+201E U+201F → `"`, B73) · `…`→`...` · `«»`→`"` · NBSP → space · ZWSP & BOM → delete. `typography` set SHIPS ∴ prose that wants real typography grants it & `fix` leaves those chars (V6). per-locale `typography-<code>` from CLDR punctuation (`src/charset/locale:R6`): CLDR now vendored (`src/charset/locale:T60`) ∴ open as T61.
+V26: typography = builtin map targets, ⊥ default grant (`src/charset:R4`: 45.1% of non-ASCII files need no grant after map): `—`→`--` · `–` `−` U+2010 U+2011→`-` (B79) · curly quotes → straight, low-9 & reversed-9 too (U+201A U+201B → `'`, U+201E U+201F → `"`, B73) · `…`→`...` · `«»`→`"` · NBSP → space · ZWSP & BOM → delete. `typography` set SHIPS ∴ prose that wants real typography grants it & `fix` leaves those chars (V6). per-locale `typography-<code>` from CLDR punctuation (`src/charset/locale:R6`): shipped (`src/charset/locale:V61`, T61): granted ⇒ this map leaves them (V6).
 V27: character families = open tree, declared by map line `family <name> <parent>`; parent chain ! end @ `ascii` (intrinsic root); cycle → config error, exit 2. builtin: `ascii` ← `text` ← `emoji`. new family (e.g. `nerd`) = 1 line + members in classes.
 V28: map line `= <class> <family>:<member>[,<member>...] ...` declares equivalence class; members labelled by family, first per family preferred. disallowed member → preferred member of rule's fidelity family if allowed, else along its fallback path (V27) → `ascii`; none allowed → unmapped (V4). `--map` twin takes this form (`src/rules:V18`). multi-codepoint members per `src/fix/emoji:V31`.
 V104: a hazard IN THAT FILE (= `check`'s verdict: `src/lint/hazard:V57`, `src/lint/hazard:V63`, byte-0 BOM; `src/judge` `Judge::fix` per pass (`src/fix/emoji:V65`)) → rewritten even where granted: map entry first, else DELETED if its class draws ⊥ text; `control-character` ? carry meaning ∴ w/o entry kept & reported. REJECTED: delete only map-covered (bidi ∉ map: B59); delete controls (guesses meaning). `stats` after = same. runners `apply_hazards_test.rs`, `src/cli/fix_hazard_test.rs`.
@@ -51,7 +51,7 @@ T10|x|ARCHIVED to SPEC-ARCHIVE.md|V4,V5,V6
 T26|x|ARCHIVED to SPEC-ARCHIVE.md|V26,`src/charset:V22`
 T29|x|ARCHIVED to SPEC-ARCHIVE.md|V27
 T30|x|ARCHIVED to SPEC-ARCHIVE.md|V28,V27
-T61|.|per-locale `typography-<code>`: CLDR `punctuation` exemplars (locale quotes, pl `„”`) → 1 set ∀ locale, same generator & pinned tag as `src/charset/locale:V61`; granted ⇒ V26 map leaves them|V26,`src/charset/locale:R6`,`src/charset/locale:V61`
+T61|x|per-locale `typography-<code>`: CLDR `punctuation` exemplars (locale quotes, pl `„”`) → 1 set ∀ locale, same generator & pinned tag as `src/charset/locale:V61`; granted ⇒ V26 map leaves them|V26,`src/charset/locale:R6`,`src/charset/locale:V61`
 
 ## §B BUGS
 

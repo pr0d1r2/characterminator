@@ -176,6 +176,24 @@ fn a_granted_character_is_left_alone() {
     assert_eq!(output(text, &ascii_or_em_dash), "a\u{2014}-b");
 }
 
+/// T61: a locale's quotes granted (pl `U+201E U+201D`) are left by the
+/// V26 map, while the curly pair the locale does not use is still
+/// straightened.
+fn ascii_or_polish_quotes(ch: char) -> bool {
+    ch.is_ascii() || ch == '\u{201E}' || ch == '\u{201D}'
+}
+
+#[test]
+fn a_granted_locale_quote_is_left_and_another_is_straightened() {
+    let builtin = |text: &str, allowed: &dyn Fn(char) -> bool| {
+        fix(text, &Map::builtin(), allowed).map(|fixed| fixed.output)
+    };
+    let text = "\u{201E}a\u{201D} \u{201C}b\u{201D}";
+    let expected = "\u{201E}a\u{201D} \"b\u{201D}";
+    let kept = builtin(text, &ascii_or_polish_quotes).unwrap_or_default();
+    assert_eq!(kept, expected);
+    assert_eq!(builtin(text, &ascii).unwrap_or_default(), "\"a\" \"b\"");
+}
 #[test]
 fn a_character_with_no_mapping_is_kept_and_reported() {
     let report = check("a\u{2764}b", &map(), &ascii).unwrap_or_default();
