@@ -289,6 +289,13 @@ impl Map {
     fn classify(&mut self, rest: &str, number: usize) -> Result<(), Error> {
         let declared =
             class::parse_line(rest).ok_or(Error::Syntax { line: number })?;
+        if declared
+            .members
+            .iter()
+            .any(|member| member.text.contains(crate::fix::LOST))
+        {
+            return Err(Error::LostSource { line: number });
+        }
         self.classes.retain(|held| held.name != declared.name);
         self.classes.push(declared);
         Ok(())
