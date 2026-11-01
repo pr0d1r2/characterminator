@@ -132,13 +132,28 @@ fn every_script_is_covered() {
 fn every_locale_resolves_to_letters_or_to_ascii() {
     let sets = everything();
     let names = locale_names();
-    assert_eq!(names.len(), 1831);
+    assert_eq!(names.len(), 2952);
     for name in names {
         let set = resolved(&sets, &name);
         let beyond = set.ranges.iter().all(|r| r.start > '\u{7F}');
         let plain = set.ranges == ascii().ranges;
         assert!(!set.is_empty() && (beyond || plain), "{name}");
     }
+}
+
+/// T61: `typography-<code>` is CLDR `punctuation` less ASCII: pl holds its
+/// low-9 and closing quotes, a regional variant aliases its parent, and a
+/// locale with no letters beyond ASCII still has one.
+#[test]
+fn a_locale_typography_set_holds_its_quotes() {
+    let pl = locale("typography-pl");
+    assert!(pl.contains('\u{201E}') && pl.contains('\u{201D}'));
+    assert!(!pl.contains('"') && !pl.contains('\u{201C}'));
+    assert_eq!(
+        locale("typography-pt-BR").ranges,
+        locale("typography-pt").ranges
+    );
+    assert!(locale("typography-en").contains('\u{2014}'));
 }
 
 /// B32: an all-ASCII locale, its regional variants and its CLDR

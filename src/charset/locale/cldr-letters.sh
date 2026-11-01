@@ -79,6 +79,11 @@ header() {
 # \`ascii\` (\`en ascii\`), so its code resolves and grants ASCII only. An
 # \`-aux\` with nothing left after the subtraction declares no set.
 #
+# \`typography-<code>\` = \`punctuation\` (locale quotes, pl \`U+201E U+201D\`) less ASCII
+# and less every member of \`hazard.ctrm-sets\`, no uppercase (\`src/fix:V26\`,
+# T61). Alias lines as above: \`typography-pt-BR typography-pt\`; no
+# non-ASCII punctuation is \`typography-<code> ascii\`.
+#
 # A regional or script variant whose set equals its CLDR parent's is ONE
 # alias line naming the parent (\`pt-BR pt\`), so a variant resolves and
 # no data is written twice. The parent is what \`parentLocales\` names;
@@ -137,7 +142,8 @@ def points: ltrimstr("[") | rtrimstr("]")
   def own: .main | to_entries[0] | {key: .key, value: (.value.characters
     | (.exemplarCharacters | points | cased | keep) as $main
     | {main: $main, aux: (((.auxiliary // "[]") | points | cased | keep)
-        - $main)})};
+        - $main),
+       punct: ((.punctuation // "[]") | points | keep | unique)})};
   [inputs | own] as $order
 | ($order | from_entries) as $data
 | def parent: (if $explicit[.] then $explicit[.]
@@ -148,21 +154,22 @@ def points: ltrimstr("[") | rtrimstr("]")
             then $p[0] else "und" end)
       else $p[:-1] | join("-") end end)
     | if . == "und" or $data[.] then . else parent end;
-  def line($code; $part; $suffix):
-    $data[$code][$part] as $own | ($code | parent) as $up
+  def setname($code; $part): if $part == "aux" then "\($code)-aux"
+    elif $part == "punct" then "typography-\($code)" else $code end;
+  def line($code; $part): $data[$code][$part] as $own | ($code | parent) as $up
     | if $own == [] and $part == "aux" then empty
       elif $up != "und" and $data[$up][$part] == $own
-      then "\($code)\($suffix) \($up)\($suffix)"
-      elif $own == [] then "\($code) ascii"
-      else "\($code)\($suffix) \($own | render)" end;
-  def alias($code; $part; $suffix): ($code | parent) as $up
-    | if $up == "und" and $part == "main" then "\($code) ascii"
+      then "\(setname($code; $part)) \(setname($up; $part))"
+      elif $own == [] then "\(setname($code; $part)) ascii"
+      else "\(setname($code; $part)) \($own | render)" end;
+  def alias($code; $part): ($code | parent) as $up
+    | if $up == "und" and $part != "aux" then "\(setname($code; $part)) ascii"
       elif $up == "und" or ($part == "aux" and $data[$up][$part] == [])
       then empty
-      else "\($code)\($suffix) \($up)\($suffix)" end;
-  ($order[] | .key | line(.; "main"; ""), line(.; "aux"; "-aux")),
+      else "\(setname($code; $part)) \(setname($up; $part))" end;
+  ($order[] | .key | line(.; "main"), line(.; "aux"), line(.; "punct")),
   ($dc[0].defaultContent[] | select($data[.] | not)
-    | alias(.; "main"; ""), alias(.; "aux"; "-aux"))
+    | alias(.; "main"), alias(.; "aux"), alias(.; "punct"))
 '
 
 generate() {
