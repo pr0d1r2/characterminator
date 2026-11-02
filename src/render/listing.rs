@@ -10,6 +10,7 @@
 use crate::charset::CharSet;
 use crate::render::Format;
 use crate::render::escape::string;
+use crate::render::json::SCHEMA;
 use crate::render::name::codepoint;
 use crate::render::value::{array, field, number, object, optional};
 
@@ -103,6 +104,7 @@ fn json(listing: &Listing<'_>) -> String {
     let sets: Vec<String> = listing.sets.iter().map(json_set).collect();
     let asked = listing.containing.map(codepoint);
     object(&[
+        field("schema", &number(SCHEMA)),
         field("verb", &string("sets")),
         field("containing", &optional(asked.as_deref())),
         field("sets", &array(&sets)),
@@ -167,8 +169,9 @@ mod tests {
     fn the_json_carries_kind_description_and_the_unlisted_count() {
         let set = caveman();
         let expected = concat!(
-            r#"{"verb":"sets","containing":null,"sets":[{"name":"caveman","#,
-            r#""kind":"preset","description":"arrows","ranges":"#,
+            r#"{"schema":1,"verb":"sets","containing":null,"sets":["#,
+            r#"{"name":"caveman","kind":"preset","description":"arrows","#,
+            r#""ranges":"#,
             r#"[{"start":"U+2192","end":"U+2192"}]}],"unlisted_locales":0}"#
         );
         assert_eq!(listing(Format::Json, &one(&set, 0)), expected);
