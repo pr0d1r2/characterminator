@@ -80,6 +80,29 @@ fn locales_list_only_when_asked_and_a_check_reads_only_the_named() {
     assert!(catalog.get("pl").is_some() && catalog.get("ja").is_none());
 }
 
+/// B85: a `typography-<code>` lists as a locale that holds punctuation,
+/// not letters; a letter set keeps its line and its null description.
+#[test]
+fn a_locale_typography_set_says_it_is_punctuation() {
+    let Some(root) = fixture("ctrm-sets-punctuation-fixture", &[]) else {
+        return;
+    };
+    let config = found(&root);
+    let asked = naming(&["typography-pl", "pl"]);
+    let said = shown(&config, &asked);
+    assert!(said.starts_with("typography-pl -- one locale's punctuation"));
+    assert!(said.contains("\npl -- one locale's letters"), "{said}");
+    let json = sets(&config, Format::Json, &asked).unwrap_or_default();
+    assert!(json.contains(PUNCTUATION_JSON), "{json}");
+    assert!(json.contains(LETTERS_JSON), "{json}");
+}
+
+const PUNCTUATION_JSON: &str = concat!(
+    r#""name":"typography-pl","kind":"locale","#,
+    r#""description":"one locale's punctuation, from CLDR""#
+);
+const LETTERS_JSON: &str = r#""name":"pl","kind":"locale","description":null"#;
+
 /// Names filter, in the order named; a name nothing declares is refused.
 #[test]
 fn names_filter_the_listing_and_an_unknown_one_is_refused() {

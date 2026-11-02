@@ -20,7 +20,8 @@ pub(crate) enum SetKind {
     Preset,
     /// Declared by the repository or a flag (`.ctrm-sets`, `--set`).
     Declared,
-    /// One CLDR locale's letters (`src/charset/locale:V30`).
+    /// One CLDR locale's letters or punctuation
+    /// (`src/charset/locale:V30`, `src/charset/locale:V61`).
     Locale,
 }
 
@@ -48,7 +49,7 @@ pub(crate) struct Listing<'a> {
     /// The `--containing` code point, when one was asked about.
     pub containing: Option<char>,
     /// Locale sets NOT listed: counted in one line, so a reader learns
-    /// they exist without 1,800 lines of them.
+    /// they exist without 2,900 lines of them.
     pub unlisted_locales: usize,
 }
 
