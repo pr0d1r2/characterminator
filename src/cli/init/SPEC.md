@@ -17,7 +17,7 @@ sib|src/cli/usage|help text, verb detection, did-you-mean, message style
 
 ## §V INVARIANTS
 
-V128: `init [--print]` reads the git-tracked fileset (`src/tokens:V9`), 1 group per file type (`*.<ext>`, else the file name). per group: hazard (`check`'s verdict, RGI joiners exempt) → named "fix these", ⊥ EVER granted · builtin map → ASCII (`src/fix:V26`) → "`ctrm fix` rewrites" + `check`'s N finding(s) in M file(s) until it runs, ⊥ granted unless `--keep-fixable` (then needed, typography), ⊥ counted if its line grants it (B81) · rest = needed → greedy cover over `caveman typography math legal marks box emoji cr` (max gain, tie → smaller set, then that order), then locales: 1 holding all if `en-aux` | base code, else base holding most + 1 for rest (B80), else 1 variant holding all, else `any` + comment naming what nothing covers. ∀ set line carries a comment of what it covers; pure-ASCII types listed, ⊥ line. same files → same bytes. `.ctrm` exists → exit 2 naming `--print`, ⊥ overwrite; `--print` → stdout, writes ⊥. runner `init_test.rs`.
+V128: `init [--print]` reads the git-tracked fileset (`src/tokens:V9`), 1 group per file type (`*.<ext>`, else the file name). per group: hazard (`check`'s verdict, RGI joiners exempt) → named "fix these", ⊥ EVER granted · builtin map → ASCII (`src/fix:V26`) → "`ctrm fix` rewrites" + `check`'s N finding(s) in M file(s) until it runs, ⊥ granted unless `--keep-fixable` (then needed, typography), ⊥ counted if its line grants it (B81) · rest = needed → greedy cover over `caveman typography math legal marks box emoji cr` (max gain, tie → smaller set, then that order), then letter locales (⊥ `typography-<code>`, B84): 1 holding all if `en-aux` | base code, else base holding most + 1 for rest (B80), else 1 variant holding all, else `any` + comment naming what nothing covers. ∀ set line carries a comment of what it covers; pure-ASCII types listed, ⊥ line. same files → same bytes. `.ctrm` exists → exit 2 naming `--print`, ⊥ overwrite; `--print` → stdout, writes ⊥. runner `init_test.rs`.
 
 ## §T TASKS
 
@@ -30,3 +30,4 @@ id|date|cause|fix
 B80|2026-10-04|1 locale ! held all letters ∴ Polish + U+00E9 → `fi-FI-aux` ⊥ `pl+en-aux` (#5)|V128
 B81|2026-10-23|draft counted U+2014 its own `any` line granted|V128
 B82|2026-10-25|draft said `1 findings in 1 files` (#37)|V128
+B84|2026-11-02|`typography-<code>` ∈ locale candidates ∴ U+2020 → `typography-da` ⊥ `any`, Polish + U+2020 → `pl+typography-da`: B80's language nobody writes|V128

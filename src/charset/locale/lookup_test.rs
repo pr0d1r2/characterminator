@@ -1,7 +1,7 @@
 //! The tests of `lookup.rs`, in a file of their own so the module
 //! reads as code (sherd V50). Still its child: `super` is `lookup`.
 
-use super::{LOCALES, adopt, adopt_all, line_of};
+use super::{LOCALES, adopt, adopt_all, is_punctuation, line_of, names};
 use crate::charset::builtin::{SETS, ascii, catalog};
 use crate::charset::{CharSet, SetCatalog, parse_line};
 
@@ -154,6 +154,21 @@ fn a_locale_typography_set_holds_its_quotes() {
         locale("typography-pt").ranges
     );
     assert!(locale("typography-en").contains('\u{2014}'));
+}
+
+/// T61: one punctuation set per locale code, default-content codes too,
+/// and `is_punctuation` tells it from the code's letters.
+#[test]
+fn every_locale_has_exactly_one_punctuation_set() {
+    let (punctuation, letters): (Vec<&str>, Vec<&str>) =
+        names().partition(|name| is_punctuation(name));
+    let codes = letters.iter().filter(|name| !name.ends_with("-aux"));
+    assert_eq!(punctuation.len(), codes.clone().count());
+    for code in codes {
+        let name = format!("typography-{code}");
+        assert!(punctuation.contains(&name.as_str()), "{name}");
+    }
+    assert!(!is_punctuation("typography"));
 }
 
 /// B32: an all-ASCII locale, its regional variants and its CLDR
