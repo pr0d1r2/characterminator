@@ -54,8 +54,8 @@ U+201F U+0022
 
 # The angle quotes used as quotation marks in several languages, to the
 # straight double. A locale that wants its own quotation marks grants
-# them; per-locale punctuation is `typography-<code>`, deferred until T32
-# vendors CLDR.
+# them: per-locale punctuation is `typography-<code>` (`src/fix:V26`,
+# T61), and what a file grants this map leaves (V6).
 U+00AB U+0022
 U+00BB U+0022
 
