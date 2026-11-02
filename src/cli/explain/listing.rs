@@ -8,11 +8,16 @@
 //! counted unless `--locales` asks for them, and a name or `--containing`
 //! narrows the list to what was asked.
 
-use crate::charset::{CharSet, builtin, code_points, locale_names};
+use crate::charset::{
+    CharSet, builtin, code_points, is_punctuation, locale_names,
+};
 use crate::judge::{Checker, Config};
 use crate::render::{Format, Listed, Listing, SetKind, listing};
 use crate::rules;
 use std::collections::{HashMap, HashSet};
+
+/// What a `typography-<code>` holds (`src/charset/locale:V61`).
+const PUNCTUATION: &str = "one locale's punctuation, from CLDR";
 
 /// What `sets` was asked: names to list, the locales, a code point.
 pub(crate) struct Asked<'a> {
@@ -91,8 +96,14 @@ fn entries(all: &[CharSet]) -> Vec<Listed<'_>> {
     let mut out: Vec<Listed<'_>> = presets.collect();
     out.extend(own(all).map(|set| entry(set, SetKind::Declared, None)));
     let locales = locale_names().filter_map(find);
-    out.extend(locales.map(|set| entry(set, SetKind::Locale, None)));
+    out.extend(locales.map(|set| entry(set, SetKind::Locale, said(set))));
     out
+}
+
+/// A locale set that is not letters says so, in the description every set
+/// already carries: `kind` stays `locale`, which consumers switch on.
+fn said(set: &CharSet) -> Option<&'static str> {
+    is_punctuation(&set.name).then_some(PUNCTUATION)
 }
 
 /// The sets neither a curated preset nor a CLDR locale: the repository's.
