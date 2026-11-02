@@ -47,3 +47,4 @@ T52|x|ARCHIVED to SPEC-ARCHIVE.md|V50,`src/lint:V36`
 id|date|cause|fix
 B31|2026-10-02|human report printed paths raw ∴ a tracked `e<ESC>[2Jx<U+202E>y.md` cleared the screen & reversed its line. via release review|V11
 B77|2026-10-03|a command line that failed to parse named its first non-flag word as the json error's `verb` ∴ `ctrm --format json check --bad` said `"verb":"json"`, the value of `--format`. via release review|V122
+B86|2026-11-02|`sets` json opened at `verb`, ⊥ `schema`, & its test pinned that; `docs/JSON.md` still said `{name, ranges}`. via T61 review|V95

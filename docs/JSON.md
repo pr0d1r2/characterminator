@@ -116,8 +116,17 @@ on the same file.
 
 ### `sets`
 
-`{schema, verb, sets}`; a set is `{name, ranges}`, a range `{start, end}`
-in `U+XXXX`.
+`{schema, verb, containing, sets, unlisted_locales}`. `containing` is the
+`U+XXXX` that `--containing` asked about, else `null`. `unlisted_locales`
+counts the CLDR locale sets a bare `ctrm sets` left out of `sets`, letters
+and punctuation both, and is `0` once names, `--locales` or `--containing`
+choose the list.
+
+A set is `{name, kind, description, ranges}`, a range `{start, end}` in
+`U+XXXX`. `kind` is `preset`, `declared` or `locale`. `description` says
+what a curated preset is for and is `null` for a declared set. A `locale`
+is one locale's letters (`pl`, `description` `null`) or its punctuation
+(`typography-pl`, whose `description` says so), both under the one `kind`.
 
 ### `explain`
 

@@ -54,6 +54,12 @@ use, so one reading serves the whole family of tools.
   `check` reports until `ctrm fix` runs, counting only what the drafted
   line leaves ungranted.
 
+### Fixed
+
+- `ctrm sets --format json` opens with `schema` like every other document;
+  it began at `verb`. A key added, so the version stays `1`. `docs/JSON.md`
+  now lists the keys `sets` really has.
+
 ## [0.1.2] - 2026-10-18
 
 A patch: the flake builds on Intel Macs.
