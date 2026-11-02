@@ -154,6 +154,23 @@ fn a_locale_typography_set_holds_its_quotes() {
         locale("typography-pt").ranges
     );
     assert!(locale("typography-en").contains('\u{2014}'));
+    assert_eq!(locale("typography-sah").ranges, ascii().ranges);
+}
+
+/// V61: punctuation rides the letters' laziness and alias rule (V64): a
+/// variant brings only itself, and a user set named like its parent does
+/// not stand in for that parent (B33).
+#[test]
+fn a_locale_typography_alias_brings_only_itself_from_the_compiled_in_data() {
+    let before = builtin().names().count();
+    let lone = adopted(&["typography-pt-BR"]);
+    assert_eq!(lone.names().count(), before.saturating_add(1));
+    let mut sets = builtin();
+    let mine = parse_line("typography-pt U+0161").ok().flatten();
+    mine.into_iter().for_each(|d| sets.insert(d));
+    assert!(adopt(&mut sets, ["typography-pt-BR".to_owned()]).is_ok());
+    let held = resolved(&sets, "typography-pt-BR");
+    assert!(held.contains('\u{201C}') && !held.contains('\u{0161}'));
 }
 
 /// T61: one punctuation set per locale code, default-content codes too,
