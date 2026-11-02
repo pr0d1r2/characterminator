@@ -21,8 +21,12 @@ use std::sync::LazyLock;
 /// parsed up front.
 pub(crate) const LOCALES: &str = include_str!("locales.ctrm-sets");
 
+/// What opens a locale's punctuation set (`typography-pl`, V61), which
+/// shares [`LOCALES`] with the letter sets.
+const PUNCTUATION: &str = "typography-";
+
 /// Each line of [`LOCALES`] by its first token, built once per process on
-/// first use (V88), so a lookup no longer walks 180 KB of text. A run
+/// first use (V88), so a lookup no longer walks 230 KB of text. A run
 /// naming no locale never builds it. The FIRST line per name is kept,
 /// which is the line a forward scan would have found.
 static INDEX: LazyLock<HashMap<&'static str, &'static str>> =
@@ -129,6 +133,13 @@ where
 pub(crate) fn names() -> impl Iterator<Item = &'static str> {
     let declaring = LOCALES.lines().filter(|line| !line.starts_with('#'));
     declaring.filter_map(|line| line.split_whitespace().next())
+}
+
+/// Whether `name` is a locale's punctuation rather than its letters, which
+/// [`names`] lists side by side: a draft reads a letter set as the language
+/// a text is written in, and punctuation does not say that.
+pub(crate) fn is_punctuation(name: &str) -> bool {
+    name.starts_with(PUNCTUATION)
 }
 
 /// Declare EVERY locale set `catalog` lacks: what `ctrm sets` lists, since

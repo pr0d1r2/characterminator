@@ -2,7 +2,7 @@
 //! over the curated presets, then the CLDR locales the letters left are
 //! written in, then `any`, said as such.
 
-use crate::charset::{CharSet, SetCatalog, locale_names};
+use crate::charset::{CharSet, SetCatalog, is_punctuation, locale_names};
 use crate::rules::TEXT;
 use std::collections::BTreeSet;
 
@@ -30,7 +30,9 @@ pub(super) enum Grant {
     Any(Vec<char>),
 }
 
-/// The builtin sets, resolved once: the presets and every locale.
+/// The builtin sets, resolved once: the presets and every locale's letters.
+/// A `typography-<code>` is a grant to ask for, never to draft (B84): a
+/// locale is chosen as what the text is written in.
 pub(super) struct Candidates {
     presets: Vec<CharSet>,
     locales: Vec<CharSet>,
@@ -40,9 +42,10 @@ impl Candidates {
     pub(super) fn builtin() -> Self {
         let catalog = SetCatalog::builtin();
         let resolve = |name: &str| catalog.resolve(name, TEXT).ok();
+        let letters = locale_names().filter(|name| !is_punctuation(name));
         Self {
             presets: PRESETS.iter().filter_map(|name| resolve(name)).collect(),
-            locales: locale_names().filter_map(resolve).collect(),
+            locales: letters.filter_map(resolve).collect(),
         }
     }
 

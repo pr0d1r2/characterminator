@@ -56,6 +56,16 @@ fn letters_take_their_language_before_an_accidental_cover() {
     assert_eq!(names, ["pl", "en-aux"]);
 }
 
+/// B84: punctuation no preset holds is `any`, alone or beside letters. A
+/// `typography-<code>` holds it, but of a language nobody here writes:
+/// U+2020 drafted `typography-da`, and Polish with it `pl+typography-da`.
+#[test]
+fn punctuation_is_never_drafted_as_a_locale() {
+    assert_eq!(covered(&['\u{2020}']), Grant::Any(vec!['\u{2020}']));
+    let polish = ['\u{0142}', '\u{2020}'];
+    assert_eq!(covered(&polish), Grant::Any(polish.to_vec()));
+}
+
 const WRITE: Ask = Ask {
     print: false,
     keep: false,
