@@ -427,6 +427,7 @@ plus **one** of these.
 | `emoji` | emoji as single code points |
 | `cr` | carriage return, alone |
 | `pl`, `ja`, `pt-BR`, `sr-Latn`, ... | one locale's letters, from CLDR, both cases: every locale CLDR ships (766, CJK, Indic and RTL included), named by its code; a variant equal to its parent is an alias (`pt-BR` is `pt`). `<code>-aux` adds its loan letters; a locale whose letters are all ASCII (`en`) is `ascii`, and its `-aux` alone adds anything. Read only when a rule names one, and listed by `ctrm sets --locales` |
+| `typography-pl`, `typography-pt-BR`, ... | one locale's own quotes and punctuation, from CLDR, less ASCII (Polish `U+201E` and `U+201D`, not `U+201C`): every locale has one, and a variant equal to its parent is an alias. `fix` leaves what it grants and straightens the quotes it does not, where `typography` grants them all. `ctrm init` never drafts one: it is a grant to ask for. A locale with no punctuation beyond ASCII is `ascii` |
 | `latin1`, `latin-ext`, `cyrillic`, `greek`, `arabic` | coarse blocks |
 | `persian`, `hindi` | a script whose spelling needs a zero width joiner: naming one is what lets that joiner through, and nothing else |
 | `any` | everything, for a file you do not own -- hazards still fire |
@@ -731,10 +732,6 @@ list every open task, and the issue tracker is the place to ask about one.
   mapping in one file (`src/cli/guard/hook.rs`), and none is written yet.
 - **One pedantic lint is not built**: `locale-literal` needs a notion of
   which files are code and how each language spells a string literal.
-- **No per-locale typography yet.** A `typography-<code>` set -- a
-  locale's own quotes and punctuation from CLDR (Polish `U+201E` and
-  `U+201D`) -- is planned. CLDR is vendored for the letter presets; the
-  punctuation is not generated from it yet.
 - **Dogfooding has one wave.** The presets were sized from a scan of many
   repositories, but `ctrm` gates only this one; rolling it out across the
   rest is planned.
