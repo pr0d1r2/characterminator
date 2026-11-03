@@ -70,7 +70,13 @@ src/SPEC.md          580
 # CLDR letter rows (R6, R15, V30, V59, V61, V64, V88, B32, B33). ~12% over
 # the measured 2823, so the parent cannot quietly regrow into the room its
 # child took. The child gets its own row, ~12% over its measured 1404.
-src/charset/SPEC.md  3160
+# 3160 -> 3500 on 2026-10-26, reviewed: the V138 owner-decision exception
+# and R20's recorded scan (per-character repo counts, the corpus, the
+# method) measure 3210 (o200k). Compaction was tried FIRST: R20 lost its
+# prose and §I's typography run became one code span, 3246 -> 3210. ~12%
+# over would be 3595, past V103's 3500 file cap, so the cap is the number;
+# the next growth splits the node or archives rows.
+src/charset/SPEC.md  3500
 src/charset/locale/SPEC.md 1570
 # RAISED 1240 -> 1600, reviewed. The node gains V51, the opt-in `words`
 # map: the one rewrite in the crate that measurably saves tokens (`src/fix/words:R11`),

@@ -1,16 +1,17 @@
 //! V138: a function preset grows only on evidence, so its size is pinned
 //! here. Adding a member fails this test until the count is raised, and
-//! the commit that raises it cites the research row that met the bar.
+//! the commit that raises it cites the research row that met the bar,
+//! or the dated owner decision that row records when the scan fell short.
 
 use super::{CharSet, catalog};
 
 /// Every function preset and how many code points it grants as text.
 const SIZES: [(&str, usize); 8] = [
-    ("caveman", 32),
+    ("caveman", 36),
     ("box", 224),
-    ("math", 15),
+    ("math", 28),
     ("legal", 3),
-    ("typography", 15),
+    ("typography", 16),
     ("emoji", 2491),
     ("marks", 4),
     ("cr", 1),

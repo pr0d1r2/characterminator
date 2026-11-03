@@ -12,10 +12,11 @@
 # need it, and rewriting the rows into code point notation would make the
 # evidence in them unreadable.
 #
-# MUCH LESS-THAN, N-ARY UNION, SET MINUS,
-# DOUBLE LOW-9 QUOTATION MARK (the Polish opening quote, from the CLDR
-# research row), HEAVY CHECK MARK.
-spec-symbol U+226A U+22C3 U+2216 U+201E U+2714
+# N-ARY UNION, SET MINUS, HEAVY CHECK MARK. MUCH LESS-THAN left this
+# list when `math` took it (`src/charset:R20`), and DOUBLE LOW-9
+# QUOTATION MARK when `typography` did (`src/fix:B73`): `spec` grants both,
+# so listing them here as well said "no preset holds" and was not so.
+spec-symbol U+22C3 U+2216 U+2714
 
 # The marks, until the `marks` preset ships with T46: WHITE HEAVY CHECK
 # MARK, CROSS MARK, CHECK MARK, BALLOT X, WARNING SIGN, BLACK RIGHTWARDS
