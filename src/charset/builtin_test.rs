@@ -208,6 +208,28 @@ fn caveman_grants_the_wave_one_gap() {
     assert!(!set.contains('\u{226A}'));
 }
 
+/// R20: the left, long and dashed counterparts of arrows caveman held.
+#[test]
+fn caveman_grants_the_arrow_counterparts() {
+    let set = preset("caveman");
+    let arrows = ['\u{21D0}', '\u{27F9}', '\u{21E2}', '\u{21C4}'];
+    assert!(arrows.iter().all(|arrow| set.contains(*arrow)));
+}
+
+/// R20: the relations, operators and subscripts shell scripts, bats
+/// specs and compressed notation wrote that no preset held.
+#[test]
+fn math_grants_the_issue_35_gap() {
+    let set = preset("math");
+    let gap = [
+        '\u{226A}', '\u{226B}', '\u{2273}', '\u{220C}', '\u{2289}', '\u{2295}',
+        '\u{2225}', '\u{2016}', '\u{2219}', '\u{2081}', '\u{2082}', '\u{2083}',
+        '\u{2099}',
+    ];
+    assert!(gap.iter().all(|point| set.contains(*point)));
+    assert!(!set.contains('\u{2022}'));
+}
+
 #[test]
 fn box_grants_both_drawing_blocks() {
     let set = preset("box");
@@ -235,6 +257,13 @@ fn typography_grants_the_low_9_quotes_the_map_targets() {
     let set = preset("typography");
     let quotes = ['\u{201A}', '\u{201B}', '\u{201E}', '\u{201F}'];
     assert!(quotes.iter().all(|quote| set.contains(*quote)));
+}
+
+/// R20: BULLET, the prose list mark. The map leaves it, so this grant is
+/// the only thing that admits it.
+#[test]
+fn typography_grants_the_bullet() {
+    assert!(preset("typography").contains('\u{2022}'));
 }
 
 #[test]

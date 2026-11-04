@@ -316,7 +316,7 @@ Members are written as themselves, as `U+XXXX`, as a range, or as the name
 of another set.
 
 ```text
-house U+2261 U+226A
+house U+22C3 U+2216
 spec caveman typography house
 ```
 

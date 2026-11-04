@@ -32,6 +32,33 @@ fn the_cover_takes_the_presets_that_gain_most() {
     assert_eq!(grant, Grant::Sets(want));
 }
 
+fn shell_notation() -> Grant {
+    covered(&[
+        '\u{2022}', '\u{226A}', '\u{2081}', '\u{21D0}', '\u{27F9}', '\u{21E2}',
+        '\u{21C4}', '\u{226B}', '\u{2273}', '\u{220C}', '\u{2289}', '\u{2295}',
+        '\u{2225}', '\u{2016}', '\u{2219}', '\u{2082}', '\u{2083}', '\u{2099}',
+    ])
+}
+
+/// Issue #35 (`src/charset:R20`): the notation shell scripts and bats
+/// specs write drafts presets, not `any`.
+#[test]
+fn shell_notation_takes_presets_not_any() {
+    let grant = shell_notation();
+    let math = vec![
+        '\u{2016}', '\u{2081}', '\u{2082}', '\u{2083}', '\u{2099}', '\u{220C}',
+        '\u{2219}', '\u{2225}', '\u{226A}', '\u{226B}', '\u{2273}', '\u{2289}',
+        '\u{2295}',
+    ];
+    let caveman = vec!['\u{21C4}', '\u{21D0}', '\u{21E2}', '\u{27F9}'];
+    let want = vec![
+        (String::from("math"), math),
+        (String::from("caveman"), caveman),
+        (String::from("typography"), vec!['\u{2022}']),
+    ];
+    assert_eq!(grant, Grant::Sets(want));
+}
+
 /// Letters no preset holds go to ONE locale; nothing at all, to `any`.
 #[test]
 fn letters_take_a_locale_and_the_uncovered_take_any() {
