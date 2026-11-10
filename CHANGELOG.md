@@ -17,6 +17,17 @@ use, so one reading serves the whole family of tools.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-10
+
+Still a 0.1 patch, so [the version ladder](#version-ladder)'s promise is
+unchanged: the json contract and the library surface may still move before
+0.2. What a caller can observe: new set names (`typography-<code>`,
+`hazard:tags`), mojibake reported as one finding and restored by `fix`,
+`init --keep-fixable`, a `schema` key at the top of `sets --format json`,
+prebuilt release archives, and the flake building on Intel Macs. `v0.1.2`
+was planned on 2026-10-18 and never tagged, so everything since folds into
+it.
+
 ### Added
 
 - **`typography-<code>`**: every CLDR locale's own quotes and punctuation as a
@@ -54,26 +65,20 @@ use, so one reading serves the whole family of tools.
   `check` reports until `ctrm fix` runs, counting only what the drafted
   line leaves ungranted.
 
+- **`x86_64-darwin`** in the flake systems (#20, closing #18). Consumers
+  pin a tag, so `v0.1.1` had no `characterminator.packages.x86_64-darwin`.
+  nixpkgs 26.05 is the last release to support this system.
+
+- **Prebuilt binaries** attached to each GitHub release from this tag on:
+  one archive each for Linux x86_64, Linux aarch64 and macOS aarch64
+  (`ctrm`, `LICENSE`, `README.md`) plus one `SHA256SUMS`, built from the
+  tag itself.
+
 ### Fixed
 
 - `ctrm sets --format json` opens with `schema` like every other document;
   it began at `verb`. A key added, so the version stays `1`. `docs/JSON.md`
   now lists the keys `sets` really has.
-
-## [0.1.2] - 2026-10-18
-
-A patch: the flake builds on Intel Macs.
-
-### Added
-
-- A VS15/VS16 (U+FE0E/U+FE0F) right after a granted character that has a
-  standardized variation sequence (`✔️`) is no longer reported, and `fix`
-  leaves it, so text matching a tool's emoji output stays byte-exact (#34). A
-  lone selector, or one after ASCII, is still reported.
-
-- **`x86_64-darwin`** in the flake systems (#20, closing #18). Consumers
-  pin a tag, so `v0.1.1` had no `characterminator.packages.x86_64-darwin`.
-  nixpkgs 26.05 is the last release to support this system.
 
 ## [0.1.1] - 2026-10-04
 
