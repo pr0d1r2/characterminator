@@ -41,12 +41,21 @@
     sherd.url = "github:pr0d1r2/sherd/v0.5.3";
     sherd.inputs.nixpkgs-lock.follows = "nixpkgs-lock";
     sherd.inputs.nix-hk.follows = "nix-hk";
+    # A HOLD, not a tool pin: cargo-release 1.1.6. nixos-26.05 ships 1.1.7,
+    # which needs rustc 1.97 while the channel has 1.95.0, so the channel's
+    # `pkgs.cargo-release` does not build. Its overlay makes
+    # `pkgs.cargo-release` the held build, cached on the substituter above.
+    # Drop the input once the channel's own cargo-release builds
+    # (`nix-cargo-release/T2`).
+    nix-cargo-release.url = "github:pr0d1r2/nix-cargo-release/v0.1.0";
+    nix-cargo-release.inputs.nixpkgs-lock.follows = "nixpkgs-lock";
   };
 
   outputs =
     {
       nixpkgs,
       nix-hk,
+      nix-cargo-release,
       microlith,
       itok,
       sherd,
@@ -61,10 +70,15 @@
       ];
       # The overlay is what makes `pkgs.hk` mean nix-hk's hk rather than
       # nixpkgs'. Applied as an overlay so there is exactly one `pkgs` here.
+      # nix-cargo-release's overlay does the same for `pkgs.cargo-release`.
       forEach =
         list: f:
         nixpkgs.lib.genAttrs list (
-          s: f (nixpkgs.legacyPackages.${s}.extend nix-hk.overlays.default)
+          s:
+          f (
+            (nixpkgs.legacyPackages.${s}.extend nix-hk.overlays.default).extend
+              nix-cargo-release.overlays.default
+          )
         );
       forAll = forEach systems;
       # The dev shell carries the fleet tools, so it exists only where all
@@ -196,7 +210,9 @@
             (coverageLlvm pkgs)
             # The release runner (T17). `release.toml` configures it; the
             # order of the tail is written there, and the gate is its
-            # pre-release hook rather than a step somebody remembers.
+            # pre-release hook rather than a step somebody remembers. Held at
+            # 1.1.6 by the nix-cargo-release overlay, dropped when the
+            # channel's own cargo-release builds (`nix-cargo-release/T2`).
             pkgs.cargo-release
           ];
           # Pin locale so tool output is deterministic across machines.
